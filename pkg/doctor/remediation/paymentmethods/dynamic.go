@@ -35,6 +35,8 @@
 package paymentmethods
 
 import (
+	"fmt"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -49,6 +51,11 @@ import (
 // Topic is the catalog.Rule.RemediationTopic ("doctorTopic") this package
 // implements.
 const Topic = "dpm"
+
+// title is this topic's plain-English name for doctor's action-plan
+// renderer (remediation.Result.Title) — the renderer itself has no idea
+// what "dpm" stands for.
+const title = "Dynamic payment methods"
 
 // offeringPolicy governs how Dashboard adoption treats methods the code
 // already hardcodes: preserve_existing requires the Dashboard to keep
@@ -70,9 +77,9 @@ const dpmCutoff = "2023-08-16"
 // different ones, or none at all; that's entirely up to its own Run.
 var webhookSignals = &codesignals.PackSignals{
 	WebhookEvents: []codesignals.WebhookEvent{
-		{Event: "checkout.session.completed", Note: "fires when checkout finishes — for a delayed method (OXXO, bank transfer, ...) that means the customer committed to pay, not that payment is confirmed yet"},
-		{Event: "checkout.session.async_payment_succeeded", Note: "fires later, out of band, when a delayed payment method actually clears — without this handler, those orders never get fulfilled"},
-		{Event: "checkout.session.async_payment_failed", Note: "fires later if a delayed payment method expires or fails — without this handler, those orders never get reconciled or refunded"},
+		{Event: "checkout.session.completed", Note: "Checkout finished. If payment is still pending, wait for payment confirmation before fulfilling the order."},
+		{Event: "checkout.session.async_payment_succeeded", Note: "A delayed payment succeeded. Fulfill the order if you haven't already done so."},
+		{Event: "checkout.session.async_payment_failed", Note: "A delayed payment failed. Update the order and notify the customer as appropriate."},
 	},
 }
 
@@ -83,8 +90,16 @@ var webhookSignals = &codesignals.PackSignals{
 // renders as its own separate Dashboard action rather than a trailing
 // clause on whatever the Status message happens to be.
 var dashboardNotes = []string{
-	"Enable the payment methods you want to use at https://dashboard.stripe.com/settings/payment_methods?types[0]=direct&types[1]=subaccount.",
+	"Enable the payment methods you want to use at " + dashboardConfigURL + ".",
 }
+
+// dashboardReviewLead/dashboardConfigURL are the same reminder as
+// dashboardNotes, split into the lead-in-sentence-then-bare-URL shape the
+// action-plan renderer prints as two pre-broken lines (see
+// remediation.ActionSection's doc comment) rather than one long sentence
+// with an inline link.
+const dashboardReviewLead = "Once you've verified your flows support them, enable the payment methods you want in the Dashboard:"
+const dashboardConfigURL = "https://dashboard.stripe.com/settings/payment_methods?types[0]=direct&types[1]=subaccount"
 
 func init() {
 	remediation.Register(Topic, implementation{})
@@ -120,7 +135,7 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 			evidence["webhook_handlers_present"] = wh.AllPresent
 			evidence["webhook_events"] = wh.Events
 		}
-		return remediation.Result{Topic: Topic, Status: remediation.StatusUnknown, Message: err.Error(), Evidence: evidence, Notes: dashboardNotes}, nil
+		return remediation.Result{Topic: Topic, Title: title, Status: remediation.StatusUnknown, Message: err.Error(), Evidence: evidence, Notes: dashboardNotes}, nil
 	}
 
 	creds, err := stripeapi.LoadCredentials(ctx.Config)
@@ -141,6 +156,14 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 	}
 	result := assess(ctx, vf, pmf, wh)
 	result.FindingVerdicts = findingVerdicts(vf, ctx.Findings)
+	if n := len(ctx.Findings); n > 0 {
+		result.Sections = append([]remediation.ActionSection{findingsSection(ctx, vf)}, result.Sections...)
+		listNoun := "lists"
+		if n == 1 {
+			listNoun = "list"
+		}
+		result.CodeSummary = fmt.Sprintf("%d explicit payment method %s found", n, listNoun)
+	}
 	return result, nil
 }
 
@@ -322,29 +345,66 @@ func intentVerdict(intent string) string {
 	}
 }
 
-// findingsVersionVerdict computes a uniform account-wide fact from the
-// live API-version evidence alone — a version problem applies the same
-// way to every payment_method_types removal candidate regardless of
-// that finding's own code shape. "" means no version problem: each
-// finding falls through to its own classifyIntent/intentVerdict instead
-// (see findingVerdicts).
+// versionGate is a uniform account-wide fact derived from the live
+// API-version evidence alone — a version problem applies the same way to
+// every payment_method_types removal candidate regardless of that
+// finding's own code shape. A zero-value versionGate (empty Class) means
+// no version problem: each finding falls through to its own
+// classifyIntent/intentVerdict instead (see findingVerdicts). Reason and
+// Instruction are kept separate (rather than one sentence) so the
+// action-plan renderer can show them as two paragraphs (see
+// findingsSection); flat joins them back into the single-line
+// "CLASS: message" shape findingVerdicts needs for the JSON
+// per-finding-override contract.
 //
 // A pre-cutoff version is CAUTION, not BLOCKED: the fix isn't "do
 // nothing" or "wait for traffic to move versions" — it's "delete
 // payment_method_types AND add automatic_payment_methods[enabled]=true",
 // a known, actionable change, not a dead end. Only NoEvents (no version
 // evidence at all) stays REVIEW, since there's no fix to name yet.
-func findingsVersionVerdict(vf versionFacts) string {
-	switch {
-	case vf.NoEvents:
-		return "REVIEW: couldn't find any recent API traffic for this account, so its API version is unknown. Confirm it's at/after " + dpmCutoff + " before removing payment_method_types — on an older version, removing it by itself silently drops payment methods."
-	case vf.VersionsMixed:
-		return "CAUTION: this account's recent traffic mixes API versions from before and after " + dpmCutoff + ". Plain removal is only safe for the newer requests; on the older ones, removing payment_method_types by itself would silently drop payment methods — add automatic_payment_methods[enabled]=true instead, which keeps them working on every version."
-	case !vf.VersionsOK:
-		return "CAUTION: this account's recent traffic is entirely on API versions from before " + dpmCutoff + ", so removing payment_method_types by itself would silently drop payment methods. The fix: add automatic_payment_methods[enabled]=true in its place — that's required on this account's current API version, not a blocker."
-	default:
+type versionGate struct {
+	Class       string
+	Reason      string
+	Instruction string
+}
+
+func (g versionGate) flat() string {
+	if g.Class == "" {
 		return ""
 	}
+	return g.Class + ": " + g.Reason + " " + g.Instruction
+}
+
+func findingsVersionGate(vf versionFacts) versionGate {
+	switch {
+	case vf.NoEvents:
+		return versionGate{
+			Class:       "REVIEW",
+			Reason:      "Couldn't find any recent API traffic for this account, so its API version is unknown.",
+			Instruction: "Confirm it's at/after " + dpmCutoff + " before removing payment_method_types — on an older version, removing it by itself silently drops payment methods.",
+		}
+	case vf.VersionsMixed:
+		return versionGate{
+			Class:       "CAUTION",
+			Reason:      "This account's recent traffic mixes API versions from before and after " + dpmCutoff + ".",
+			Instruction: "Plain removal is only safe for the newer requests; on the older ones, add automatic_payment_methods[enabled]=true instead, which keeps them working on every version.",
+		}
+	case !vf.VersionsOK:
+		return versionGate{
+			Class:       "CAUTION",
+			Reason:      "Recent API traffic for this account uses versions before " + dpmCutoff + ". On those versions, you must explicitly enable automatic payment methods. Removing payment_method_types alone is not enough.",
+			Instruction: "In each flow, confirm the API version, then replace payment_method_types with automatic_payment_methods[enabled]=true.",
+		}
+	default:
+		return versionGate{}
+	}
+}
+
+// findingsVersionVerdict is findingsVersionGate's flattened single-line
+// form — kept as its own function since that's the shape findingVerdicts
+// and its tests deal in.
+func findingsVersionVerdict(vf versionFacts) string {
+	return findingsVersionGate(vf).flat()
 }
 
 // findingVerdicts builds the per-finding override map doctor's engine
@@ -365,6 +425,41 @@ func findingVerdicts(vf versionFacts, findings []catalog.Finding) map[string]str
 		out[key] = intentVerdict(classifyIntent(f.Value))
 	}
 	return out
+}
+
+// relLocation formats a finding's file:line relative to the scanned
+// directory, for the action-plan renderer — the JSON findings contract
+// (catalog.Finding.File) keeps the absolute path; this is purely a
+// display nicety. Falls back to the absolute path if it isn't under dir.
+func relLocation(dir string, f catalog.Finding) string {
+	rel, err := filepath.Rel(dir, f.File)
+	if err != nil {
+		rel = f.File
+	}
+	return fmt.Sprintf("%s:%d", rel, f.Line)
+}
+
+// findingsSection builds the action-plan item for the scanned code
+// locations: one shared reason/instruction when a version problem gates
+// every finding uniformly (the common case), else each finding reviewed
+// on its own classifyIntent/intentVerdict judgment.
+func findingsSection(ctx remediation.Context, vf versionFacts) remediation.ActionSection {
+	sec := remediation.ActionSection{Heading: "Replace explicit lists with automatic payment methods"}
+	if gate := findingsVersionGate(vf); gate.Class != "" {
+		sec.Body = []string{gate.Reason, gate.Instruction}
+		for _, f := range ctx.Findings {
+			sec.Items = append(sec.Items, remediation.ActionItem{Heading: relLocation(ctx.Dir, f), Body: "Current list: " + f.Value})
+		}
+		return sec
+	}
+	sec.Body = []string{"Each flagged location below needs its own review before removing payment_method_types."}
+	for _, f := range ctx.Findings {
+		sec.Items = append(sec.Items, remediation.ActionItem{
+			Heading: relLocation(ctx.Dir, f),
+			Body:    intentVerdict(classifyIntent(f.Value)),
+		})
+	}
+	return sec
 }
 
 // assess combines payment-method-configuration facts, the scanned
@@ -388,12 +483,23 @@ func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *cod
 	}
 	evidence["offering_policy"] = offeringPolicy
 
-	result := func(status remediation.Status, msg string) remediation.Result {
-		return remediation.Result{Topic: Topic, Status: status, Message: msg, Evidence: evidence, Notes: dashboardNotes}
+	result := func(status remediation.Status, headline, msg string) remediation.Result {
+		return remediation.Result{
+			Topic:        Topic,
+			Title:        title,
+			Status:       status,
+			Headline:     headline,
+			SummaryLabel: "Routing",
+			Message:      msg,
+			Evidence:     evidence,
+			Notes:        dashboardNotes,
+			Sections:     []remediation.ActionSection{dashboardSection(msg), webhooksSection(wh)},
+		}
 	}
 
 	if !pmf.ConfiguredOK {
-		return result(remediation.StatusBlocked, "no payment methods are turned on in an active Dashboard payment-method configuration yet")
+		return result(remediation.StatusBlocked, "Blocked — no payment methods enabled in the Dashboard",
+			"No payment methods are turned on in an active Dashboard payment-method configuration yet.")
 	}
 
 	// preserve_existing: every hardcoded method in source must already be
@@ -437,18 +543,64 @@ func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *cod
 	evidence["dynamic_findings"] = hasDynamic
 
 	if len(missing) > 0 {
-		return result(remediation.StatusCaution, "turn on "+strings.Join(missing, ", ")+" in the Dashboard first — your code hardcodes them today, and offeringPolicy preserve_existing requires the Dashboard to keep offering everything the code currently does")
+		return result(remediation.StatusCaution, "Caution — Dashboard doesn't yet offer every hardcoded method",
+			"Turn on "+strings.Join(missing, ", ")+" in the Dashboard first. Your code hardcodes them today, and offeringPolicy preserve_existing requires the Dashboard to keep offering everything the code currently does.")
 	}
 	if len(inactive) > 0 {
-		return result(remediation.StatusCaution, strings.Join(inactive, ", ")+" are toggled on in the Dashboard but their capability isn't active for this account yet (check Settings > Payment methods, or contact support) — they won't render either way until that's resolved")
+		return result(remediation.StatusCaution, "Caution — some enabled methods aren't active yet",
+			strings.Join(inactive, ", ")+" are toggled on in the Dashboard, but their capability isn't active for this account yet (check Settings > Payment methods, or contact support). They won't render either way until that's resolved.")
 	}
 	if hasDynamic {
-		return result(remediation.StatusReview, "some payment_method_types values are computed at runtime — a human needs to confirm the routing logic covers every method the Dashboard will start offering before adopting dynamic payment methods")
+		return result(remediation.StatusReview, "Review required — some lists are built at runtime",
+			"Some payment method lists are built at runtime. Check whether that logic restricts payment methods for particular checkout flows. Preserve any required restrictions when switching to dynamic payment methods.")
 	}
 	if wh != nil && !wh.AllPresent {
-		return result(remediation.StatusCaution, "ready to adopt dynamic payment methods, but add the delayed-notification webhook handlers first — some newly available methods only confirm payment asynchronously")
+		return result(remediation.StatusCaution, "Caution — webhook handlers missing",
+			"Ready to adopt dynamic payment methods, but add the delayed-notification webhook handlers first. Some newly available methods only confirm payment asynchronously.")
 	}
-	return result(remediation.StatusReady, "ready: the Dashboard already offers everything the code hardcodes, and webhook handling is in place")
+	return result(remediation.StatusReady, "Ready — Dashboard already covers your code",
+		"Ready: the Dashboard already offers everything the code hardcodes, and webhook handling is in place.")
+}
+
+// dashboardSection is the action-plan item for the Dashboard-facing
+// readiness check: msg (assess's own Message for this Result) plus the
+// standing reminder to review which payment methods are enabled,
+// rendered as a lead-in sentence followed by a bare URL rather than one
+// long sentence with an inline link.
+func dashboardSection(msg string) remediation.ActionSection {
+	return remediation.ActionSection{
+		Heading: "Verify routing before enabling more payment methods",
+		Body:    []string{msg, dashboardReviewLead + "\n" + dashboardConfigURL},
+	}
+}
+
+// webhooksSection is the action-plan item for webhook-handler coverage.
+// Returns a zero-value ActionSection (skipped by the renderer) when wh is
+// nil — no webhook signals were scanned for at all.
+func webhooksSection(wh *codesignals.HandlerSignals) remediation.ActionSection {
+	if wh == nil {
+		return remediation.ActionSection{}
+	}
+	sec := remediation.ActionSection{Heading: "Verify handling for delayed payments"}
+	sec.Body = append(sec.Body, "Checkout can finish before a delayed payment succeeds. Make sure your integration distinguishes checkout completion from payment confirmation.")
+	if wh.AllPresent {
+		sec.Body = append(sec.Body, "All expected webhook handlers were found in the scanned code.")
+	} else {
+		sec.Body = append(sec.Body, "These handlers weren't found in the scanned code. If they're implemented elsewhere, verify them there.")
+	}
+	for _, e := range wh.Events {
+		item := remediation.ActionItem{Heading: e.Event}
+		switch {
+		case e.Present && len(e.Files) > 0:
+			item.Body = "Found in " + e.Files[0]
+		case e.Present:
+			item.Body = "Found in scanned code"
+		default:
+			item.Body = e.Note
+		}
+		sec.Items = append(sec.Items, item)
+	}
+	return sec
 }
 
 func sortedKeys(m map[string]bool) []string {

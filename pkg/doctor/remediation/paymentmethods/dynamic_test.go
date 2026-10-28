@@ -82,7 +82,7 @@ func TestFindingVerdicts(t *testing.T) {
 	gated := findingVerdicts(versionFacts{NoEvents: true}, findings)
 	for _, f := range findings {
 		key := remediation.FindingKey(f.File, f.Line)
-		if !strings.HasPrefix(gated[key], "REVIEW: couldn't find any recent API traffic") {
+		if !strings.HasPrefix(gated[key], "REVIEW: Couldn't find any recent API traffic") {
 			t.Errorf("%s: expected the version-gate message, got %q", key, gated[key])
 		}
 	}

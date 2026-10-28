@@ -21,13 +21,201 @@ import (
 )
 
 func renderDoctor(r *DoctorReport) {
-	renderRule(r)
-	renderSummary(r)
-	renderDetails(r)
+	if sections := actionSections(r); len(sections) > 0 {
+		renderActionPlan(r, sections)
+	} else {
+		renderRule(r)
+		renderSummary(r)
+		renderDetails(r)
+	}
 	if r.WebhookCheck != nil {
 		fmt.Println()
 		renderWebhookCheck(r.WebhookCheck)
 	}
+}
+
+// ---------- action-plan renderer ----------
+//
+// When the declared remediation contributes ActionSections, doctor
+// renders its numbered action-plan layout instead of the generic
+// what-it-is/summary/details sections below: a plain-English title, the
+// rule's own message, a short Code/Dashboard/Webhooks summary table, and
+// each ActionSection as one numbered item. doctor's renderer treats every
+// word inside a Section opaquely — see remediation.ActionSection's doc
+// comment; a topic that contributes none renders via the older generic
+// layout instead.
+
+// actionSections returns the declared remediation's non-empty Sections,
+// if any — a zero-value ActionSection (Heading == "") is a remediation's
+// way of opting a section out (e.g. no webhook signals were scanned at
+// all) rather than contributing a blank numbered item.
+func actionSections(r *DoctorReport) []remediation.ActionSection {
+	if r.RemediationResult == nil {
+		return nil
+	}
+	var out []remediation.ActionSection
+	for _, s := range r.RemediationResult.Sections {
+		if s.Heading != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func renderActionPlan(r *DoctorReport, sections []remediation.ActionSection) {
+	title := r.RemediationResult.Title
+	if title == "" {
+		title = strings.ToUpper(r.Topic)
+	}
+	fmt.Println(titleStyle.Render(title))
+	fmt.Println()
+
+	if r.Message != "" {
+		for _, line := range wrapText(r.Message, 74) {
+			fmt.Println(line)
+		}
+		fmt.Println()
+	}
+
+	rows := [][2]string{
+		{"Code", codeSummaryPhrase(r)},
+		{summaryLabel(r), dashboardHeadline(r)},
+		{"Webhooks", webhookSummary(r)},
+	}
+	width := 0
+	for _, row := range rows {
+		if len(row[0]) > width {
+			width = len(row[0])
+		}
+	}
+	width += 3
+	for _, row := range rows {
+		fmt.Printf("  %-*s%s\n", width, row[0], row[1])
+	}
+
+	for i, sec := range sections {
+		fmt.Println()
+		renderActionSection(i+1, sec)
+	}
+
+	if r.Docs != "" {
+		fmt.Println()
+		fmt.Println("Learn more:")
+		fmt.Println(r.Docs)
+	}
+}
+
+// renderActionSection prints one numbered ActionSection: its heading,
+// each Body paragraph (word-wrapped, except a paragraph containing a
+// literal "\n", which is printed as pre-broken lines — e.g. a lead-in
+// sentence followed by a bare URL), then each Item as its own
+// sub-heading plus an indented body line.
+func renderActionSection(num int, sec remediation.ActionSection) {
+	fmt.Printf("%d. %s\n", num, sec.Heading)
+	for _, p := range sec.Body {
+		fmt.Println()
+		for _, seg := range strings.Split(p, "\n") {
+			for _, line := range wrapText(seg, 73) {
+				fmt.Println("   " + line)
+			}
+		}
+	}
+	for _, item := range sec.Items {
+		fmt.Println()
+		fmt.Println("   " + item.Heading)
+		for _, line := range wrapText(item.Body, 71) {
+			fmt.Println("     " + line)
+		}
+	}
+}
+
+// wrapText greedily wraps s to width, splitting on whitespace.
+func wrapText(s string, width int) []string {
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return nil
+	}
+	lines := []string{words[0]}
+	for _, w := range words[1:] {
+		last := lines[len(lines)-1]
+		if len(last)+1+len(w) > width {
+			lines = append(lines, w)
+		} else {
+			lines[len(lines)-1] = last + " " + w
+		}
+	}
+	return lines
+}
+
+// summaryLabel is the action-plan table's second row label — the
+// declared remediation's own SummaryLabel, falling back to "Dashboard"
+// when unset.
+func summaryLabel(r *DoctorReport) string {
+	if r.RemediationResult != nil && r.RemediationResult.SummaryLabel != "" {
+		return r.RemediationResult.SummaryLabel
+	}
+	return "Dashboard"
+}
+
+// codeSummaryPhrase is the action-plan table's "Code" row: the declared
+// remediation's own CodeSummary when set, else a generic phrase — how
+// many scanned locations need attention, and — when every one of them
+// shares the same verdict class — what kind of attention.
+func codeSummaryPhrase(r *DoctorReport) string {
+	if r.RemediationResult != nil && r.RemediationResult.CodeSummary != "" {
+		return r.RemediationResult.CodeSummary
+	}
+	if len(r.Findings) == 0 {
+		return fmt.Sprintf("no findings — %d files scanned, %d parsed", r.Stats.FilesScanned, r.Stats.FilesParsed)
+	}
+	if len(r.Summary) == 1 {
+		for class, n := range r.Summary {
+			noun := "locations"
+			if n == 1 {
+				noun = "location"
+			}
+			return fmt.Sprintf("%d %s %s", n, noun, classAction(class))
+		}
+	}
+	var parts []string
+	for class, n := range r.Summary {
+		parts = append(parts, fmt.Sprintf("%d %s", n, classLabel(class)))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ", ")
+}
+
+// classAction is classLabel's sibling for the action-plan table's "Code"
+// row — a short clause read as "N locations <classAction>", rather than
+// a standalone noun phrase.
+func classAction(class string) string {
+	switch class {
+	case "CANDIDATE":
+		return "safe to remove"
+	case "SKIP":
+		return "can be skipped"
+	case "REVIEW":
+		return "need review"
+	case "CAUTION":
+		return "need an API-version-specific change"
+	case "ADVISE":
+		return "flagged for advisory review"
+	default:
+		return "need " + strings.ToLower(class)
+	}
+}
+
+// dashboardHeadline is the action-plan table's "Dashboard" row: the
+// declared remediation's own short Headline, falling back to its bare
+// Status when unset.
+func dashboardHeadline(r *DoctorReport) string {
+	if r.RemediationResult == nil {
+		return "no Dashboard-facing remediation declared"
+	}
+	if r.RemediationResult.Headline != "" {
+		return r.RemediationResult.Headline
+	}
+	return statusLabel(r.RemediationResult.Status)
 }
 
 // ---------- section 1: what this is ----------
@@ -89,23 +277,27 @@ func dashboardSummary(r *DoctorReport) string {
 }
 
 // webhookSummary counts how many of the expected webhook handlers were
-// found in the scanned code, across whichever remediation's Evidence
+// NOT found in the scanned code, across whichever remediation's Evidence
 // carries that signal.
 func webhookSummary(r *DoctorReport) string {
 	events := webhookEvents(r)
 	if len(events) == 0 {
 		return "no webhook signals checked"
 	}
-	present := 0
+	missing := 0
 	for _, e := range events {
-		if e.Present {
-			present++
+		if !e.Present {
+			missing++
 		}
 	}
-	if present == len(events) {
-		return fmt.Sprintf("all %d expected handlers found", len(events))
+	if missing == 0 {
+		return fmt.Sprintf("all %d expected handlers found in scanned code", len(events))
 	}
-	return fmt.Sprintf("%d of %d expected handlers found", present, len(events))
+	noun := "handlers"
+	if missing == 1 {
+		noun = "handler"
+	}
+	return fmt.Sprintf("%d expected %s not found in scanned code", missing, noun)
 }
 
 // webhookEvents returns the webhook-handler evidence the declared

@@ -62,13 +62,54 @@ const (
 // (e.g. "go turn on the payment methods you want in the Dashboard") —
 // rendered as their own separate actions, not appended onto Message, so
 // they don't get lost as a trailing clause of an unrelated sentence.
+//
+// Title and Sections drive doctor's human-facing action-plan renderer:
+// Title names the migration in plain English (falling back to the bare
+// topic string if empty); Headline is a short clause for the one-line
+// summary row named by SummaryLabel (falling back to "Dashboard" when
+// SummaryLabel is empty); CodeSummary overrides the summary table's
+// "Code" row value entirely, when the generic finding-count-by-class
+// phrase doctor would otherwise compute doesn't fit this topic's own
+// framing; Sections is the ordered, numbered list of action items this
+// remediation wants a human to work through — doctor's renderer treats
+// the words inside each Section opaquely (see ActionSection). A topic
+// that sets neither Title nor Sections still renders fine — doctor falls
+// back to its older generic summary/details layout.
 type Result struct {
 	Topic           string            `json:"topic"`
 	Status          Status            `json:"status"`
+	Title           string            `json:"title,omitempty"`
+	Headline        string            `json:"headline,omitempty"`
+	SummaryLabel    string            `json:"summary_label,omitempty"`
+	CodeSummary     string            `json:"code_summary,omitempty"`
 	Message         string            `json:"message"`
 	Evidence        map[string]any    `json:"evidence,omitempty"`
 	FindingVerdicts map[string]string `json:"finding_verdicts,omitempty"`
 	Notes           []string          `json:"notes,omitempty"`
+	Sections        []ActionSection   `json:"sections,omitempty"`
+}
+
+// ActionSection is one numbered, human-facing action item a remediation
+// contributes to doctor's action-plan renderer: a heading, zero or more
+// body paragraphs, and zero or more line items (a flagged code location,
+// a webhook event, or similar). A body paragraph containing a literal
+// "\n" is split into independently word-wrapped segments with no blank
+// line between them (e.g. a lead-in sentence followed by a bare URL,
+// which — having no spaces — is left intact on its own line regardless
+// of width). Numbering, wrapping, and indentation are the renderer's
+// job; the words are the remediation's.
+type ActionSection struct {
+	Heading string       `json:"heading"`
+	Body    []string     `json:"body,omitempty"`
+	Items   []ActionItem `json:"items,omitempty"`
+}
+
+// ActionItem is one line item under an ActionSection: a short heading
+// (e.g. "lib/checkout.rb:11" or a webhook event name) plus an optional
+// body line (e.g. the flagged code snippet, or that event's note).
+type ActionItem struct {
+	Heading string `json:"heading"`
+	Body    string `json:"body,omitempty"`
 }
 
 // FindingKey is the stable key a Result.FindingVerdicts entry is looked
