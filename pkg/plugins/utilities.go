@@ -585,7 +585,8 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		}, nil
 	}
 
-	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && os.IsNotExist(cachedErr) {
+	var cachedNotFound *ErrPluginNotFound
+	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && (os.IsNotExist(cachedErr) || errors.As(cachedErr, &cachedNotFound)) {
 		if errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
 			return nil, errorcategory.Errorf(errorcategory.Auth, "%w: %w: %w", credentialsErr, normalizedErr, err)
 		}

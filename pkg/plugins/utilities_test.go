@@ -1005,7 +1005,6 @@ func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenLoggedIn(t *testing.
 }
 
 func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testing.T) {
-	fs := afero.NewMemMapFs()
 	config := &TestConfig{}
 	config.InitConfig()
 	config.Profile.APIKey = ""
@@ -1022,15 +1021,34 @@ func TestResolvePluginForInstallReturnsErrPluginNotFoundWhenNotLoggedIn(t *testi
 	}))
 	defer failingServer.Close()
 
-	_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
-	require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
-	var requestErr requests.RequestError
-	require.ErrorAs(t, err, &requestErr)
-	require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
-
-	var pluginNotFound *ErrPluginNotFound
-	require.ErrorAs(t, err, &pluginNotFound)
-	require.Equal(t, "nonexistent", pluginNotFound.Name)
+	for _, cache := range []string{"missing", "populated", "corrupt"} {
+		t.Run(cache, func(t *testing.T) {
+			fs := afero.NewMemMapFs()
+			if cache != "missing" {
+				manifest := []byte(`[[Plugin]]
+Shortname = "another-plugin"
+Binary = "stripe-cli-another-plugin"
+`)
+				if cache == "corrupt" {
+					manifest = []byte("not valid TOML [")
+				}
+				require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifest, 0600))
+			}
+			_, err := ResolvePluginForInstall(context.Background(), config, fs, "nonexistent", "1.0.0", failingServer.URL, failingServer.URL)
+			var requestErr requests.RequestError
+			require.ErrorAs(t, err, &requestErr)
+			require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
+			if cache == "corrupt" {
+				require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+				require.ErrorContains(t, err, "invalid plugin manifest")
+				return
+			}
+			require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+			var pluginNotFound *ErrPluginNotFound
+			require.ErrorAs(t, err, &pluginNotFound)
+			require.Equal(t, "nonexistent", pluginNotFound.Name)
+		})
+	}
 }
 
 func TestResolvePluginForInstallPreservesDiscoveryFailures(t *testing.T) {

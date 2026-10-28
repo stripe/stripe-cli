@@ -217,6 +217,11 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 
 	for _, agent := range []bool{false, true} {
 		t.Run(fmt.Sprintf("agent=%t", agent), func(t *testing.T) {
+			if agent {
+				cachePath := filepath.Join(cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "plugins.toml")
+				require.NoError(t, fs.MkdirAll(filepath.Dir(cachePath), 0755))
+				require.NoError(t, afero.WriteFile(fs, cachePath, testPluginManifest(), 0600))
+			}
 			ic := NewInstallCmd(cfg)
 			ic.fs = fs
 			ic.apiBaseURL = server.URL

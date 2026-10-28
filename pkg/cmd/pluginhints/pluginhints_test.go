@@ -122,7 +122,7 @@ func TestRun_MissingCredentialsDiscoveryFailures(t *testing.T) {
 	closedServer := httptest.NewServer(http.NotFoundHandler())
 	closedServer.Close()
 
-	for _, name := range []string{"headless not found", "agent not found", "transport", "server", "cancellation"} {
+	for _, name := range []string{"headless not found", "agent not found", "populated cache not found", "transport", "server", "cancellation"} {
 		t.Run(name, func(t *testing.T) {
 			baseURL := server.URL
 			switch name {
@@ -131,11 +131,17 @@ func TestRun_MissingCredentialsDiscoveryFailures(t *testing.T) {
 			case "server":
 				baseURL = failingServer.URL
 			}
+			fs := afero.NewMemMapFs()
+			if name == "populated cache not found" {
+				cachePath := filepath.Join(cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "plugins.toml")
+				require.NoError(t, fs.MkdirAll(filepath.Dir(cachePath), 0755))
+				require.NoError(t, afero.WriteFile(fs, cachePath, []byte("[[Plugin]]\nShortname = \"another-plugin\"\nBinary = \"stripe-cli-another-plugin\"\n"), 0600))
+			}
 			p := newTestCmd("example")
 			p.lookupFn = func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
-				return plugins.ResolvePluginForInstall(ctx, cfg, afero.NewMemMapFs(), "example", "", baseURL, baseURL)
+				return plugins.ResolvePluginForInstall(ctx, cfg, fs, "example", "", baseURL, baseURL)
 			}
-			p.stdinIsTerminal = func() bool { return name != "headless not found" }
+			p.stdinIsTerminal = func() bool { return name != "headless not found" && name != "populated cache not found" }
 			p.lookupEnvFn = func(key string) string {
 				if name == "agent not found" && key == "CLAUDECODE" {
 					return "1"
