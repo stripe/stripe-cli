@@ -55,12 +55,12 @@ type whoamiOutput struct {
 // authorized accounts. Fields not surfaced in the text output (e.g. profile
 // name, API version) are intentionally omitted here.
 type whoamiOAuthOutput struct {
-	DisplayName            string                           `json:"display_name,omitempty"`
-	AccountID              string                           `json:"account_id,omitempty"`
-	Mode                   string                           `json:"mode,omitempty"`
-	Email                  string                           `json:"email,omitempty"`
-	Role                   string                           `json:"role,omitempty"`
-  // Authorized is false when the active account/mode is no longer present
+	DisplayName string `json:"display_name,omitempty"`
+	AccountID   string `json:"account_id,omitempty"`
+	Mode        string `json:"mode,omitempty"`
+	Email       string `json:"email,omitempty"`
+	Role        string `json:"role,omitempty"`
+	// Authorized is false when the active account/mode is no longer present
 	// among the UAT's authorized accounts (e.g. access was revoked or scoped
 	// down since the context was selected). Nil when there's no active
 	// context to evaluate.
@@ -68,7 +68,6 @@ type whoamiOAuthOutput struct {
 	ExpiresAt              *int64                           `json:"expires_at,omitempty"`
 	AuthorizedAccounts     []config.AuthorizedAccount       `json:"authorized_accounts,omitempty"`
 	NetworkBusinessProfile *requests.NetworkBusinessProfile `json:"network_business_profile,omitempty"`
-
 }
 
 func newWhoamiCmd() *whoamiCmd {

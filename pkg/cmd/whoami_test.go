@@ -521,6 +521,10 @@ func TestRunWhoamiOAuth_WarnsWhenActiveContextNoLongerAuthorized(t *testing.T) {
 	defer accessSrv.Close()
 
 	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/network/business_profiles/me" {
+			http.NotFound(w, r)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer apiSrv.Close()
