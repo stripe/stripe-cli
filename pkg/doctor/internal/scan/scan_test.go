@@ -7,14 +7,11 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
 )
 
-// testRule exercises the engine against the same param/operations shape as
-// the real dpm rule (payment_method_types on payment_intents/setup_intents/
-// checkout_sessions) without depending on catalog's live-fetched data —
-// scan's own tests must stay hermetic (dpm has no local rule copy anymore;
-// see judge.FetchRule).
+// testRule mirrors the real dpm rule's shape, kept local so scan's tests
+// stay hermetic.
 var testRule = catalog.Rule{
 	ID: "dpm",
 	Match: []catalog.ParamMatch{
@@ -26,25 +23,25 @@ var testRule = catalog.Rule{
 
 // want is the exact expected finding set: file:line:col. Anything extra is a
 // false positive; anything missing is a false negative. The fixtures live in
-// ../testdata.
+// ../../testdata.
 var want = []string{
-	"../testdata/Comp.tsx:7:5",        // direct (TSX grammar, JSX in file)
-	"../testdata/Pi.cs:10:7",          // direct
-	"../testdata/Pi.java:9:10",        // direct (builder chain)
-	"../testdata/Recv.java:8:19",      // recv: receiver's declared type
-	"../testdata/pi.go:13:3",          // direct
-	"../testdata/pi.js:6:3",           // direct
-	"../testdata/pi.php:7:4",          // direct
-	"../testdata/pi.py:7:5",           // direct
-	"../testdata/pi.rb:7:3",           // direct
-	"../testdata/static.php:4:6",      // direct (legacy \Stripe\X::create static style)
-	"../testdata/esm.mjs:4:3",         // direct (ESM via the JS grammar)
-	"../testdata/typed_decl.cs:10:7",  // type: C# target-typed new()
-	"../testdata/var_indirect.py:5:6", // var: bag bound then passed
+	"../../testdata/Comp.tsx:7:5",        // direct (TSX grammar, JSX in file)
+	"../../testdata/Pi.cs:10:7",          // direct
+	"../../testdata/Pi.java:9:10",        // direct (builder chain)
+	"../../testdata/Recv.java:8:19",      // recv: receiver's declared type
+	"../../testdata/pi.go:13:3",          // direct
+	"../../testdata/pi.js:6:3",           // direct
+	"../../testdata/pi.php:7:4",          // direct
+	"../../testdata/pi.py:7:5",           // direct
+	"../../testdata/pi.rb:7:3",           // direct
+	"../../testdata/static.php:4:6",      // direct (legacy \Stripe\X::create static style)
+	"../../testdata/esm.mjs:4:3",         // direct (ESM via the JS grammar)
+	"../../testdata/typed_decl.cs:10:7",  // type: C# target-typed new()
+	"../../testdata/var_indirect.py:5:6", // var: bag bound then passed
 }
 
 func TestScanExactFindings(t *testing.T) {
-	findings, scanned, parsed, err := Scan("../testdata", testRule)
+	findings, scanned, parsed, err := Scan("../../testdata", testRule)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,18 +81,18 @@ func TestScanExactFindings(t *testing.T) {
 // TestNegativesRejected names the adversarial cases explicitly so a regression
 // that starts matching them is obvious from the test name alone.
 func TestNegativesRejected(t *testing.T) {
-	findings, _, _, err := Scan("../testdata", testRule)
+	findings, _, _, err := Scan("../../testdata", testRule)
 	if err != nil {
 		t.Fatal(err)
 	}
 	banned := map[string]string{
-		"../testdata/neg.rb":        "non-Stripe resource (MyOrderModel.create)",
-		"../testdata/neg.py":        "bare variable and plain dict, not a call argument",
-		"../testdata/neg.js":        "plain object literal with no enclosing call",
-		"../testdata/attr_read.rb":  "reading the field off a response, not passing it",
-		"../testdata/client_opt.js": "client-side Elements option, not a server API param",
-		"../testdata/collide.py":    "variable in an unrelated function must not resolve cross-function",
-		"../testdata/neg_pool.rb":   "(param, operation) pairing not in the rule: nested-on-PI / top-level-on-subscription",
+		"../../testdata/neg.rb":        "non-Stripe resource (MyOrderModel.create)",
+		"../../testdata/neg.py":        "bare variable and plain dict, not a call argument",
+		"../../testdata/neg.js":        "plain object literal with no enclosing call",
+		"../../testdata/attr_read.rb":  "reading the field off a response, not passing it",
+		"../../testdata/client_opt.js": "client-side Elements option, not a server API param",
+		"../../testdata/collide.py":    "variable in an unrelated function must not resolve cross-function",
+		"../../testdata/neg_pool.rb":   "(param, operation) pairing not in the rule: nested-on-PI / top-level-on-subscription",
 	}
 	for _, f := range findings {
 		if why, bad := banned[f.File]; bad {
@@ -107,7 +104,7 @@ func TestNegativesRejected(t *testing.T) {
 // TestResolutionMechanisms asserts each indirection path stays exercised, so a
 // regression in one cannot hide behind the others still passing.
 func TestResolutionMechanisms(t *testing.T) {
-	findings, _, _, err := Scan("../testdata", testRule)
+	findings, _, _, err := Scan("../../testdata", testRule)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,10 +113,10 @@ func TestResolutionMechanisms(t *testing.T) {
 		byFile[f.File] = f.Via
 	}
 	for file, wantVia := range map[string]string{
-		"../testdata/var_indirect.py": "var:params",
-		"../testdata/typed_decl.cs":   "type:options",
-		"../testdata/Recv.java":       "recv:paramsBuilder",
-		"../testdata/pi.rb":           "direct",
+		"../../testdata/var_indirect.py": "var:params",
+		"../../testdata/typed_decl.cs":   "type:options",
+		"../../testdata/Recv.java":       "recv:paramsBuilder",
+		"../../testdata/pi.rb":           "direct",
 	} {
 		if got := byFile[file]; got != wantVia {
 			t.Errorf("%s resolved via %q, want %q", file, got, wantVia)
@@ -129,7 +126,7 @@ func TestResolutionMechanisms(t *testing.T) {
 
 // TestPrefilterSkipsCleanFiles guards the property that makes large repos fast.
 func TestPrefilterSkipsCleanFiles(t *testing.T) {
-	_, scanned, parsed, _ := Scan("../testdata", testRule)
+	_, scanned, parsed, _ := Scan("../../testdata", testRule)
 	if parsed >= scanned {
 		t.Errorf("prefilter skipped nothing: scanned=%d parsed=%d", scanned, parsed)
 	}

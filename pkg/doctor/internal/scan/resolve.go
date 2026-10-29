@@ -6,33 +6,29 @@ import (
 	ts "github.com/odvcencio/gotreesitter"
 )
 
-// Real integrations rarely put the param bag inside the call. They build it as
-// a variable, conditionally, and pass it later:
+// This file resolves a matched parameter to an API operation two ways:
+// directly (the bag is inside the call) or indirectly (the bag is bound
+// to a variable that reaches a call, or declared with a params type) —
+// real integrations often build the bag separately and pass it later:
 //
 //	params = {'payment_method_types': [...], 'amount': 1099}
 //	...
 //	stripe.PaymentIntent.create(**params)
-//
-// Purely syntactic containment misses every one of those. This file resolves a
-// matched parameter to an API operation two ways: directly (the bag is inside
-// the call) or indirectly (the bag is bound to a variable that reaches a call,
-// or is declared with a params type).
 
-// resolution records how a match was tied to an operation, so findings can say
-// why they fired and tests can assert on the mechanism.
+// resolution records how a match was tied to an operation.
 type resolution struct {
 	confirmed bool
 	via       string // "direct", "var:params", "type:options"
 	anchor    string // human-readable site text
 }
 
-// fileIndex is the per-file structural summary the resolver needs. Built once
-// per file so resolution stays linear rather than quadratic.
+// fileIndex is the per-file structural summary the resolver needs, built
+// once so resolution stays linear rather than quadratic.
 type fileIndex struct {
-	// callSites are calls whose *callee* names a rule resource. Scoping to the
-	// callee — not the whole node — is what stops an enclosing route handler
-	// like app.post('/create-payment-intent', ...) from matching just because
-	// a Stripe call appears somewhere in its body.
+	// callSites are calls whose *callee* names a rule resource — scoped
+	// to the callee, not the whole node, so an enclosing route handler
+	// like app.post('/create-payment-intent', ...) doesn't match just
+	// because a Stripe call appears somewhere in its body.
 	callSites []callSite
 	// typedDecls are declarations naming a params type, e.g.
 	// `PaymentIntentCreateOptions options;` for C# target-typed new().
@@ -69,25 +65,22 @@ func buildIndex(root *ts.Node, spec langSpec, lang *ts.Language, src []byte, tok
 	return idx
 }
 
-// resolve decides whether a matched parameter key belongs to one of the rule's
-// operations.
+// resolve decides whether a matched parameter key belongs to one of the
+// rule's operations, trying direct containment, then a variable or
+// typed declaration reaching a call, then a builder receiver.
 func resolve(key *ts.Node, spec langSpec, lang *ts.Language, src []byte, tokens []string, idx fileIndex) resolution {
-	// 1. Direct: the bag sits inside a call/literal that names the resource.
 	if anchor := climbAnchor(key, spec, lang); anchor != nil {
 		scope := nodeText(anchor, src)
 		if spec.anchorStyle == anchorCall {
-			// Only the callee counts, not the whole call body.
-			scope, _ = splitCall(anchor, src)
+			scope, _ = splitCall(anchor, src) // only the callee counts
 		}
 		if containsAny(scope, tokens) {
 			return resolution{true, "direct", firstLine(nodeText(anchor, src))}
 		}
 	}
 
-	// 2. Indirect: the bag is bound to a variable. Follow it to a call that
-	//    takes it, or to a declaration that types it — but only within the
-	//    same enclosing function: a `params` here must not resolve against a
-	//    Stripe call in an unrelated function.
+	// Scoped to the enclosing function: a `params` here must not resolve
+	// against a Stripe call in an unrelated function.
 	scopeStart, scopeEnd := enclosingFunc(key, spec, lang)
 	inScope := func(pos uint32) bool { return pos >= scopeStart && pos < scopeEnd }
 	if name, _ := boundVariable(key, spec, lang, src); name != "" {
@@ -103,8 +96,8 @@ func resolve(key *ts.Node, spec langSpec, lang *ts.Language, src []byte, tokens 
 		}
 	}
 
-	// 3. Receiver indirection: paramsBuilder.addPaymentMethodType(...) where
-	//    paramsBuilder was declared with a params type earlier in the file.
+	// Receiver indirection: paramsBuilder.addPaymentMethodType(...) where
+	// paramsBuilder was declared with a params type earlier in the file.
 	if anchor := climbAnchor(key, spec, lang); anchor != nil {
 		if recv := anchor.NamedChild(0); recv != nil {
 			rname := strings.TrimSpace(nodeText(recv, src))
@@ -129,11 +122,10 @@ func enclosingFunc(key *ts.Node, spec langSpec, lang *ts.Language) (uint32, uint
 	return 0, ^uint32(0)
 }
 
-// climbAnchor finds the enclosing param-bag node. Nearest by default. With
-// climbOutermost it extends through a builder chain — but only while the
-// current node is the *receiver* of its parent, so it stops at the chain's
-// root instead of swallowing an enclosing route handler like
-// post("/create-payment-intent", ...).
+// climbAnchor finds the enclosing param-bag node — nearest by default,
+// or (with climbOutermost) the root of a builder chain, stopping as
+// soon as the current node isn't the *receiver* of its parent so it
+// doesn't swallow an enclosing route handler.
 func climbAnchor(n *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
 	var nearest *ts.Node
 	for cur := n; cur != nil; cur = cur.Parent() {
@@ -162,10 +154,10 @@ func sameSpan(a, b *ts.Node) bool {
 	return a.StartByte() == b.StartByte() && a.EndByte() == b.EndByte()
 }
 
-// boundVariable returns the name of the variable a param bag is assigned to.
-// In C# the parameter itself is an assignment_expression (PaymentMethodTypes =
-// ...) of the same kind as the binding (options = new(){...}), so any node whose
-// left-hand side *is* the matched key must be skipped.
+// boundVariable returns the name of the variable a param bag is assigned
+// to, skipping any node whose left-hand side is the matched key itself —
+// in C# the parameter (PaymentMethodTypes = ...) is the same node kind
+// as the binding (options = new(){...}).
 func boundVariable(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) (string, *ts.Node) {
 	for cur := key; cur != nil; cur = cur.Parent() {
 		if !containsStr(spec.assignKinds, cur.Type(lang)) {

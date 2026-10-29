@@ -3,11 +3,9 @@ package dpm
 import (
 	"testing"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/codesignals"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/codesignals"
 )
 
-// TestWebhookSignals pins this kind's own code-signal layer: the fixtures
-// keep their original three-events-present behavior.
 func TestWebhookSignals(t *testing.T) {
 	h := codesignals.ScanSignals("testdata", webhookSignals)
 	if !h.AllPresent {

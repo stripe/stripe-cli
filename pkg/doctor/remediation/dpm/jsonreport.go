@@ -1,19 +1,7 @@
 package dpm
 
-// jsonreport.go builds this topic's own --json envelope
-// (remediation.Result.Report): schema_version/check/status/summary/
-// findings/dashboard/documentation, keyed by "check":
-// "dynamic_payment_methods" — entirely independent of doctor's generic
-// DoctorReport JSON shape. doctor's cmd.go treats Report opaquely: when
-// a remediation sets one, it's emitted as the whole --json body instead
-// of the generic schema.
-//
-// The "findings" array is built by calling remediation.FindingsJSON over
-// result.Findings — the same Findings findings.go already built for the
-// text action-plan renderer, so those facts are only written once.
-// dashboardFinding (ID == "") is skipped: it's prose tied to
-// Result.Status, not a discrete reportable fact — this schema's
-// "dashboard" object below covers that ground instead.
+// jsonreport.go builds this topic's own --json schema, set as
+// remediation.Result.Report.
 
 import (
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
@@ -22,11 +10,7 @@ import (
 const schemaVersion = "1.0"
 const checkID = "dynamic_payment_methods"
 
-// Status strings for this schema — distinct from remediation.Status:
-// every finding this topic can currently raise needs a human decision
-// before anything is applied, so "review_required" covers nearly all of
-// them; "blocked"/"ready" are for the Dashboard-configuration states
-// that genuinely are blocking or clear.
+// Status strings for this schema, distinct from remediation.Status.
 const (
 	jsonReviewRequired = "review_required"
 	jsonBlocked        = "blocked"
@@ -55,9 +39,6 @@ type jsonDoc struct {
 	URL   string `json:"url"`
 }
 
-// buildJSONReport assembles this topic's full --json contract, built
-// around result.Findings — the same Findings findings.go already
-// constructed for the text action-plan renderer.
 func buildJSONReport(ctx remediation.Context, pmf pmConfigFacts, result remediation.Result) *jsonReport {
 	var findings []remediation.FindingJSON
 	for _, f := range result.Findings {

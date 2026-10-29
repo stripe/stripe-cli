@@ -1,29 +1,21 @@
-package remediation_test
-
-// example_test.go is runnable documentation (go test -run Example -v)
-// for pkg/doctor/remediation — see that package's doc comment for how
-// these fit together. Keeping them as Example functions rather than a
-// comment-only code sample means `go test` fails if they ever stop
-// compiling or their output drifts from what's documented.
+// Package example holds runnable usage samples for pkg/doctor/remediation
+// (go test -run Example -v), kept as real Example functions so they fail
+// to compile or diverge in output rather than silently going stale.
+package example
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 )
 
-// exampleImplementation is the minimum viable remediation.Implementation:
-// Run reads whatever doctor already scanned (ctx.Findings) and returns a
-// Result with just a Status and Message — no live account evidence, no
-// custom text/JSON rendering. Register it from your own package's
-// init(), e.g.:
+// exampleImplementation is the minimum viable remediation.Implementation
+// — just a Status and Message, no live evidence or custom rendering.
+// Register it from your own package's init():
 //
 //	func init() { remediation.Register("my_topic", exampleImplementation{}) }
-//
-// (not called here, to avoid colliding with other topics' registrations
-// in the same test binary).
 type exampleImplementation struct{}
 
 func (exampleImplementation) Run(ctx remediation.Context) (remediation.Result, error) {
@@ -52,13 +44,8 @@ func Example() {
 	// found 2 location(s) that need manual review
 }
 
-// Example_actionPlan demonstrates the opt-in pieces a richer
-// Implementation can set: Title names the migration for doctor's text
-// action-plan renderer, and Findings is the numbered, human-facing
-// action plan — each Finding is also convertible to the generic --json
-// finding shape via FindingsJSON, so a topic building its own
-// Result.Report doesn't have to re-describe the same facts twice (see
-// Finding's doc comment).
+// Example_actionPlan demonstrates Title/Findings, and converting a
+// Finding to JSON via FindingsJSON.
 func Example_actionPlan() {
 	findings := []remediation.Finding{
 		{
@@ -85,10 +72,6 @@ func Example_actionPlan() {
 		Findings: findings,
 	}
 
-	// doctor's text renderer (pkg/doctor's render.go) consumes
-	// result.Title and result.Findings directly, printing
-	// Title/Heading/Body/Items. A topic building its own --json contract
-	// instead calls FindingsJSON:
 	fmt.Println(result.Topic+":", result.Title)
 	out, err := json.MarshalIndent(remediation.FindingsJSON(result.Findings, result.Status), "", "  ")
 	if err != nil {

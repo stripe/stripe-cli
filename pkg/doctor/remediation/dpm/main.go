@@ -1,51 +1,7 @@
-// Package dpm implements the "dpm" topic's remediation:
-// adopting Dynamic Payment Methods by removing a hardcoded
-// payment_method_types list. This is the worked example other teams
-// should read before writing their own topic's remediation — see
-// pkg/doctor/remediation's package doc for the three steps to plug one in.
-//
-// This package owns every piece of dpm's own domain knowledge — none of
-// it lives in doctor's generic engine:
-//
-//  1. Recent API versions (fetchVersionFacts) — removing
-//     payment_method_types only works on its own at/after 2023-08-16.
-//  2. The account's payment-method configuration (fetchPMConfigFacts) —
-//     adopting dynamic methods only preserves what the Dashboard already
-//     offers.
-//  3. Per-finding judgment (classifyIntent/intentVerdict, the
-//     API-version-driven fix) — doctor's judge package has no idea what
-//     "card"/"link" or payment_method_types even mean; hardcodedListsFinding
-//     (findings.go) attaches this topic's real judgment to each
-//     location via remediation.Finding.Items instead.
-//  4. Webhook handler coverage, both statically (webhookSignals, scanned
-//     via pkg/doctor/codesignals) and live (WebhookCheckEvents, behind
-//     `doctor --verify-webhooks` via pkg/doctor/webhookcheck) — this
-//     topic declares its own expected events; doctor's engine wires in
-//     neither generically.
-//
-// assess combines 1-2 and the webhook-handler evidence into the
-// complete Result: its Status/Message/Headline are purely about
-// Dashboard/webhook readiness, but it also attaches the per-finding
-// judgment (3) via hardcodedListsFinding, since that still has to land
-// somewhere in the same Result.Findings list. dashboardNotes is
-// hardcoded here rather than read off the rule — there's no more
-// per-remediation data on the rule at all (just the bare "doctorTopic"
-// string that got us to this implementation in the first place); this
-// topic is expected to know everything about its own remediation
-// already.
-//
-// Split across:
-//   - dynamic.go: registration, Run, and the Dashboard/webhook readiness
-//     state machine (assess).
-//   - facts.go: the two pieces of live account evidence Run fetches
-//     (recent API versions, payment-method configuration).
-//   - classify.go: per-finding judgment (classifyIntent/intentVerdict,
-//     the API-version-driven fix).
-//   - findings.go: building each remediation.Finding — text and, via
-//     remediation.FindingsJSON, --json — from the facts above.
-//   - jsonreport.go: the --json envelope (schema_version/check/status/
-//     summary/dashboard/documentation) this topic's Report wraps
-//     everything else in.
+// Package dpm implements the "dpm" topic's remediation: adopting Dynamic
+// Payment Methods by removing a hardcoded payment_method_types list.
+// See pkg/doctor/remediation's package doc for how to plug in a new
+// topic; this is the worked example.
 package dpm
 
 import (
@@ -53,25 +9,20 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/codesignals"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/codesignals"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/stripeapi"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
-	"github.com/stripe/stripe-cli/pkg/doctor/stripeapi"
 )
 
-// Topic is the catalog.Rule.RemediationTopic ("doctorTopic") this package
-// implements.
+// Topic is the catalog.Rule.RemediationTopic this package implements.
 const Topic = "dpm"
 
-// title is this topic's plain-English name for doctor's action-plan
-// renderer (remediation.Result.Title) — the renderer itself has no idea
-// what "dpm" stands for.
+// title is this topic's plain-English name, for doctor's action-plan
+// renderer.
 const title = "Dynamic payment methods"
 
-// webhookSignals are the delayed-notification events this topic expects a
-// migrated integration to handle — this topic's own declaration, scanned
-// for with pkg/doctor/codesignals rather than something doctor's engine
-// wires in generically. A different topic can declare none of these,
-// different ones, or none at all; that's entirely up to its own Run.
+// webhookSignals are the delayed-notification events a migrated
+// integration is expected to handle.
 var webhookSignals = &codesignals.PackSignals{
 	WebhookEvents: []codesignals.WebhookEvent{
 		{Event: "checkout.session.completed", Note: "Checkout finished. If payment is still pending, wait for payment confirmation before fulfilling the order."},
@@ -80,21 +31,16 @@ var webhookSignals = &codesignals.PackSignals{
 	},
 }
 
-// dashboardNotes are this topic's own reminder to confirm the Dashboard's
-// payment-method configuration directly — formerly sourced from the API's
-// "fixes" field (a "message"-kind fix); that field is gone now, so this
-// topic owns the text itself. Set on Result.Notes unconditionally, so it
-// renders as its own separate Dashboard action rather than a trailing
-// clause on whatever the Status message happens to be.
+// dashboardNotes is the standing reminder to confirm the Dashboard's
+// payment-method configuration, set on Result.Notes unconditionally so
+// it renders as its own action rather than a trailing clause.
 var dashboardNotes = []string{
 	"Enable the payment methods you want to use at " + dashboardConfigURL + ".",
 }
 
 // dashboardReviewLead/dashboardConfigURL are the same reminder as
-// dashboardNotes, split into the lead-in-sentence-then-bare-URL shape the
-// action-plan renderer prints as two pre-broken lines (see
-// remediation.Finding's doc comment) rather than one long sentence
-// with an inline link.
+// dashboardNotes, split into a lead-in sentence and a bare URL so the
+// action-plan renderer can print them as two separate lines.
 const dashboardReviewLead = "Enable or disable the payment methods you want in the Dashboard:"
 const dashboardConfigURL = "https://dashboard.stripe.com/settings/payment_methods?types[0]=direct&types[1]=subaccount"
 
@@ -104,9 +50,7 @@ func init() {
 
 type implementation struct{}
 
-// WebhookCheckEvents satisfies remediation.WebhookChecker: these are the
-// same three webhookSignals events, plus which one `doctor
-// --verify-webhooks` should trigger to exercise the round trip.
+// WebhookCheckEvents satisfies remediation.WebhookChecker.
 func (implementation) WebhookCheckEvents() ([]string, string) {
 	events := make([]string, len(webhookSignals.WebhookEvents))
 	for i, e := range webhookSignals.WebhookEvents {
@@ -115,15 +59,10 @@ func (implementation) WebhookCheckEvents() ([]string, string) {
 	return events, "checkout.session.async_payment_succeeded"
 }
 
-// Run scans the directory for this kind's own webhook-handler signals
-// first — that needs no credentials and can't fail, so it's always
-// available — then fetches this kind's two pieces of live account
-// evidence (recent API versions, payment-method configuration) and
-// combines everything with the evidence doctor already computed
-// (ctx.Findings). A live-evidence fetch failure still surfaces the
-// webhook-handler evidence gathered so far; it's reported as a
-// StatusUnknown Result (not a Go error), so the caller (doctor's cmd.go)
-// doesn't discard it the way it would an actual error.
+// Run scans for webhook-handler signals, fetches live account evidence,
+// and assesses readiness. A fetch failure returns a StatusUnknown
+// Result instead of an error, so the webhook evidence already gathered
+// isn't discarded.
 func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 	wh := codesignals.ScanSignals(ctx.Dir, webhookSignals)
 	unknown := func(err error) (remediation.Result, error) {
@@ -166,14 +105,9 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 	return result, nil
 }
 
-// assess combines payment-method-configuration facts, the scanned
-// findings, and webhook-handler signals into one complete Result: every
-// branch's Dashboard-facing Status/Message/headline comes from pmf/wh
-// alone, but the result closure also attaches the hardcodedListsFinding
-// (per-code-location judgment, independent of Dashboard readiness) and
-// the Code/Dashboard/Webhooks Summary rows uniformly, so assess always
-// returns a fully-formed Result rather than leaving Run to patch one up
-// afterward.
+// assess judges whether the Dashboard's payment-method configuration
+// covers what the code hardcodes, and builds the full Result around
+// that judgment.
 func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *codesignals.HandlerSignals) remediation.Result {
 	evidence := map[string]any{
 		"versions_sampled":              vf.Sampled,
@@ -220,10 +154,8 @@ func assess(ctx remediation.Context, vf versionFacts, pmf pmConfigFacts, wh *cod
 			"No payment methods are turned on in an active Dashboard payment-method configuration yet.")
 	}
 
-	// preserve_existing: every hardcoded method in source must already be
-	// enabled AND available, or adopting dynamic methods would make it
-	// disappear for customers — the doc's loudest warning about this
-	// migration.
+	// Every hardcoded method must be both enabled and available, or
+	// removing the hardcoded list would make it disappear for customers.
 	hardcoded := map[string]bool{}
 	hasDynamic := false
 	for _, f := range ctx.Findings {

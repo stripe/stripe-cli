@@ -1,13 +1,6 @@
-// Package codesignals scans a repo for caller-declared code signals:
+// Package codesignals scans a repo for caller-declared code signals, such as
 // expected webhook events. These are honest substring checks, reported as
-// signals — never verdicts. Callers (today: the dpm remediation)
-// declare their own PackSignals rather than doctor's engine wiring one
-// in generically — see pkg/doctor/remediation/dpm for the example. This
-// package only depends on scan, to know which file extensions the AST
-// engine (and so this package) can read.
-//
-// Frontend tokens (legacy client-side signals like Card Element usage) and
-// package-version-floor checks aren't supported yet.
+// signals — never verdicts.
 package codesignals
 
 import (
@@ -15,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/scan"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/scan"
 )
 
 // PackSignals are a caller's declared code signals: which webhook events
@@ -32,7 +25,6 @@ type WebhookEvent struct {
 }
 
 // ScanSignals walks the scanned directory for sig's declared signals.
-// These are honest substring checks, reported as signals — never verdicts.
 func ScanSignals(root string, sig *PackSignals) *HandlerSignals {
 	if sig == nil {
 		return nil

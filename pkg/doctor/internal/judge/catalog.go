@@ -1,18 +1,12 @@
 package judge
 
-// Live fetch of a migration rule from the not-yet-public doctor_rules
-// API. catalog.ParseAPIRule does the actual parsing; this file only
-// resolves credentials and performs the GET, using the shared stripeapi
-// helpers. Generic over topic — this package has no idea which topics
-// exist (see catalog.Rules for that registry).
-
 import (
 	"encoding/json"
 	"net/url"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
-	"github.com/stripe/stripe-cli/pkg/doctor/stripeapi"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/stripeapi"
 )
 
 // doctorRulesAPIVersion pins the unreleased Stripe-Version the

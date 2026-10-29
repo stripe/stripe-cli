@@ -1,13 +1,7 @@
 // Package webhookcheck implements the live behavioral check behind
-// `doctor --verify-webhooks`: start a local webhook handler, run `stripe listen
-// --forward-to` it, `stripe trigger` one event, and verify it arrives
-// with a valid signature. All test mode.
-//
-// This package has no idea which events matter for any given migration
-// topic — Run takes the full set to listen for and which one to trigger,
-// supplied by the topic's own remediation.Implementation (see
-// remediation.WebhookChecker). Doctor's generic engine (cmd.go) looks that
-// up per topic rather than assuming any fixed event set.
+// `doctor --verify-webhooks`: start a local webhook handler, run `stripe
+// listen --forward-to` it, `stripe trigger` one event, and verify it
+// arrives with a valid signature. All test mode.
 package webhookcheck
 
 import (
@@ -42,15 +36,13 @@ type Event struct {
 	Signature string `json:"signature"` // verified | invalid
 }
 
-// Run starts a local webhook handler and proves it works by
-// round-tripping triggerEvent through `stripe listen`, listening for the
-// full events set (triggerEvent must be one of them). The local handler
-// binds an OS-assigned port, so nothing collides with the classic 4242.
-// Verified becomes true once triggerEvent itself arrives with a valid
-// signature; any other declared events that happen to arrive (e.g. ones
-// the same trigger cascades into) are recorded in Events too, but aren't
-// required — this package has no way to know which, if any, a given
-// topic's trigger fires alongside it.
+// Run starts a local webhook handler and proves it works by round-tripping
+// triggerEvent through `stripe listen`, listening for the full events set
+// (triggerEvent must be one of them). The handler binds an OS-assigned
+// port so it never collides with the classic 4242. Verified becomes true
+// once triggerEvent arrives with a valid signature; other declared events
+// that happen to arrive alongside it are recorded in Events but aren't
+// required.
 func Run(events []string, triggerEvent string) (*Report, error) {
 	r := &Report{Command: "webhook_check", Events: []Event{}}
 	received := make(chan Event, 8)

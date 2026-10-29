@@ -4,12 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
 )
 
 // TestEvaluateRemoveIsGenericReview pins that a "remove" rule's findings
-// get a generic REVIEW verdict — judge has no topic-specific domain
-// knowledge (that lives in a registered remediation instead).
+// get a generic REVIEW verdict, with no topic-specific knowledge.
 func TestEvaluateRemoveIsGenericReview(t *testing.T) {
 	rule := catalog.Rule{Action: "remove"}
 	findings := []catalog.Finding{{Param: "payment_method_types", Value: `['card']`}}
@@ -31,8 +30,7 @@ func TestEvaluateRemoveIsGenericReview(t *testing.T) {
 }
 
 // TestEvaluateAdvise pins that an "advise" rule's findings carry the
-// rule's own message/action/version — all sourced from rule data, not
-// from any topic-specific classification.
+// rule's own message/action/version.
 func TestEvaluateAdvise(t *testing.T) {
 	rule := catalog.Rule{Action: "advise", Message: "renamed field", ActionText: "use the new field instead", IntroducedIn: "2024-01-01"}
 	findings := []catalog.Finding{{Param: "old_field"}}

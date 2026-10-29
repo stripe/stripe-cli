@@ -1,10 +1,5 @@
 package doctor
 
-// ui.go — human-facing rendering, following the CLI's house style
-// (pkg/cmd/agent_setup_tui.go): ANSI palette colors, Faint for muted text,
-// rounded-border containers. In --json mode nothing here is used; JSON goes
-// to stdout, logs to stderr.
-
 import (
 	"fmt"
 	"os"
@@ -30,10 +25,6 @@ func warnLine(s string) string { return "  " + warnStyle.Render("!") + " " + s }
 func failLine(s string) string { return "  " + failStyle.Render("✗") + " " + s }
 func infoLine(s string) string { return "  " + mutedStyle.Render("·") + " " + s }
 
-// kv renders a key/value detail line, reading left to right like a
-// sentence rather than a padded table column — fixed-width alignment
-// falls apart anyway once labels vary much in length, and the gap it
-// leaves is harder to read than a plain separator.
 func kv(k, v string) string {
 	return fmt.Sprintf("  %s: %s", mutedStyle.Render(k), v)
 }

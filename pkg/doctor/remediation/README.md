@@ -1,7 +1,7 @@
 # Adding a remediation
 
-A migration `Rule` (`pkg/doctor/catalog`) names its own topic via its
-`doctorTopic` field (`catalog.Rule.RemediationTopic`) — e.g. `"dpm"`. That
+A migration `Rule` (`pkg/doctor/internal/catalog`) names its own topic via
+`catalog.Rule.RemediationTopic` — e.g. `"dpm"`. That
 bare string is the *only* thing doctor's engine knows about remediations;
 it has no opinion on what a topic's remediation actually does, how it
 renders, or what evidence it needs. Everything else is yours to write in
@@ -10,18 +10,22 @@ your own subpackage here, under `pkg/doctor/remediation/<your-package>`.
 This doc is the integration guide and function reference. For a full
 worked example, read `pkg/doctor/remediation/dpm` (implements
 the `"dpm"` topic) alongside this doc. For two small, runnable examples,
-see `example_test.go` in this package (`go test -run Example -v`) — they
+see `pkg/doctor/remediation/example` (`go test -run Example -v`) — they
 compile and their output is checked by `go test`, so they can't drift out
 of date the way a markdown sample could.
 
-## Before you start: register a Rule
+## Before you start: register a topic
 
-Your remediation only runs if a `catalog.Rule` names your topic. Add an
-entry to `catalog.Rules` (`pkg/doctor/catalog/rules.go`) keyed by your
-topic string, with `Rule.RemediationTopic` set to that same string. The
-rule is what doctor's scanner/judge engine use to find and generically
-classify matches in source code; your remediation is a separate, later
-step that runs against the findings the rule produced.
+Your remediation only runs if a `catalog.Rule` names your topic. Add
+your topic string to `catalog.Topics` (`pkg/doctor/internal/catalog/rules.go`)
+so the CLI recognizes it, and make sure the doctor_rules API has a rule
+configured under that same topic string — `ParseAPIRule` sets
+`Rule.RemediationTopic` to the rule's own `topic` (the API has no
+separate field for this), and `judge.FetchRule` fetches it live; there's
+no local `Rule` literal to author in this repo. The rule is what doctor's
+scanner/judge engine use to find and generically classify matches in
+source code; your remediation is a separate, later step that runs
+against the findings the rule produced.
 
 ## The three steps
 
@@ -91,7 +95,7 @@ topic actually has something to say about.
 
 A `Result` that sets only `Topic`/`Status`/`Message` still renders fine —
 doctor falls back to its generic summary/details layout. See `Example` in
-`example_test.go` for exactly that minimal shape.
+`pkg/doctor/remediation/example` for exactly that minimal shape.
 
 ### `Status`
 
@@ -288,7 +292,7 @@ type WebhookChecker interface {
 
 Implement this on the same type as your `Implementation` to support
 `doctor --verify-webhooks` — the webhook round-trip check
-(`pkg/doctor/webhookcheck`). Doctor's engine has no idea which webhook
+(`pkg/doctor/internal/webhookcheck`). Doctor's engine has no idea which webhook
 events matter for any given topic; `WebhookCheckEvents` names the full
 set of events the round-trip check should listen for, and which one of
 those to trigger to exercise it. A topic with nothing to verify this way
@@ -301,7 +305,7 @@ Your `Run` almost certainly needs to fetch its own evidence. These are
 the packages doctor's engine itself uses, and they're yours to use too —
 none of them know anything about your topic specifically.
 
-### `pkg/doctor/stripeapi` — read-only Stripe API calls
+### `pkg/doctor/internal/stripeapi` — read-only Stripe API calls
 
 ```go
 func LoadCredentials(cfg *config.Config) (stripe.Credentials, error)
@@ -324,7 +328,7 @@ var resp someShape
 err = stripeapi.Get(client, ctx.StripeAccount, "/v1/events", "limit=20", nil, &resp)
 ```
 
-### `pkg/doctor/codesignals` — your own code-signal scans
+### `pkg/doctor/internal/codesignals` — your own code-signal scans
 
 ```go
 type PackSignals struct {
@@ -358,7 +362,7 @@ type EventSignal struct {
 
 These are honest substring checks, reported as signals — never verdicts.
 
-### `pkg/doctor/webhookcheck` — the `--verify-webhooks` round trip
+### `pkg/doctor/internal/webhookcheck` — the `--verify-webhooks` round trip
 
 You don't call this directly — doctor's `cmd.go` calls
 `webhookcheck.Run(events, triggerEvent)` using the values your
@@ -416,7 +420,7 @@ Then blank-import `mytopic` from `pkg/doctor/cmd.go`. That's a fully
 working remediation — it renders via doctor's generic layout in both text
 and `--json` modes.
 
-See `example_test.go`'s `Example` (this exact shape) and
+See `pkg/doctor/remediation/example`'s `Example` (this exact shape) and
 `Example_actionPlan` (adding `Title`/`Findings`, and converting to JSON
 via `FindingsJSON`) for runnable versions of both.
 

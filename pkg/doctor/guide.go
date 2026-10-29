@@ -1,15 +1,11 @@
 package doctor
 
-// The agent playbook: `stripe doctor guide` documents the JSON schemas and
-// exit-code contract as the machine interface.
-
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
 )
 
-// NewGuideCmd builds the `stripe doctor guide` agent-playbook command.
 func NewGuideCmd() *cobra.Command {
 	return newGuideCmd()
 }
@@ -82,15 +78,14 @@ Adds .webhook_check (webhook round-trip via stripe listen/trigger); require
 .webhook_check.verified == true.
 
 ## Notes
-- The dpm rule comes from an embedded local snapshot today, not a live
-  fetch (judge.FetchRule exists but isn't currently called). Any
-  remediation that does fetch live account evidence (see
-  .remediation_result above) uses LIVE MODE credentials only
-  (pkg/doctor/stripeapi) — if the active context is in test mode, that
-  remediation's result comes back status unknown naming the mismatch,
-  rather than silently assessing against test-mode data. --stripe-account
-  scopes those lookups to a Connect connected account. Nothing is ever
-  written to the Stripe account.
+- The migration rule is fetched live from the doctor_rules API
+  (judge.FetchRule) on every run, using LIVE MODE credentials only
+  (pkg/doctor/internal/stripeapi) — if the active context is in test
+  mode, the whole run fails rather than fetching against test-mode data.
+  A remediation's own live account evidence (see .remediation_result
+  above) uses those same credentials; if that lookup fails, its result
+  comes back status unknown naming the mismatch, rather than silently
+  assessing against test-mode data. --stripe-account scopes those
+  lookups to a Connect connected account. Nothing is ever written to the
+  Stripe account.
 `
-
-// ---------- hidden: parse-dump ----------

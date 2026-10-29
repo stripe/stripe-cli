@@ -1,23 +1,10 @@
 package doctor
 
-// cmd.go — the command surface, shaped like the real product would be:
-// a generic verb (doctor) with the migration TOPIC as an argument,
-// mirroring the architecture (generic engine, rules as data).
+// stripe doctor [topic] [dir]   diagnose (requires live-mode creds to fetch the rule)
+// stripe doctor guide           agent playbook
 //
-//	stripe doctor [topic] [dir]   diagnose; degrades to scan-only without creds
-//	stripe doctor guide                  agent playbook
-//
-// scan/webhookcheck are no longer commands: scan is doctor's
-// credential-less degradation and the webhook round-trip check is
-// `doctor --verify-webhooks`. doctor only diagnoses — remediation is manual, guided
-// by each finding's verdict.
-//
-// Every command supports --json (pure JSON on stdout, logs on stderr) and the
-// exit-code contract: 0 once the report completes, whatever it found —
-// findings present or verification unverified are legitimate outcomes
-// doctor reports, not failures of doctor itself; non-zero is reserved
-// for doctor failing to produce a report at all (bad arguments, a scan
-// error, a webhook-check operational failure — see fail/exitWith).
+// Exit codes: 0 once a report completes, regardless of what it found;
+// non-zero only when doctor fails to produce a report at all.
 
 import (
 	"encoding/json"
@@ -29,17 +16,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
-	"github.com/stripe/stripe-cli/pkg/doctor/judge"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/judge"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/scan"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/webhookcheck"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 
-	// Registers "dpm" with the remediation registry via init(). Other
-	// teams' topics get the same one-line blank import once their
-	// package exists — see pkg/doctor/remediation's package doc for the
-	// full three-step guide.
+	// Registers the "dpm" remediation via init().
 	_ "github.com/stripe/stripe-cli/pkg/doctor/remediation/dpm"
-	"github.com/stripe/stripe-cli/pkg/doctor/scan"
-	"github.com/stripe/stripe-cli/pkg/doctor/webhookcheck"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
@@ -51,7 +35,7 @@ var (
 // topicList renders the registry for help and error text.
 func topicList() string {
 	var names []string
-	for n := range catalog.Rules {
+	for n := range catalog.Topics {
 		names = append(names, n)
 	}
 	sort.Strings(names)
@@ -75,35 +59,28 @@ func fail(err error) {
 	exitWith(2)
 }
 
-// defaultTopic returns the sole registered topic when there's exactly
-// one — doctor's engine has no built-in favorite, so a bare
-// `stripe doctor <dir>` (no topic argument) only has an unambiguous
-// default while the registry has exactly one entry. Returns "" otherwise,
-// so topicAndDir falls through to requiring an explicit topic argument.
+// defaultTopic returns the sole registered topic, or "" if there's more
+// than one and the caller must name one explicitly.
 func defaultTopic() string {
-	if len(catalog.Rules) != 1 {
+	if len(catalog.Topics) != 1 {
 		return ""
 	}
-	for name := range catalog.Rules {
+	for name := range catalog.Topics {
 		return name
 	}
 	return ""
 }
 
-// topicAndDir resolves the optional [topic] [dir] argument pair: an argument
-// naming a known topic is the topic; anything else is the directory.
 func topicAndDir(args []string) (string, string, error) {
 	topic, dir := defaultTopic(), "."
 	var nonTopic []string
 	for _, a := range args {
-		if _, ok := catalog.Rules[a]; ok {
+		if catalog.Topics[a] {
 			topic = a
 		} else {
 			nonTopic = append(nonTopic, a)
 		}
 	}
-	// With two args, the first must be a topic; two non-topics means the
-	// first was a typo'd topic, not a directory.
 	if len(nonTopic) > 1 || (len(args) == 2 && len(nonTopic) == 2) {
 		return "", "", errorcategory.Errorf(errorcategory.UserInput, "unknown topic %q (available: %s)", nonTopic[0], topicList())
 	}
@@ -116,20 +93,11 @@ func topicAndDir(args []string) (string, string, error) {
 	return topic, dir, nil
 }
 
-// commonFlags registers the flags every doctor-family command shares.
 func commonFlags(c *cobra.Command) {
 	c.Flags().BoolVar(&flagJSON, "json", false, "machine-readable output on stdout, logs on stderr")
 	c.Flags().StringVar(&flagStripeAccount, "stripe-account", "", "Connect: connected account (acct_...) whose configuration governs direct charges")
 }
 
-// NewDoctorCmd builds the `stripe doctor` command tree: diagnosis is the
-// root action, with guide and the hidden parse-dump nested beneath it —
-// neither makes sense as a top-level verb in the CLI's namespace. Topic
-// names and subcommand names never overlap, so `doctor dpm .` and
-// `doctor guide` resolve unambiguously. cfg is currently unused by the
-// doctor command itself (the rule comes from the embedded dpm.json, not a
-// live fetch — see catalog/dpm.go) but is threaded through so this keeps
-// working once judge.FetchRule is swapped back in.
 func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 	root := newDoctorCmd(cfg)
 	commonFlags(root)
@@ -155,11 +123,10 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 			if err != nil {
 				fail(err)
 			}
-			// Using the embedded dpm.json for now, not judge.FetchRule's
-			// live doctor_rules fetch, so local edits to it are picked up
-			// immediately — see catalog/dpm.go. Swap this back once that's
-			// no longer needed.
-			rule := catalog.Rules[topic]
+			rule, err := judge.FetchRule(cfg, topic, flagStripeAccount)
+			if err != nil {
+				fail(err)
+			}
 
 			findings, scanned, parsed, err := scan.Scan(dir, rule)
 			if err != nil {
@@ -208,9 +175,6 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 			}
 
 			if flagJSON {
-				// A remediation's own Report, when set, replaces doctor's
-				// generic DoctorReport body entirely — see
-				// remediation.Result.Report's doc comment.
 				if rep.RemediationResult != nil && rep.RemediationResult.Report != nil {
 					emitJSON(rep.RemediationResult.Report)
 				} else {
@@ -242,14 +206,9 @@ func newDumpCmd() *cobra.Command {
 	}
 }
 
-// runRemediation runs the rule's declared RemediationTopic through the
-// pkg/doctor/remediation registry. A topic with no registered
-// Implementation (a team's Go code hasn't shipped yet) or one whose Run
-// fails (e.g. a credentials error) is still surfaced as a StatusUnknown
-// Result naming why, rather than being dropped silently — the raw
-// RemediationTopic string is always visible too
-// (DoctorReport.DoctorTopic), so this is purely "what doctor was able to
-// compute from it."
+// runRemediation looks up and runs the rule's declared RemediationTopic.
+// A missing implementation or a Run error both come back as a
+// StatusUnknown Result rather than being dropped.
 func runRemediation(rule catalog.Rule, dir string, findings []catalog.Finding, cfg *config.Config) *remediation.Result {
 	topic := rule.RemediationTopic
 	impl, ok := remediation.Lookup(topic)
@@ -277,13 +236,7 @@ func runRemediation(rule catalog.Rule, dir string, findings []catalog.Finding, c
 }
 
 // applyFindingVerdicts overrides each finding whose key appears in
-// verdicts (see remediation.Result.FindingVerdicts) with that verdict,
-// and retallies rep.Summary from the final classes. judge.Evaluate has
-// no topic-specific domain knowledge, so this is how a registered
-// remediation supplies real per-finding judgment; a finding with no
-// entry keeps whatever generic verdict judge.Evaluate already gave it.
-// Safe to call with a nil/empty verdicts map — every finding then just
-// keeps its existing verdict.
+// verdicts and retallies rep.Summary. Safe to call with a nil map.
 func applyFindingVerdicts(rep *DoctorReport, verdicts map[string]string) {
 	rep.Summary = map[string]int{}
 	for i := range rep.Findings {
@@ -299,12 +252,8 @@ func applyFindingVerdicts(rep *DoctorReport, verdicts map[string]string) {
 	}
 }
 
-// webhookCheckEvents looks up topic's registered remediation and, if it
-// satisfies remediation.WebhookChecker, returns the events `doctor --verify-webhooks`
-// should listen for and which one to trigger. ok is false if topic has
-// no registered remediation, or that remediation doesn't support a live
-// check — doctor's engine has no fallback event set of its own to guess
-// with.
+// webhookCheckEvents returns topic's declared webhook round-trip events,
+// if its remediation implements WebhookChecker.
 func webhookCheckEvents(topic string) (events []string, triggerEvent string, ok bool) {
 	impl, found := remediation.Lookup(topic)
 	if !found {
@@ -318,10 +267,9 @@ func webhookCheckEvents(topic string) (events []string, triggerEvent string, ok 
 	return events, triggerEvent, true
 }
 
-// topicHint decorates a scan error when the "directory" looks like a typo'd
-// topic name (e.g. `doctor dmp`).
+// topicHint decorates a scan error when dir looks like a typo'd topic name.
 func topicHint(err error, dir string) error {
-	for name := range catalog.Rules {
+	for name := range catalog.Topics {
 		if dir != name && editDistanceAtMost2(dir, name) {
 			return fmt.Errorf("%w (did you mean topic %q?)", err, name)
 		}
@@ -336,7 +284,6 @@ func editDistanceAtMost2(a, b string) bool {
 	if len(b)-len(a) > 2 || len(b) > 12 {
 		return false
 	}
-	// tiny DP is overkill at these sizes; do full Levenshtein
 	prev := make([]int, len(a)+1)
 	cur := make([]int, len(a)+1)
 	for i := range prev {

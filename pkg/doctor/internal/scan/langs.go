@@ -7,10 +7,9 @@ import (
 	"github.com/odvcencio/gotreesitter/grammars"
 )
 
-// anchorStyle describes how an SDK identifies which API operation a param bag
-// belongs to. Dynamic SDKs name it at the call site (receiver + method); typed
-// SDKs name it with a dedicated params type. Both are derivable from the
-// OpenAPI resource name, so a rule stays language-agnostic.
+// anchorStyle is how an SDK names the operation a param bag belongs to:
+// at the call site (dynamic SDKs) or via a dedicated params type (typed
+// SDKs). Both are derivable from the OpenAPI resource name.
 type anchorStyle int
 
 const (
@@ -179,9 +178,7 @@ var specs = map[string]langSpec{
 	},
 }
 
-// init maps extension variants onto existing specs: ESM/CJS are plain
-// JavaScript to tree-sitter (the JS grammar includes JSX), and TSX needs the
-// dedicated TSX grammar with the TypeScript spec otherwise unchanged.
+// ESM/CJS/JSX parse as plain JavaScript; TSX needs its own grammar.
 func init() {
 	specs[".mjs"] = specs[".js"]
 	specs[".cjs"] = specs[".js"]
@@ -192,10 +189,8 @@ func init() {
 	specs[".tsx"] = tsx
 }
 
-// SupportsExt reports whether ext (lowercased, with its leading dot — e.g.
-// ".rb") names a language this package can scan. Lets other packages (e.g.
-// signals, which walks the same tree for substring checks) skip files this
-// engine would skip too, without reaching into the language table itself.
+// SupportsExt reports whether ext (lowercased, with its leading dot, e.g.
+// ".rb") names a language this package can scan.
 func SupportsExt(ext string) bool {
 	_, ok := specs[ext]
 	return ok

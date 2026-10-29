@@ -1,12 +1,5 @@
 package dpm
 
-// classify.go is this topic's own per-finding judgment: doctor's generic
-// judge package has no idea what "card"/"link" or payment_method_types
-// even mean. classifyIntent/intentVerdict and findingsVersionFix supply
-// the real CANDIDATE/SKIP/REVIEW/CAUTION judgment per finding; findings.go
-// (the sole caller of both) is where that judgment actually lands on a
-// remediation.Finding, for both text and --json.
-
 import (
 	"regexp"
 	"strings"
@@ -14,15 +7,13 @@ import (
 
 var quotedMethodRe = regexp.MustCompile(`["']([a-z0-9_]+)["']`)
 
-// percentArrayRe matches Ruby's unquoted %w[...]/%i[...] word/symbol
-// array literal (e.g. "%w[card ideal bancontact]", "%i(card ideal)") —
-// its members have no quote characters at all, the quoting is implied
-// by the %w/%i prefix instead, so quotedMethodRe alone can't see them.
+// percentArrayRe matches Ruby's unquoted %w[...]/%i[...] array literal
+// (e.g. "%w[card ideal bancontact]") — its members have no quote
+// characters for quotedMethodRe to match.
 var percentArrayRe = regexp.MustCompile(`^%[wi]\s*[\[({<]([a-z0-9_\s]*)[\])}>]$`)
 
 // quotedMethods extracts the static method names from a finding's value
-// expression, whether written as quoted string literals (e.g.
-// "['card', 'ideal']") or as a %w/%i literal (e.g. "%w[card ideal]").
+// expression, e.g. "['card', 'ideal']" or "%w[card ideal]" -> ["card", "ideal"].
 func quotedMethods(value string) []string {
 	v := strings.TrimSpace(value)
 	if m := percentArrayRe.FindStringSubmatch(v); m != nil {
@@ -37,25 +28,17 @@ func quotedMethods(value string) []string {
 
 var identRe = regexp.MustCompile(`[A-Za-z_$][A-Za-z0-9_$]*`)
 
-// classifyIntent inspects a finding's value expression and buckets it.
-// This is dpm's own domain logic (what a hardcoded payment_method_types
-// value shape implies) — doctor's judge package has no idea "card" and
-// "link" are payment method names, so this can't live there.
+// classifyIntent buckets a finding's value expression:
 //
-//	default-shaped — static list of only card/link: the classic pre-DPM
-//	                 hardcode and the migration's actual target
-//	deliberate     — static single non-card method (['oxxo']): per-method
-//	                 integration, almost certainly intentional
+//	default-shaped — static list of only card/link
+//	deliberate     — static single non-card method (['oxxo'])
 //	static         — static multi-method list beyond card/link
 //	dynamic        — computed at runtime (identifiers, conditionals)
 func classifyIntent(value string) string {
 	v := strings.TrimSpace(value)
-	// %w/%i literals have no quote characters for the dynamic-detection
-	// regexes below to anchor on — e.g. stripping "%w[card ideal]"'s
-	// brackets/whitespace leaves "wcardideal", which identRe would
-	// wrongly read as a bare identifier reference. Handle them before
-	// that check runs at all, rather than trying to make the generic
-	// stripping regex aware of a Ruby-specific prefix.
+	// Stripping "%w[card ideal]"'s brackets/whitespace below would leave
+	// "wcardideal", which identRe misreads as an identifier reference.
+	// Handle %w/%i literals before that check runs.
 	if percentArrayRe.MatchString(v) {
 		return bucketMethods(quotedMethods(v))
 	}
@@ -70,8 +53,8 @@ func classifyIntent(value string) string {
 	return bucketMethods(quotedMethods(v))
 }
 
-// bucketMethods classifies a literal (already-extracted) list of method
-// names into classifyIntent's static buckets.
+// bucketMethods classifies an extracted list of method names into
+// classifyIntent's static buckets.
 func bucketMethods(methods []string) string {
 	onlyCardLink := true
 	for _, m := range methods {
@@ -88,9 +71,7 @@ func bucketMethods(methods []string) string {
 	return "static"
 }
 
-// intentVerdict turns a classifyIntent bucket into a CANDIDATE/SKIP/REVIEW
-// judgment — the real per-finding verdict doctor's generic judge package
-// can't produce on its own.
+// intentVerdict turns a classifyIntent bucket into a per-finding verdict.
 func intentVerdict(intent string) string {
 	switch intent {
 	case "default-shaped":
@@ -104,23 +85,14 @@ func intentVerdict(intent string) string {
 	}
 }
 
-// versionFix is the uniform, account-wide fix this account's recent
-// API-version evidence alone dictates: the account's API version
-// determines whether removing payment_method_types alone is enough, or
-// whether automatic_payment_methods[enabled]=true must be added too —
-// the same way for every finding, regardless of that finding's own code
-// shape. A zero-value versionFix (empty Class) means the API version
-// doesn't change the fix: each finding falls through to its own
-// classifyIntent/intentVerdict judgment instead (see hardcodedListsFinding
-// in findings.go, the sole caller). Reason and Instruction are kept
-// separate (rather than one sentence) so hardcodedListsFinding can show
-// them as two paragraphs.
+// versionFix is the account-wide fix the account's recent API-version
+// evidence dictates, applying uniformly regardless of any one finding's
+// code shape. A zero-value versionFix (empty Class) means the API
+// version doesn't change the fix.
 //
-// A pre-cutoff version is CAUTION, not BLOCKED: the fix isn't "do
-// nothing" or "wait for traffic to move versions" — it's "delete
-// payment_method_types AND add automatic_payment_methods[enabled]=true",
-// a known, actionable change, not a dead end. Only NoEvents (no version
-// evidence at all) stays REVIEW, since there's no fix to name yet.
+// A pre-cutoff version is CAUTION, not BLOCKED: the fix is known and
+// actionable (add automatic_payment_methods[enabled]=true), not a dead
+// end. Only NoEvents stays REVIEW, since there's no fix to name yet.
 type versionFix struct {
 	Class       string
 	Reason      string

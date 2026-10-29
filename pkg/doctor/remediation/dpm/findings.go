@@ -1,26 +1,17 @@
 package dpm
 
-// findings.go builds each remediation.Finding this topic reports — the
-// single place text (doctor's action-plan renderer) and --json
-// (remediation.FindingsJSON, called from jsonreport.go) both come from.
-// See remediation.Finding's doc comment for why one Finding drives both.
-// Each Finding's evidence-shape type (e.g. pmListEvidence) is declared
-// right next to the function that builds it, since that's the only
-// place it's used.
-
 import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
-	"github.com/stripe/stripe-cli/pkg/doctor/codesignals"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/codesignals"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 )
 
 // relPath formats a finding's file path relative to the scanned
-// directory, for display — the JSON findings contract
-// (catalog.Finding.File) keeps the absolute path; this is purely a
-// display nicety. Falls back to the absolute path if it isn't under dir.
+// directory, for display. Falls back to the absolute path if it isn't
+// under dir.
 func relPath(dir string, f catalog.Finding) string {
 	rel, err := filepath.Rel(dir, f.File)
 	if err != nil {
@@ -36,12 +27,8 @@ type pmListLocation struct {
 	Line             int    `json:"line"`
 	Parameter        string `json:"parameter"`
 	SourceExpression string `json:"source_expression"`
-	// RuntimeComputed is classifyIntent's own "dynamic" bucket, surfaced
-	// per location rather than only as a Finding-level aside — knowing
-	// a list's value shape (identifiers/conditionals, not just quoted
-	// literals) is exactly what classifyIntent already inspects, so
-	// this location can be flagged individually instead of leaving the
-	// reader to guess which of several locations it applies to.
+	// RuntimeComputed is classifyIntent's "dynamic" bucket, flagged per
+	// location.
 	RuntimeComputed bool `json:"runtime_computed"`
 }
 
@@ -57,13 +44,9 @@ type pmListEvidence struct {
 }
 
 // hardcodedListsFinding builds the action item for the scanned code
-// locations: one shared reason/instruction when the account's API
-// version dictates the same fix for every finding uniformly (the common
-// case), else each finding reviewed on its own classifyIntent/
-// intentVerdict judgment. Each location's path/line/parameter/expression
-// is built exactly once per finding and used for both the text Item and
-// the --json evidence (pmListEvidence below) — see remediation.Finding's
-// doc comment.
+// locations: a shared reason/instruction when the account's API version
+// dictates the same fix for every finding, else each finding judged on
+// its own code shape.
 func hardcodedListsFinding(ctx remediation.Context, vf versionFacts) remediation.Finding {
 	f := remediation.Finding{ID: "explicit_payment_method_lists", Heading: "Replace explicit lists with automatic payment methods"}
 
@@ -113,10 +96,6 @@ func hardcodedListsFinding(ctx remediation.Context, vf versionFacts) remediation
 			Fields:  loc,
 		})
 	}
-	// Runtime-computed values are a code-shape concern, not a Dashboard
-	// one: whether that logic's own restrictions need preserving lives
-	// here, next to the finding that flagged it, rather than in
-	// dashboardFinding's Dashboard-config-matching message.
 	if hasDynamic {
 		f.Body = append(f.Body, "Some payment method lists are built at runtime. Check whether that logic restricts payment methods for particular checkout flows. Preserve any required restrictions when switching to dynamic payment methods.")
 	}
@@ -131,16 +110,10 @@ func hardcodedListsFinding(ctx remediation.Context, vf versionFacts) remediation
 // ---------- finding: the standing Dashboard-config reminder ----------
 
 // dashboardFinding is the action-plan item for whether the Dashboard's
-// payment-method configuration matches what the code hardcodes: msg
-// (assess's own Message for this Result, covering the
-// blocked/missing/inactive/ready states) plus the standing reminder to
-// review which payment methods are enabled, rendered as a lead-in
-// sentence followed by a bare URL rather than one long sentence with an
-// inline link. Deliberately left with no ID: this is prose tied to
-// Result.Status (which branch of assess returned it), not one discrete,
-// independently reportable fact — doctor's --json contract covers the
-// same ground separately, via its own top-level "dashboard" object (see
-// jsonreport.go).
+// payment-method configuration matches what the code hardcodes. Left
+// with no ID: it's prose tied to Result.Status, not an independently
+// reportable fact (the --json contract covers this via its own
+// top-level "dashboard" object instead).
 func dashboardFinding(msg string) remediation.Finding {
 	return remediation.Finding{
 		Heading: "Verify Dashboard payment methods match your code",
@@ -162,10 +135,9 @@ type webhooksEvidence struct {
 	Handlers []webhookHandler `json:"handlers"`
 }
 
-// webhookMeanings splits webhookSignals' combined prose (used by the
-// text action-plan renderer) into the separate meaning/expected_behavior
-// fields this JSON schema wants — distinct wording for a distinct
-// audience, not derived from one another.
+// webhookMeanings gives each event's meaning and expected handling,
+// separately from webhookSignals' combined prose used by the text
+// renderer.
 var webhookMeanings = map[string]struct{ Meaning, ExpectedBehavior string }{
 	"checkout.session.completed": {
 		Meaning:          "Checkout completed; a delayed payment may still be pending.",
@@ -182,10 +154,8 @@ var webhookMeanings = map[string]struct{ Meaning, ExpectedBehavior string }{
 }
 
 // webhooksFinding is the action-plan item for webhook-handler coverage.
-// Returns a zero-value Finding (skipped by the text renderer and by
-// FindingsJSON) when wh is nil — no webhook signals were scanned for at
-// all. Each event's structured fields are built exactly once and used
-// for both the text Item and the --json evidence override.
+// Returns a zero-value Finding when wh is nil (no webhook signals
+// scanned).
 func webhooksFinding(wh *codesignals.HandlerSignals) remediation.Finding {
 	if wh == nil {
 		return remediation.Finding{}
@@ -221,11 +191,8 @@ func webhooksFinding(wh *codesignals.HandlerSignals) remediation.Finding {
 	return f
 }
 
-// webhookSummaryPhrase is this topic's own "Webhooks" summary-table row
-// value — counts how many of the expected webhook handlers were NOT
-// found in the scanned code. doctor's engine doesn't compute this
-// generically (see remediation.SummaryRow); it's the same signal
-// webhooksFinding's own Body already describes, just condensed to one line.
+// webhookSummaryPhrase is the "Webhooks" summary-table row value: how
+// many expected handlers were not found in the scanned code.
 func webhookSummaryPhrase(wh *codesignals.HandlerSignals) string {
 	if wh == nil {
 		return "no webhook signals checked"

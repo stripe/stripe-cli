@@ -1,22 +1,15 @@
 package dpm
 
-// facts.go fetches the two pieces of live account evidence Run needs:
-// recent API versions (fetchVersionFacts) and the account's
-// payment-method configuration (fetchPMConfigFacts) — the same evidence
-// doctor's old generic account-facts fetch used, now owned entirely by
-// this topic.
-
 import (
 	"sort"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/stripeapi"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/stripeapi"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // dpmCutoff is the API version at/after which removing payment_method_types
-// alone enables dynamic payment methods; before it, automatic_payment_methods
-// [enabled]=true must be added or methods are silently lost. Specific to
-// this topic's judgment, not a doctor-wide concept.
+// alone enables dynamic payment methods; before it,
+// automatic_payment_methods[enabled]=true must be added too.
 const dpmCutoff = "2023-08-16"
 
 // versionFacts summarizes the API versions this account's recent traffic
@@ -29,7 +22,7 @@ type versionFacts struct {
 }
 
 // fetchVersionFacts samples the account's most recent events for their
-// api_version, the same evidence doctor's old account-facts fetch used.
+// api_version.
 func fetchVersionFacts(client *stripe.Client, stripeAccount string) (versionFacts, error) {
 	var evts struct {
 		Data []struct {
@@ -67,9 +60,8 @@ func datePrefix(v string) string {
 }
 
 // pmConfigFacts summarizes the account's active payment-method
-// configuration: which methods are toggled on, and which of those are
-// toggled on but not actually available (capability inactive — they will
-// NOT render; both are required).
+// configuration: which methods are enabled, and which of those are
+// enabled but not actually available (so won't render).
 type pmConfigFacts struct {
 	ConfigCount           int
 	ActiveConfigID        string
@@ -80,9 +72,8 @@ type pmConfigFacts struct {
 	ConfiguredOK          bool
 }
 
-// fetchPMConfigFacts reads /v1/payment_method_configurations and picks ONE
-// governing config — the default, else the first active one — the same
-// selection doctor's old account-facts fetch used.
+// fetchPMConfigFacts reads /v1/payment_method_configurations and picks
+// one governing config: the default, else the first active one.
 func fetchPMConfigFacts(client *stripe.Client, stripeAccount string) (pmConfigFacts, error) {
 	var pmc struct {
 		Data []map[string]any `json:"data"`

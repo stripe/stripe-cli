@@ -1,11 +1,6 @@
-// Package scan is the AST-based scanning engine: walk, prefilter, parse, and
-// match rule parameters against resolved Stripe call sites. It depends on
-// catalog for the Rule/Finding shapes but never the other way around, and
-// knows nothing about accounts, verdicts, or rendering.
+// Package scan walks a directory, parses source with tree-sitter, and
+// matches rule parameters against resolved Stripe call sites.
 package scan
-
-// The scanner: walk, prefilter, parse, and match rule parameters against
-// resolved Stripe call sites.
 
 import (
 	"fmt"
@@ -16,7 +11,7 @@ import (
 
 	ts "github.com/odvcencio/gotreesitter"
 
-	"github.com/stripe/stripe-cli/pkg/doctor/catalog"
+	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
@@ -30,7 +25,6 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 	if !info.IsDir() {
 		return nil, 0, 0, errorcategory.Errorf(errorcategory.UserInput, "cannot scan %q: not a directory", root)
 	}
-	// Resource names the rule's operations imply, e.g. "payment_intents".
 	resources := map[string]bool{}
 	for _, m := range rule.Match {
 		for _, op := range m.Operations {
@@ -45,7 +39,6 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 			return err
 		}
 		if d.IsDir() {
-			// Never scan (or edit) vendored/generated trees.
 			switch d.Name() {
 			case "node_modules", "vendor", ".git", "dist", "build":
 				return filepath.SkipDir
@@ -56,8 +49,8 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		if !ok {
 			return nil
 		}
-		// Findings carry forward-slash paths regardless of OS, so file:line
-		// keys and the exact-match test fixtures stay portable to Windows.
+		// Keep paths portable to Windows: findings' file:line keys and
+		// test fixtures assume forward slashes.
 		path = filepath.ToSlash(path)
 		scanned++
 
@@ -66,8 +59,6 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 			return nil
 		}
 
-		// Prefilter: no spelling of any rule param present -> never parse.
-		// This is what keeps a large repo fast.
 		if !prefilter(src, rule, spec) {
 			return nil
 		}
@@ -87,8 +78,6 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 			return nil
 		}
 
-		// Union of every SDK token the rule's resources can appear as (for
-		// the file index); resolution re-filters per ParamMatch below.
 		var tokens []string
 		for r := range resources {
 			tokens = append(tokens, spec.resourceTokens(r)...)
@@ -96,8 +85,8 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		sort.Strings(tokens)
 		idx := buildIndex(tree.RootNode(), spec, lang, src, tokens)
 
-		// Per-ParamMatch tokens: a nested rule scoped to subscriptions must
-		// not resolve against a PaymentIntent call, and vice versa.
+		// Scope tokens per ParamMatch so a rule nested under subscriptions
+		// can't resolve against a PaymentIntent call, and vice versa.
 		pmTokens := make([][]string, len(rule.Match))
 		for i, pm := range rule.Match {
 			set := map[string]bool{}
@@ -166,9 +155,7 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 	return findings, scanned, parsed, nil
 }
 
-// extractValue returns the value expression paired with a matched key: the
-// last named child of the enclosing pair-like node, or for Java's flat builder
-// plain substring test in this SDK's spelling. Cheap; runs on every file.
+// prefilter is a cheap substring check run on every file before parsing.
 func prefilter(src []byte, rule catalog.Rule, spec langSpec) bool {
 	s := string(src)
 	for _, pm := range rule.Match {
@@ -197,12 +184,6 @@ func pathSatisfied(key *ts.Node, param string, spec langSpec, lang *ts.Language,
 	return true
 }
 
-// ancestorKeys returns the keys of enclosing param-bag entries, outermost
-// first, excluding the matched key's own entry.
-//
-// The climb stops at the enclosing param bag. Without that bound, a binding
-// like C#'s `options = new(){...}` — an assignment_expression, the same node
-// kind as a parameter entry — would be miscounted as a nesting level and every
 // resourceFromOperation: "POST /v1/payment_intents/{intent}" -> "payment_intents"
 func resourceFromOperation(op string) string {
 	parts := strings.Fields(op)
@@ -213,8 +194,7 @@ func resourceFromOperation(op string) string {
 	if len(segs) < 2 {
 		return ""
 	}
-	// Skip the version segment; take the last non-templated segment.
-	last := ""
+	last := "" // segs[0] is the version (v1); skip it
 	for _, s := range segs[1:] {
 		if strings.HasPrefix(s, "{") {
 			continue
@@ -264,7 +244,7 @@ func SortFindings(findings []catalog.Finding) {
 	})
 }
 
-// style the argument list of the add* invocation itself.
+// extractValue returns the value expression paired with a matched key.
 func extractValue(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) string {
 	kinds := spec.pairKinds
 	if kinds == nil { // java: the key IS the method name of the invocation
@@ -284,8 +264,10 @@ func extractValue(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) st
 	return ""
 }
 
-// prefilter reports whether src could possibly contain a rule param, using a
-// top-level parameter in that bag would fail its path check.
+// ancestorKeys returns the keys of enclosing param-bag entries, outermost
+// first, excluding the matched key's own entry. The climb stops at the
+// anchor call, since e.g. C#'s `options = new(){...}` would otherwise be
+// miscounted as a nesting level.
 func ancestorKeys(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) []string {
 	bound := climbAnchor(key, spec, lang)
 	isPair := func(k string) bool {
