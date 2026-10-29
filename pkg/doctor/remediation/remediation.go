@@ -12,6 +12,9 @@
 //  3. Blank-import your subpackage from pkg/doctor/cmd.go (next to the
 //     paymentmethods import) so your init() actually runs.
 //
+// See README.md in this directory for the full integration guide and a
+// function-by-function reference.
+//
 // Context carries what doctor already computed for you (the scanned
 // source findings) so you don't need to re-scan, plus what you need to
 // fetch your own read-only account evidence (Config/StripeAccount, passed

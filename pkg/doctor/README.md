@@ -106,8 +106,8 @@ wants them declares and scans for its own, below.
 
 ## Adding a remediation for a topic
 
-See `pkg/doctor/remediation`'s package doc comment for the full guide;
-short version: implement `remediation.Implementation`, `Register` it
-(under your rule's `doctorTopic` string) from an `init()` in your own
-subpackage (model it on `remediation/paymentmethods`), and blank-import
-that subpackage from `cmd.go`.
+See `pkg/doctor/remediation/README.md` for the full integration guide and
+function reference; short version: implement `remediation.Implementation`,
+`Register` it (under your rule's `doctorTopic` string) from an `init()` in
+your own subpackage (model it on `remediation/paymentmethods`), and
+blank-import that subpackage from `cmd.go`.
