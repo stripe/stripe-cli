@@ -3,6 +3,9 @@ package doctor
 // stripe doctor [topic] [dir]   diagnose (requires live-mode creds to fetch the rule)
 // stripe doctor guide           agent playbook
 //
+// Hidden: rollout is gated on the doctor_rules API's existence — a 404
+// from it makes doctor behave as if the command doesn't exist at all.
+//
 // Exit codes: 0 once a report completes, regardless of what it found;
 // non-zero only when doctor fails to produce a report at all.
 
@@ -111,14 +114,23 @@ func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 func newDoctorCmd(cfg *config.Config) *cobra.Command {
 	var verifyWebhooks bool
 	c := &cobra.Command{
-		Use:   "doctor [topic] [dir]",
-		Short: "Diagnose a migration: code findings checked against the migration rule (read-only)",
+		Use:    "doctor [topic] [dir]",
+		Short:  "Diagnose a migration: code findings checked against the migration rule (read-only)",
+		Hidden: true,
 		Long: `Scans the directory and judges each finding against the migration rule —
 the rule already carries whatever account-dependent guidance applies, so no
 separate account lookup is made. --verify-webhooks additionally proves
 runtime behavior (webhook round-trip via stripe listen/trigger).`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			available, err := judge.RulesAPIAvailable(cfg, flagStripeAccount)
+			if err != nil {
+				fail(err)
+			}
+			if !available {
+				return errorcategory.Errorf(errorcategory.UserInput, "unknown command %q for %q", cmd.Name(), cmd.Parent().CommandPath())
+			}
+
 			topic, dir, err := topicAndDir(args)
 			if err != nil {
 				fail(err)

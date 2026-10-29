@@ -7,6 +7,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/stripeapi"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // doctorRulesAPIVersion pins the unreleased Stripe-Version the
@@ -35,4 +36,34 @@ func FetchRule(cfg *config.Config, topic, stripeAccount string) (catalog.Rule, e
 		return catalog.Rule{}, err
 	}
 	return catalog.ParseAPIRule(resp.DoctorRule)
+}
+
+// RulesAPIAvailable reports whether the doctor_rules API exists for the
+// active credentials. doctor's rollout is gated on this endpoint: a 404
+// means the command isn't available yet (ok=false, err=nil), not an
+// error.
+func RulesAPIAvailable(cfg *config.Config, stripeAccount string) (bool, error) {
+	creds, err := stripeapi.LoadCredentials(cfg)
+	if err != nil {
+		return false, err
+	}
+	client, err := stripeapi.NewClient(creds)
+	if err != nil {
+		return false, err
+	}
+	headers := map[string]string{"Stripe-Version": doctorRulesAPIVersion}
+	status, err := stripeapi.StatusCode(client, stripeAccount, "/v2/integ_hlth/doctor_rules", headers)
+	if err != nil {
+		return false, err
+	}
+	switch status {
+	case 404:
+		return false, nil
+	case 200:
+		return true, nil
+	case 401:
+		return false, errorcategory.Errorf(errorcategory.Auth, "credentials rejected (401) — key may be expired; run `stripe login`")
+	default:
+		return false, errorcategory.Errorf(errorcategory.API, "GET /v2/integ_hlth/doctor_rules: HTTP %d", status)
+	}
 }

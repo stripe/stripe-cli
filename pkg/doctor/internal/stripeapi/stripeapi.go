@@ -62,3 +62,24 @@ func Get(client *stripe.Client, stripeAccount, path, query string, headers map[s
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
+
+// StatusCode issues a read-only GET through client and returns the raw
+// HTTP status code without decoding a body or treating any status as an
+// error — for a caller that needs to tell a 404 apart from other
+// outcomes itself (e.g. an availability check), rather than Get's
+// "non-200 is an error" behavior.
+func StatusCode(client *stripe.Client, stripeAccount, path string, headers map[string]string) (int, error) {
+	configure := func(req *http.Request) error {
+		client.Credentials.ApplyAccountContextHeaders(req.Header, stripeAccount, "")
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		return nil
+	}
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, path, "", configure)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
+}
