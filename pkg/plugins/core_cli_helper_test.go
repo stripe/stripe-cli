@@ -76,7 +76,7 @@ func TestDetectAIAgentOverGRPC(t *testing.T) {
 		})
 	}
 
-	t.Run("cancelled context", func(t *testing.T) {
+	t.Run("canceled context", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 
