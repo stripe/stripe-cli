@@ -38,15 +38,16 @@ type whoamiKeyInfo struct {
 }
 
 type whoamiOutput struct {
-	Authenticated     bool          `json:"authenticated"`
-	ProfileName       string        `json:"profile_name"`
-	DisplayName       string        `json:"display_name,omitempty"`
-	AccountID         string        `json:"account_id,omitempty"`
-	DeviceName        string        `json:"device_name,omitempty"`
-	TestModeKey       whoamiKeyInfo `json:"test_mode_key"`
-	LiveModeKey       whoamiKeyInfo `json:"live_mode_key"`
-	APIVersion        string        `json:"api_version"`
-	PreviewAPIVersion string        `json:"preview_api_version"`
+	Authenticated          bool                             `json:"authenticated"`
+	ProfileName            string                           `json:"profile_name"`
+	DisplayName            string                           `json:"display_name,omitempty"`
+	AccountID              string                           `json:"account_id,omitempty"`
+	DeviceName             string                           `json:"device_name,omitempty"`
+	TestModeKey            whoamiKeyInfo                    `json:"test_mode_key"`
+	LiveModeKey            whoamiKeyInfo                    `json:"live_mode_key"`
+	APIVersion             string                           `json:"api_version"`
+	PreviewAPIVersion      string                           `json:"preview_api_version"`
+	NetworkBusinessProfile *requests.NetworkBusinessProfile `json:"network_business_profile,omitempty"`
 }
 
 // whoamiOAuthOutput mirrors exactly what the OAuth text output shows: the
@@ -63,9 +64,10 @@ type whoamiOAuthOutput struct {
 	// among the UAT's authorized accounts (e.g. access was revoked or scoped
 	// down since the context was selected). Nil when there's no active
 	// context to evaluate.
-	Authorized         *bool                      `json:"authorized,omitempty"`
-	ExpiresAt          *int64                     `json:"expires_at,omitempty"`
-	AuthorizedAccounts []config.AuthorizedAccount `json:"authorized_accounts,omitempty"`
+	Authorized             *bool                            `json:"authorized,omitempty"`
+	ExpiresAt              *int64                           `json:"expires_at,omitempty"`
+	AuthorizedAccounts     []config.AuthorizedAccount       `json:"authorized_accounts,omitempty"`
+	NetworkBusinessProfile *requests.NetworkBusinessProfile `json:"network_business_profile,omitempty"`
 }
 
 func newWhoamiCmd() *whoamiCmd {
@@ -135,6 +137,19 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 		APIVersion:        requests.StripeVersionHeaderValue,
 		PreviewAPIVersion: requests.StripePreviewVersionHeaderValue,
 	}
+	if out.Authenticated {
+		if err := stripe.ValidateAPIBaseURL(wc.apiBaseURL); err != nil {
+			return err
+		}
+		key, err := profile.GetAPIKey(!testKey.Available)
+		if err != nil {
+			return err
+		}
+		out.NetworkBusinessProfile, err = requests.GetNetworkBusinessProfile(cmd.Context(), wc.apiBaseURL, profile, stripe.NewAPIKeyCredentials(key))
+		if err != nil {
+			return err
+		}
+	}
 
 	w := cmd.OutOrStdout()
 	if strings.EqualFold(wc.format, "json") {
@@ -169,14 +184,20 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 	}
 
 	var info requests.UserInfo
+	var businessProfile *requests.NetworkBusinessProfile
 	if ac != nil {
 		creds := stripe.NewOAKCredentials(uat, ac.AccountID, ac.Livemode)
 		// Fail open: the user's info is less important than the authorized contexts
 		info, _ = requests.GetUserInfo(cmd.Context(), wc.apiBaseURL, wc.profile, creds, ac.Livemode)
+		businessProfile, err = requests.GetNetworkBusinessProfile(cmd.Context(), wc.apiBaseURL, wc.profile, creds)
+		if err != nil {
+			return err
+		}
 	}
 	expiresAt, expiresAtErr := wc.profile.GetUATExpiresAt()
 
 	out := buildOAuthWhoamiOutput(accounts, ac, info, expiresAt, expiresAtErr == nil)
+	out.NetworkBusinessProfile = businessProfile
 
 	if strings.EqualFold(wc.format, "json") {
 		b, err := json.MarshalIndent(out, "", "  ")
@@ -203,6 +224,9 @@ func (wc *whoamiCmd) runWhoamiOAuth(cmd *cobra.Command, uat string) error {
 		}
 		if out.Role != "" {
 			fmt.Fprintf(tw, "Role\t%s\n", out.Role)
+		}
+		if out.NetworkBusinessProfile != nil {
+			fmt.Fprintf(tw, "Network Business Profile\t@%s (%s)\n", out.NetworkBusinessProfile.Username, out.NetworkBusinessProfile.ID)
 		}
 		if expiresAtErr == nil {
 			fmt.Fprintf(tw, "Expires\t%s\n", expiresAt.Local().Format(expiryDisplayFormat))
@@ -321,6 +345,9 @@ func printWhoamiText(out io.Writer, data whoamiOutput) {
 
 	if data.DeviceName != "" {
 		fmt.Fprintf(w, "Device name:\t%s\n", data.DeviceName)
+	}
+	if data.NetworkBusinessProfile != nil {
+		fmt.Fprintf(w, "Network Business Profile\t@%s (%s)\n", data.NetworkBusinessProfile.Username, data.NetworkBusinessProfile.ID)
 	}
 
 	fmt.Fprintf(w, "Sandbox key:\t%s\n", keyAvailabilityText(data.TestModeKey))
