@@ -22,8 +22,7 @@ const doctorRulesAPIVersion = "2026-10-12-16.internal"
 
 // FetchRule fetches topic's migration rule from the live doctor_rules
 // API. Uses live-mode credentials only (see stripeapi.LoadCredentials) —
-// no --live flag needed, but the active context must actually be in live
-// mode.
+// the active context must actually be in live mode.
 func FetchRule(cfg *config.Config, topic, stripeAccount string) (catalog.Rule, error) {
 	creds, err := stripeapi.LoadCredentials(cfg)
 	if err != nil {

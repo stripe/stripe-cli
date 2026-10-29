@@ -1,12 +1,12 @@
 // Package webhookcheck implements the live behavioral check behind
-// `doctor --live`: start a local webhook handler, run `stripe listen
+// `doctor --verify-webhooks`: start a local webhook handler, run `stripe listen
 // --forward-to` it, `stripe trigger` one event, and verify it arrives
 // with a valid signature. All test mode.
 //
 // This package has no idea which events matter for any given migration
 // topic — Run takes the full set to listen for and which one to trigger,
 // supplied by the topic's own remediation.Implementation (see
-// remediation.LiveChecker). Doctor's generic engine (cmd.go) looks that
+// remediation.WebhookChecker). Doctor's generic engine (cmd.go) looks that
 // up per topic rather than assuming any fixed event set.
 package webhookcheck
 
@@ -27,7 +27,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
-// Report is the webhook round-trip evidence (doctor --live).
+// Report is the webhook round-trip evidence (doctor --verify-webhooks).
 type Report struct {
 	Command     string  `json:"command"`
 	ListenReady bool    `json:"listen_ready"`

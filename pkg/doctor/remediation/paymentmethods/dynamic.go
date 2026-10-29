@@ -18,8 +18,8 @@
 //     REVIEW by default, and findingVerdicts supplies the real
 //     CANDIDATE/SKIP/REVIEW judgment per finding via Result.FindingVerdicts.
 //  4. Webhook handler coverage, both statically (webhookSignals, scanned
-//     via pkg/doctor/codesignals) and live (LiveCheckEvents, behind
-//     `doctor --live` via pkg/doctor/webhookcheck) — this topic declares
+//     via pkg/doctor/codesignals) and live (WebhookCheckEvents, behind
+//     `doctor --verify-webhooks` via pkg/doctor/webhookcheck) — this topic declares
 //     its own expected events; doctor's engine wires in neither
 //     generically.
 //
@@ -107,10 +107,10 @@ func init() {
 
 type implementation struct{}
 
-// LiveCheckEvents satisfies remediation.LiveChecker: these are the same
-// three webhookSignals events, plus which one `doctor --live` should
+// WebhookCheckEvents satisfies remediation.WebhookChecker: these are the same
+// three webhookSignals events, plus which one `doctor --verify-webhooks` should
 // trigger to exercise the round trip.
-func (implementation) LiveCheckEvents() ([]string, string) {
+func (implementation) WebhookCheckEvents() ([]string, string) {
 	events := make([]string, len(webhookSignals.WebhookEvents))
 	for i, e := range webhookSignals.WebhookEvents {
 		events[i] = e.Event

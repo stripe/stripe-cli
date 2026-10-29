@@ -74,7 +74,7 @@ After editing per the verdict messages above, re-run the same command.
 Exit 0 proves payment_method_types is gone (or safely replaced).
 
 ## 3. Confirm runtime behavior (recommended)
-    stripe doctor dpm --live --json
+    stripe doctor dpm --verify-webhooks --json
 Adds .webhook_check (webhook round-trip via stripe listen/trigger); require
 .webhook_check.verified == true.
 

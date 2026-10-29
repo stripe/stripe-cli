@@ -21,6 +21,29 @@
 // same way it owns everything else about its own assessment. doctor
 // never acts on a remediation itself — it only looks up the rule's topic
 // in the registry and renders whatever Result comes back.
+//
+// See Example (the minimum viable Implementation — just Status and
+// Message, no live evidence, no custom rendering) and Example_actionPlan
+// (the opt-in pieces: Title, and Findings for both the text action-plan
+// renderer and, via FindingsJSON, a custom --json contract) in
+// example_test.go; both are runnable (go test -run Example -v), so they
+// can't go stale the way a comment-only sample could.
+//
+// Quick reference, beyond Implementation/Context/Register/Lookup:
+//
+//   - Result.Status/Message are the only fields a minimal Implementation
+//     needs to set.
+//   - Result.Title/Headline/SummaryLabel/CodeSummary and Result.Findings
+//     drive doctor's richer text action-plan renderer; a topic that sets
+//     none of them still renders fine via the older generic layout.
+//   - Result.FindingVerdicts lets you override judge's generic REVIEW
+//     verdict per scanned finding (see FindingKey).
+//   - Result.Report, when set, replaces doctor's entire --json body with
+//     your own schema; FindingsJSON converts Result.Findings into that
+//     schema's generic finding shape so you don't re-describe the same
+//     facts twice.
+//   - WebhookChecker is an optional second interface for `doctor --verify-webhooks`'s
+//     webhook round-trip check.
 package remediation
 
 import (
@@ -286,16 +309,16 @@ type Implementation interface {
 	Run(ctx Context) (Result, error)
 }
 
-// LiveChecker is an optional interface an Implementation can satisfy to
-// support `doctor --live`'s webhook round-trip check
+// WebhookChecker is an optional interface an Implementation can satisfy to
+// support `doctor --verify-webhooks`'s webhook round-trip check
 // (pkg/doctor/webhookcheck). doctor's engine has no idea which webhook
-// events matter for any given topic; LiveCheckEvents names the full set
+// events matter for any given topic; WebhookCheckEvents names the full set
 // of events the round-trip check should listen for, and which one of
 // those to trigger to exercise it. A topic with nothing to verify this
-// way simply doesn't implement LiveChecker — doctor --live then fails
+// way simply doesn't implement WebhookChecker — doctor --verify-webhooks then fails
 // clearly rather than guessing.
-type LiveChecker interface {
-	LiveCheckEvents() (events []string, triggerEvent string)
+type WebhookChecker interface {
+	WebhookCheckEvents() (events []string, triggerEvent string)
 }
 
 var registry = map[string]Implementation{}

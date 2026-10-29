@@ -195,11 +195,11 @@ func TestAssessNotesAppended(t *testing.T) {
 	}
 }
 
-// TestLiveCheckEvents pins that this topic's live-check events match its
-// static webhookSignals declaration, and that the trigger event is one
-// of them.
-func TestLiveCheckEvents(t *testing.T) {
-	events, trigger := implementation{}.LiveCheckEvents()
+// TestWebhookCheckEvents pins that this topic's webhook-check events
+// match its static webhookSignals declaration, and that the trigger
+// event is one of them.
+func TestWebhookCheckEvents(t *testing.T) {
+	events, trigger := implementation{}.WebhookCheckEvents()
 	if len(events) != len(webhookSignals.WebhookEvents) {
 		t.Fatalf("expected %d events, got %d", len(webhookSignals.WebhookEvents), len(events))
 	}

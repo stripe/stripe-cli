@@ -9,7 +9,7 @@ package doctor
 //
 // scan/webhookcheck are no longer commands: scan is doctor's
 // credential-less degradation and the webhook round-trip check is
-// `doctor --live`. doctor only diagnoses — remediation is manual, guided
+// `doctor --verify-webhooks`. doctor only diagnoses — remediation is manual, guided
 // by each finding's verdict.
 //
 // Every command supports --json (pure JSON on stdout, logs on stderr) and the
@@ -137,14 +137,14 @@ func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 // ---------- doctor ----------
 
 func newDoctorCmd(cfg *config.Config) *cobra.Command {
-	var live bool
+	var verifyWebhooks bool
 	c := &cobra.Command{
 		Use:   "doctor [topic] [dir]",
 		Short: "Diagnose a migration: code findings checked against the migration rule (read-only)",
 		Long: `Scans the directory and judges each finding against the migration rule —
 the rule already carries whatever account-dependent guidance applies, so no
-separate account lookup is made. --live additionally proves runtime
-behavior (webhook round-trip via stripe listen/trigger).`,
+separate account lookup is made. --verify-webhooks additionally proves
+runtime behavior (webhook round-trip via stripe listen/trigger).`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			topic, dir, err := topicAndDir(args)
@@ -186,14 +186,14 @@ behavior (webhook round-trip via stripe listen/trigger).`,
 				}
 			}
 
-			failedLive := false
-			if live {
-				events, triggerEvent, ok := liveCheckEvents(rule.RemediationTopic)
+			webhookCheckFailed := false
+			if verifyWebhooks {
+				events, triggerEvent, ok := webhookCheckEvents(rule.RemediationTopic)
 				if !ok {
-					fail(errorcategory.Errorf(errorcategory.UserInput, "no live check defined for topic %q", rule.RemediationTopic))
+					fail(errorcategory.Errorf(errorcategory.UserInput, "no webhook check defined for topic %q", rule.RemediationTopic))
 				}
 				var checkResult *webhookcheck.Report
-				err := withSpinnerUnlessJSON("Live check: webhook round-trip (listen + trigger)", func() error {
+				err := withSpinnerUnlessJSON("Verifying webhooks: round-trip (listen + trigger)", func() error {
 					var derr error
 					checkResult, derr = webhookcheck.Run(events, triggerEvent)
 					return derr
@@ -202,7 +202,7 @@ behavior (webhook round-trip via stripe listen/trigger).`,
 					fail(err)
 				}
 				rep.WebhookCheck = checkResult
-				failedLive = !checkResult.Verified
+				webhookCheckFailed = !checkResult.Verified
 			}
 
 			if flagJSON {
@@ -217,13 +217,13 @@ behavior (webhook round-trip via stripe listen/trigger).`,
 			} else {
 				renderDoctor(rep)
 			}
-			if len(rep.Findings) > 0 || failedLive {
+			if len(rep.Findings) > 0 || webhookCheckFailed {
 				exitWith(1)
 			}
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&live, "live", false, "also run behavioral checks (spawns stripe listen/trigger)")
+	c.Flags().BoolVar(&verifyWebhooks, "verify-webhooks", false, "also run behavioral checks (spawns stripe listen/trigger)")
 	return c
 }
 
@@ -300,22 +300,22 @@ func applyFindingVerdicts(rep *DoctorReport, verdicts map[string]string) {
 	}
 }
 
-// liveCheckEvents looks up topic's registered remediation and, if it
-// satisfies remediation.LiveChecker, returns the events `doctor --live`
+// webhookCheckEvents looks up topic's registered remediation and, if it
+// satisfies remediation.WebhookChecker, returns the events `doctor --verify-webhooks`
 // should listen for and which one to trigger. ok is false if topic has
 // no registered remediation, or that remediation doesn't support a live
 // check — doctor's engine has no fallback event set of its own to guess
 // with.
-func liveCheckEvents(topic string) (events []string, triggerEvent string, ok bool) {
+func webhookCheckEvents(topic string) (events []string, triggerEvent string, ok bool) {
 	impl, found := remediation.Lookup(topic)
 	if !found {
 		return nil, "", false
 	}
-	lc, ok := impl.(remediation.LiveChecker)
+	lc, ok := impl.(remediation.WebhookChecker)
 	if !ok {
 		return nil, "", false
 	}
-	events, triggerEvent = lc.LiveCheckEvents()
+	events, triggerEvent = lc.WebhookCheckEvents()
 	return events, triggerEvent, true
 }
 

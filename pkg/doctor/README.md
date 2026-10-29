@@ -72,7 +72,7 @@ where listed.
    payment-method configuration, and the scanned findings into one
    readiness `Result`.
 7. **`webhookcheck`** — the live webhook round-trip check behind
-   `doctor --live`. Fully standalone.
+   `doctor --verify-webhooks`. Fully standalone.
 
 ## Contracts
 
@@ -84,10 +84,10 @@ where listed.
   `Implementation` yet, or if gathering its evidence failed (e.g. no
   credentials); never silently dropped.
 - Any read-only GET against the live Stripe API (today: `stripeapi`'s
-  callers) requires the active context to actually be in live mode — no
-  `--live` flag needed for that, but a test-mode context makes the call
-  fail (surfaced as a `status: unknown` remediation result, not a hard
-  error). `--stripe-account` scopes it to a Connect connected account.
+  callers) requires the active context to actually be in live mode — a
+  test-mode context makes the call fail (surfaced as a `status: unknown`
+  remediation result, not a hard error). `--stripe-account` scopes it to
+  a Connect connected account.
 - The doctor_rules endpoints aren't publicly shipped yet, so
   `judge.FetchRule` pins `Stripe-Version: 2026-10-12-16.internal` on
   that call only — remove once the API is GA.
