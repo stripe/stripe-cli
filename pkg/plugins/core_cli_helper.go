@@ -22,10 +22,14 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/plugins/rendering"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 // CoreCLIHelper is the interface that's implemented by the host and called by the plugin.
 type CoreCLIHelper interface {
+	// DetectAIAgent returns the agent name detected from the host environment, or
+	// an empty string when none is detected. Output flags do not affect detection.
+	DetectAIAgent(ctx context.Context) (string, error)
 	Echo(input string) (string, error)
 	SendAnalytics(eventName string, eventValue string) error
 	KeychainGetPassword(key string) (string, bool, error)
@@ -104,6 +108,14 @@ func NewCoreCLIHelperClient(client proto.CoreCLIHelperClient) *CoreCLIHelperClie
 			grpc.MaxCallRecvMsgSize(maxHelperMessageSize),
 		},
 	}
+}
+
+func (c *CoreCLIHelperClient) DetectAIAgent(ctx context.Context) (string, error) {
+	resp, err := c.client.DetectAIAgent(ctx, &proto.DetectAIAgentRequest{})
+	if err != nil {
+		return "", err
+	}
+	return resp.Agent, nil
 }
 
 func (c *CoreCLIHelperClient) Echo(input string) (string, error) {
@@ -247,6 +259,14 @@ func (c *CoreCLIHelperClient) Prompt(req *proto.PromptRequest) (*proto.PromptRes
 type CoreCLIHelperServer struct {
 	proto.CoreCLIHelperServer
 	Impl CoreCLIHelper
+}
+
+func (s *CoreCLIHelperServer) DetectAIAgent(ctx context.Context, _ *proto.DetectAIAgentRequest) (*proto.DetectAIAgentResponse, error) {
+	agent, err := s.Impl.DetectAIAgent(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.DetectAIAgentResponse{Agent: agent}, nil
 }
 
 func (s *CoreCLIHelperServer) Echo(ctx context.Context, req *proto.EchoRequest) (*proto.EchoResponse, error) {
@@ -544,6 +564,11 @@ func NewCoreCLIHelperWithWriters(ctx context.Context, cfg config.IConfig, fs afe
 	h := NewCoreCLIHelper(ctx, cfg, fs, "", "", "").(*coreCLIHelper)
 	h.renderingEngine = rendering.NewEngineWithWriters(format, stdout, stderr)
 	return h
+}
+
+// DetectAIAgent returns the agent detected by the core CLI.
+func (h *coreCLIHelper) DetectAIAgent(_ context.Context) (string, error) {
+	return useragent.DetectAIAgent(os.Getenv), nil
 }
 
 // Echo echoes the input string.

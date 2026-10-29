@@ -67,6 +67,9 @@ message TerminalDimensions {
 }
 
 service CoreCLIHelper {
+  // Returns the core CLI's detected agent name, or an empty string when no
+  // agent is detected. Uses the host environment, independent of output flags.
+  rpc DetectAIAgent(DetectAIAgentRequest) returns (DetectAIAgentResponse);
   rpc Echo(EchoRequest) returns (EchoResponse);
   rpc SendAnalytics(SendAnalyticsRequest) returns (SendAnalyticsResponse);
   rpc KeychainGetPassword(KeychainGetPasswordRequest) returns (KeychainGetPasswordResponse);
@@ -373,4 +376,11 @@ message PromptRequest {
 
 message PromptResponse {
   string value = 1;              // "true"/"false" for CONFIRM, selected value for SELECT
+}
+
+message DetectAIAgentRequest {
+}
+
+message DetectAIAgentResponse {
+  string agent = 1;
 }

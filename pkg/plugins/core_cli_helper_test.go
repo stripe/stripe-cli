@@ -3,17 +3,97 @@ package plugins
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+func coreCLIHelperTestClient(t *testing.T, helper proto.CoreCLIHelperServer) *CoreCLIHelperClient {
+	t.Helper()
+	listener := bufconn.Listen(1024 * 1024)
+	server := grpc.NewServer()
+	proto.RegisterCoreCLIHelperServer(server, helper)
+	go func() { _ = server.Serve(listener) }()
+
+	conn, err := grpc.NewClient("passthrough:///bufnet",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return listener.DialContext(ctx)
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		conn.Close()
+		server.Stop()
+		listener.Close()
+	})
+	return NewCoreCLIHelperClient(proto.NewCoreCLIHelperClient(conn))
+}
+
+func TestDetectAIAgentOverGRPC(t *testing.T) {
+	// Isolate detection from the agent that may be running this test suite.
+	for _, variable := range []string{
+		"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLINE_ACTIVE", "CODEX_SANDBOX",
+		"CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI", "CURSOR_AGENT",
+		"GEMINI_CLI", "OPENCODE", "OPENCLAW_SHELL", "CLAUDE_CODE_ENTRYPOINT",
+		"CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+		"HERMES_AGENT", "GROK_AGENT", "GROK_SESSION_ID", "TERM_PROGRAM",
+		"KIRO_SESSION_ID", "AI_AGENT", "AGENT",
+	} {
+		t.Setenv(variable, "")
+	}
+	helper := NewCoreCLIHelper(t.Context(), nil, afero.NewMemMapFs(), "", "", "")
+	client := coreCLIHelperTestClient(t, &CoreCLIHelperServer{Impl: helper})
+
+	for _, tc := range []struct {
+		name, variable, value, want string
+	}{
+		{"codex", "CODEX_THREAD_ID", "session", "codex_cli"},
+		{"claude host", "CLAUDE_CODE_ENTRYPOINT", "sdk", "claude_code"},
+		{"ordinary terminal", "CODEX_THREAD_ID", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv(tc.variable, tc.value)
+
+			agent, err := client.DetectAIAgent(t.Context())
+
+			require.NoError(t, err)
+			require.Equal(t, tc.want, agent)
+		})
+	}
+
+	t.Run("cancelled context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		_, err := client.DetectAIAgent(ctx)
+
+		require.Equal(t, codes.Canceled, status.Code(err))
+	})
+}
+
+func TestDetectAIAgentOlderHost(t *testing.T) {
+	client := coreCLIHelperTestClient(t, &proto.UnimplementedCoreCLIHelperServer{})
+
+	agent, err := client.DetectAIAgent(t.Context())
+
+	require.Empty(t, agent)
+	require.Equal(t, codes.Unimplemented, status.Code(err))
+}
 
 func TestEcho(t *testing.T) {
 	ctx := context.Background()
