@@ -8,7 +8,7 @@ package catalog
 // Adding a migration means adding an entry to Rules — the verbs never
 // change. Code signals (expected webhook events, etc.) aren't declared
 // here: a remediation implementation that cares about them declares and
-// scans for its own — see pkg/doctor/remediation/paymentmethods for the
+// scans for its own — see pkg/doctor/remediation/dpm for the
 // dpm example — so a product team owns that decision the same way it owns
 // the rest of its remediation's logic.
 //

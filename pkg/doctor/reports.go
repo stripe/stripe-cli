@@ -11,12 +11,14 @@ import (
 // structs; --json marshals it to stdout verbatim (logs go to stderr), and the
 // text renderers in cmd.go present the same data to humans. Exit codes:
 //
-//	0  clean / verified
-//	1  findings present / verification failed
-//	2  operational error
+//	0  the report completed — check its contents (findings, verdicts,
+//	   webhook_check.verified) for what it found; a clean result and a
+//	   findings-present result both exit 0
+//	2  operational error — doctor couldn't produce a report at all
 //
-// Agents should treat these schemas plus the exit codes as the interface;
-// `stripe doctor guide` documents the step-by-step playbook.
+// Agents should treat these schemas as the interface, not the exit code,
+// for whether there's something to act on; `stripe doctor guide`
+// documents the step-by-step playbook.
 
 // ScanReport is scan-stage data (kept for internal use and tests).
 type ScanReport struct {
@@ -41,7 +43,7 @@ type ScanStats struct {
 // registered — see that package for how a topic becomes a Result.
 // There's no generic top-level code-signals field: a remediation that
 // cares about code signals (e.g. webhook handlers) declares and scans for
-// its own — see pkg/doctor/remediation/paymentmethods — and reports it
+// its own — see pkg/doctor/remediation/dpm — and reports it
 // via its own Result instead.
 type DoctorReport struct {
 	Command           string               `json:"command"`

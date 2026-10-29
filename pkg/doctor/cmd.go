@@ -13,7 +13,11 @@ package doctor
 // by each finding's verdict.
 //
 // Every command supports --json (pure JSON on stdout, logs on stderr) and the
-// exit-code contract: 0 clean/verified, 1 findings/not-verified, 2 error.
+// exit-code contract: 0 once the report completes, whatever it found —
+// findings present or verification unverified are legitimate outcomes
+// doctor reports, not failures of doctor itself; non-zero is reserved
+// for doctor failing to produce a report at all (bad arguments, a scan
+// error, a webhook-check operational failure — see fail/exitWith).
 
 import (
 	"encoding/json"
@@ -33,7 +37,7 @@ import (
 	// teams' topics get the same one-line blank import once their
 	// package exists — see pkg/doctor/remediation's package doc for the
 	// full three-step guide.
-	_ "github.com/stripe/stripe-cli/pkg/doctor/remediation/paymentmethods"
+	_ "github.com/stripe/stripe-cli/pkg/doctor/remediation/dpm"
 	"github.com/stripe/stripe-cli/pkg/doctor/scan"
 	"github.com/stripe/stripe-cli/pkg/doctor/webhookcheck"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
@@ -186,7 +190,6 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 				}
 			}
 
-			webhookCheckFailed := false
 			if verifyWebhooks {
 				events, triggerEvent, ok := webhookCheckEvents(rule.RemediationTopic)
 				if !ok {
@@ -202,7 +205,6 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 					fail(err)
 				}
 				rep.WebhookCheck = checkResult
-				webhookCheckFailed = !checkResult.Verified
 			}
 
 			if flagJSON {
@@ -216,9 +218,6 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 				}
 			} else {
 				renderDoctor(rep)
-			}
-			if len(rep.Findings) > 0 || webhookCheckFailed {
-				exitWith(1)
 			}
 			return nil
 		},

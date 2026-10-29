@@ -33,16 +33,18 @@ topic: dpm (payment_method_types removal readiness). Other migrations
 previously lived here as detect-only "advise" topics; they were removed to
 keep this tool to one steel thread and may return later.
 Every command supports --json (single JSON object on stdout; logs on
-stderr). Exit codes: 0 clean/verified, 1 findings-present/not-verified,
-2 operational error.
+stderr). Exit codes: 0 once the report completes — check its contents,
+not the exit code, for what it found (findings present or a webhook
+check that didn't verify are legitimate outcomes, not failures); 2
+operational error, meaning doctor couldn't produce a report at all.
 
 ## 1. Diagnose
     stripe doctor dpm <dir> --json
 .message/.action/.docs are the migration rule's own top-level fields,
 straight from the doctor_rules API — read these first, before the
 per-finding verdicts, for the overall what/why/where-to-read-more.
-Exit 0 → nothing to migrate; stop. Exit 1 → .findings[] each with
-file/line/col, via (resolution mechanism), value, and verdict_class:
+An empty .findings means nothing to migrate; stop. Otherwise .findings[]
+each has file/line/col, via (resolution mechanism), value, and verdict_class:
   CANDIDATE  safe to remove payment_method_types by hand (verify frontend
              is Payment Element first)
   SKIP       deliberate restriction — do not remove
@@ -71,7 +73,8 @@ whatever signals it needs on its own.
 ## 2. Make the code change, then confirm it
     stripe doctor dpm <dir> --json
 After editing per the verdict messages above, re-run the same command.
-Exit 0 proves payment_method_types is gone (or safely replaced).
+An empty .findings proves payment_method_types is gone (or safely
+replaced) — the exit code stays 0 either way, so check the field.
 
 ## 3. Confirm runtime behavior (recommended)
     stripe doctor dpm --verify-webhooks --json

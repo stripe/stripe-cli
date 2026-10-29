@@ -77,20 +77,17 @@ func renderActionPlan(r *DoctorReport, findings []remediation.Finding) {
 		fmt.Println()
 	}
 
-	rows := [][2]string{
-		{"Code", codeSummaryPhrase(r)},
-		{summaryLabel(r), dashboardHeadline(r)},
-		{"Webhooks", webhookSummary(r)},
-	}
-	width := 0
-	for _, row := range rows {
-		if len(row[0]) > width {
-			width = len(row[0])
+	if rows := r.RemediationResult.Summary; len(rows) > 0 {
+		width := 0
+		for _, row := range rows {
+			if len(row.Category) > width {
+				width = len(row.Category)
+			}
 		}
-	}
-	width += 3
-	for _, row := range rows {
-		fmt.Printf("  %-*s%s\n", width, row[0], row[1])
+		width += 3
+		for _, row := range rows {
+			fmt.Printf("  %-*s%s\n", width, row.Category, row.Value)
+		}
 	}
 
 	for i, f := range findings {
@@ -158,77 +155,6 @@ func wrapText(s string, width int) []string {
 		}
 	}
 	return lines
-}
-
-// summaryLabel is the action-plan table's second row label — the
-// declared remediation's own SummaryLabel, falling back to "Dashboard"
-// when unset.
-func summaryLabel(r *DoctorReport) string {
-	if r.RemediationResult != nil && r.RemediationResult.SummaryLabel != "" {
-		return r.RemediationResult.SummaryLabel
-	}
-	return "Dashboard"
-}
-
-// codeSummaryPhrase is the action-plan table's "Code" row: the declared
-// remediation's own CodeSummary when set, else a generic phrase — how
-// many scanned locations need attention, and — when every one of them
-// shares the same verdict class — what kind of attention.
-func codeSummaryPhrase(r *DoctorReport) string {
-	if r.RemediationResult != nil && r.RemediationResult.CodeSummary != "" {
-		return r.RemediationResult.CodeSummary
-	}
-	if len(r.Findings) == 0 {
-		return fmt.Sprintf("no findings — %d files scanned, %d parsed", r.Stats.FilesScanned, r.Stats.FilesParsed)
-	}
-	if len(r.Summary) == 1 {
-		for class, n := range r.Summary {
-			noun := "locations"
-			if n == 1 {
-				noun = "location"
-			}
-			return fmt.Sprintf("%d %s %s", n, noun, classAction(class))
-		}
-	}
-	var parts []string
-	for class, n := range r.Summary {
-		parts = append(parts, fmt.Sprintf("%d %s", n, classLabel(class)))
-	}
-	sort.Strings(parts)
-	return strings.Join(parts, ", ")
-}
-
-// classAction is classLabel's sibling for the action-plan table's "Code"
-// row — a short clause read as "N locations <classAction>", rather than
-// a standalone noun phrase.
-func classAction(class string) string {
-	switch class {
-	case "CANDIDATE":
-		return "safe to remove"
-	case "SKIP":
-		return "can be skipped"
-	case "REVIEW":
-		return "need review"
-	case "CAUTION":
-		return "need an API-version-specific change"
-	case "ADVISE":
-		return "flagged for advisory review"
-	default:
-		return "need " + strings.ToLower(class)
-	}
-}
-
-// dashboardHeadline is the action-plan table's "Dashboard" row: the
-// declared remediation's own short Headline, falling back to its bare
-// Status when unset.
-func dashboardHeadline(r *DoctorReport) string {
-	if r.RemediationResult == nil {
-		return "no Dashboard-facing remediation declared"
-	}
-	if r.RemediationResult.Headline != "" {
-		return r.RemediationResult.Headline
-	}
-	return statusLabel(r.RemediationResult.Status)
 }
 
 // ---------- section 1: what this is ----------
@@ -461,7 +387,7 @@ func renderDashboardActions(r *DoctorReport) {
 // renderWebhookHandlers is the webhook-changes bucket, in detail: the same
 // "Expected webhook handlers in your code" breakdown doctor's engine used
 // to render generically — now sourced from whichever remediation's
-// Evidence carries it (today: webhook_events, from the paymentmethods
+// Evidence carries it (today: webhook_events, from the dpm
 // remediation's own codesignals scan).
 func renderWebhookHandlers(r *DoctorReport) {
 	events := webhookEvents(r)

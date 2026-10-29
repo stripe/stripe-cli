@@ -1,4 +1,4 @@
-package paymentmethods
+package dpm
 
 import (
 	"testing"

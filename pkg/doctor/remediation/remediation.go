@@ -8,9 +8,9 @@
 //
 //  1. Write a type satisfying Implementation for your topic.
 //  2. Register it from an init() in your own subpackage — see
-//     remediation/paymentmethods for a worked example implementing "dpm".
+//     remediation/dpm for a worked example implementing "dpm".
 //  3. Blank-import your subpackage from pkg/doctor/cmd.go (next to the
-//     paymentmethods import) so your init() actually runs.
+//     dpm import) so your init() actually runs.
 //
 // See README.md in this directory for the full integration guide and a
 // function-by-function reference.
@@ -36,9 +36,9 @@
 //
 //   - Result.Status/Message are the only fields a minimal Implementation
 //     needs to set.
-//   - Result.Title/Headline/SummaryLabel/CodeSummary and Result.Findings
-//     drive doctor's richer text action-plan renderer; a topic that sets
-//     none of them still renders fine via the older generic layout.
+//   - Result.Title/Summary/Findings drive doctor's richer text
+//     action-plan renderer; a topic that sets none of them still
+//     renders fine via the older generic layout.
 //   - Result.FindingVerdicts lets you override judge's generic REVIEW
 //     verdict per scanned finding (see FindingKey).
 //   - Result.Report, when set, replaces doctor's entire --json body with
@@ -91,23 +91,17 @@ const (
 //
 // Title and Findings drive doctor's human-facing action-plan renderer:
 // Title names the migration in plain English (falling back to the bare
-// topic string if empty); Headline is a short clause for the one-line
-// summary row named by SummaryLabel (falling back to "Dashboard" when
-// SummaryLabel is empty); CodeSummary overrides the summary table's
-// "Code" row value entirely, when the generic finding-count-by-class
-// phrase doctor would otherwise compute doesn't fit this topic's own
-// framing; Findings is the ordered, numbered list of action items this
-// remediation wants a human to work through — doctor's renderer treats
-// the words inside each Finding opaquely (see Finding). A topic that
-// sets neither Title nor Findings still renders fine — doctor falls
-// back to its older generic summary/details layout.
+// topic string if empty); Summary is the short summary table shown up
+// front (see SummaryRow); Findings is the ordered, numbered list of
+// action items this remediation wants a human to work through —
+// doctor's renderer treats the words inside each Finding opaquely (see
+// Finding). A topic that sets neither Title nor Findings still renders
+// fine — doctor falls back to its older generic summary/details layout.
 type Result struct {
 	Topic           string            `json:"topic"`
 	Status          Status            `json:"status"`
 	Title           string            `json:"title,omitempty"`
-	Headline        string            `json:"headline,omitempty"`
-	SummaryLabel    string            `json:"summary_label,omitempty"`
-	CodeSummary     string            `json:"code_summary,omitempty"`
+	Summary         []SummaryRow      `json:"summary,omitempty"`
 	Message         string            `json:"message"`
 	Evidence        map[string]any    `json:"evidence,omitempty"`
 	FindingVerdicts map[string]string `json:"finding_verdicts,omitempty"`
@@ -126,6 +120,18 @@ type Result struct {
 	// than hand-authoring a second, parallel description of the same
 	// facts — see FindingsJSON's doc comment.
 	Report any `json:"-"`
+}
+
+// SummaryRow is one line in doctor's action-plan summary table: a short
+// category label and its value (e.g. {"Code", "2 locations need
+// review"}). Freeform by design — a remediation defines as many rows,
+// with whatever categories fit its own shape, as it needs; doctor's
+// renderer treats both strings opaquely, aligning them into columns
+// without hardcoding what the categories should be. A nil/empty
+// Result.Summary means no table is shown.
+type SummaryRow struct {
+	Category string `json:"category"`
+	Value    string `json:"value"`
 }
 
 // Finding is one numbered, human-facing action item a remediation
@@ -328,7 +334,7 @@ var registry = map[string]Implementation{}
 
 // Register makes impl available under topic — the same string a rule's
 // "doctorTopic" field names (catalog.Rule.RemediationTopic). Call this
-// from an init() in your own package (see remediation/paymentmethods for
+// from an init() in your own package (see remediation/dpm for
 // a worked example); it panics if topic is already registered, since two
 // implementations silently fighting over one topic is always a bug, not
 // a runtime decision.

@@ -22,7 +22,7 @@ type ParamMatch struct {
 // for what a remediation should actually do (e.g. a Dashboard deep link
 // to surface, or which param to touch): that's defined directly in the
 // RemediationTopic's own Go implementation instead — see
-// pkg/doctor/remediation/paymentmethods.
+// pkg/doctor/remediation/dpm.
 type Rule struct {
 	ID           string
 	Severity     string

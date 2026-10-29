@@ -1,10 +1,10 @@
 // Package codesignals scans a repo for caller-declared code signals:
 // expected webhook events. These are honest substring checks, reported as
-// signals — never verdicts. Callers (today: the paymentmethods
-// remediation) declare their own PackSignals rather than doctor's engine
-// wiring one in generically — see pkg/doctor/remediation/paymentmethods
-// for the dpm example. This package only depends on scan, to know which
-// file extensions the AST engine (and so this package) can read.
+// signals — never verdicts. Callers (today: the dpm remediation)
+// declare their own PackSignals rather than doctor's engine wiring one
+// in generically — see pkg/doctor/remediation/dpm for the example. This
+// package only depends on scan, to know which file extensions the AST
+// engine (and so this package) can read.
 //
 // Frontend tokens (legacy client-side signals like Card Element usage) and
 // package-version-floor checks aren't supported yet.

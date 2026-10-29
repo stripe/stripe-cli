@@ -8,7 +8,7 @@ renders, or what evidence it needs. Everything else is yours to write in
 your own subpackage here, under `pkg/doctor/remediation/<your-package>`.
 
 This doc is the integration guide and function reference. For a full
-worked example, read `pkg/doctor/remediation/paymentmethods` (implements
+worked example, read `pkg/doctor/remediation/dpm` (implements
 the `"dpm"` topic) alongside this doc. For two small, runnable examples,
 see `example_test.go` in this package (`go test -run Example -v`) — they
 compile and their output is checked by `go test`, so they can't drift out
@@ -34,7 +34,7 @@ step that runs against the findings the rule produced.
    implementations silently fighting over one topic is always a bug, not
    a runtime decision.
 3. **Blank-import your subpackage from `pkg/doctor/cmd.go`**, next to the
-   existing `paymentmethods` import, so your `init()` actually runs:
+   existing `dpm` import, so your `init()` actually runs:
    ```go
    _ "github.com/stripe/stripe-cli/pkg/doctor/remediation/my_topic"
    ```
@@ -82,9 +82,7 @@ topic actually has something to say about.
 | `Status`          | `Status`                 | yes       | Top-line verdict — see [Status](#status).                                                                  |
 | `Message`         | `string`                 | yes       | One sentence naming why. Shown up front, and used as the JSON `"message"`.                                |
 | `Title`           | `string`                 | no        | Plain-English name for the migration, for the text action-plan renderer. Falls back to the bare topic string. |
-| `Headline`        | `string`                 | no        | Short clause for the one-line summary row named by `SummaryLabel`. Falls back to `Status`.                  |
-| `SummaryLabel`    | `string`                 | no        | Overrides the summary table's second row label. Falls back to `"Dashboard"`.                               |
-| `CodeSummary`     | `string`                 | no        | Overrides the summary table's "Code" row value entirely.                                                   |
+| `Summary`         | `[]SummaryRow`           | no        | The short summary table shown up front — see [`SummaryRow`](#summaryrow).                                 |
 | `Evidence`        | `map[string]any`         | no        | Free-form supporting data. doctor doesn't interpret it — just passes it through to `--json` for debugging. |
 | `FindingVerdicts` | `map[string]string`      | no        | Per-finding verdict overrides — see [Overriding per-finding verdicts](#overriding-per-finding-verdicts).   |
 | `Notes`           | `[]string`               | no        | Standing action items independent of `Status` (e.g. "go check this Dashboard setting").                    |
@@ -110,6 +108,24 @@ const (
 `JSONStatus(s Status) string` maps these to the vocabulary used by
 `FindingsJSON` and any custom `Report`: `ready`, `action_required`,
 `blocked`, `review_required`, `unknown`.
+
+### `SummaryRow`
+
+```go
+type SummaryRow struct {
+	Category string
+	Value    string
+}
+```
+
+One line in the summary table shown at the top of the text action-plan
+renderer — doctor doesn't hardcode what the categories should be, or how
+many rows there are; it just aligns `Category` into a column and prints
+`Value` next to it. dpm, for example, builds three rows itself
+(`"Code"`, `"Dashboard"`, `"Webhooks"`), computing each `Value` from its
+own evidence — but another topic could report two rows, five rows, or
+rows with entirely different categories, however its own remediation is
+shaped. A `nil`/empty `Result.Summary` means no table is shown at all.
 
 ### Overriding per-finding verdicts
 
@@ -168,7 +184,7 @@ type Finding struct {
 | `Heading`                  | The numbered section's title.                         | *(no equivalent — `ID` covers it)*                                                |
 | `Body`                     | Each entry is a paragraph, word-wrapped.              | `Body[0]` → `"implication"`, `Body[1]` → `"recommended_action.description"` (fallback — see below) |
 | `ID`                       | *(unused)*                                            | The finding's `"id"`. **A `Finding` with `ID == ""` is skipped by `FindingsJSON`.** |
-| `Status`                   | *(unused — table row uses `Result.Headline` instead)* | The finding's own `"status"`, mapped through `JSONStatus`. Falls back to the `Result`'s `Status` when empty. |
+| `Status`                   | *(unused by the text renderer)*                       | The finding's own `"status"`, mapped through `JSONStatus`. Falls back to the `Result`'s `Status` when empty. |
 | `Implication`              | *(unused)*                                            | Overrides the `Body[0]` fallback, when the text and JSON prose should say different things. |
 | `ActionDescription`        | *(unused)*                                            | Overrides the `Body[1]` fallback, same reasoning.                                 |
 | `Items`                    | Each is a sub-heading + body line.                    | Feeds the default evidence envelope `{"items": [...]}` via each `Item.Fields` — ignored if `Evidence` is set. |
@@ -183,7 +199,7 @@ all) without touching JSON. Symmetrically, **a `Finding` with `ID == ""`
 is skipped by `FindingsJSON`** — for prose that's tied to `Result.Status`
 rather than one independently reportable fact (dpm's own "verify routing"
 reminder is like this: see `dashboardFinding` in
-`paymentmethods/dynamic.go`).
+`dpm/main.go`).
 
 A body paragraph containing a literal `"\n"` is split into independently
 word-wrapped segments with no blank line between them — useful for a
@@ -259,7 +275,7 @@ doctor's generic schema (hence `json:"-"` — it isn't nested inside
 `status`/`summary` fields, and so on — rather than doctor's generic
 `topic`/`message`/`findings`/`summary`/`stats` shape. A `Result` that
 leaves `Report` `nil` is rendered via the generic schema as before. See
-`pkg/doctor/remediation/paymentmethods/jsonreport.go` for a complete
+`pkg/doctor/remediation/dpm/jsonreport.go` for a complete
 worked example (schema key `"dynamic_payment_methods"`).
 
 ### `WebhookChecker` (optional)
@@ -406,7 +422,7 @@ via `FindingsJSON`) for runnable versions of both.
 
 ## Testing
 
-Model your tests on `paymentmethods/dynamic_test.go` — it tests the
+Model your tests on `dpm/dynamic_test.go` — it tests the
 building blocks (version/config-fact derivation, finding classification,
 `assess`) directly as plain functions, rather than through the
 `Implementation` interface, so they don't need real Stripe credentials.

@@ -30,7 +30,7 @@ where listed.
    local snapshot in that same API shape, used instead of
    `judge.FetchRule`'s live fetch for now, so edits to `dpm.json` are
    picked up immediately. No code-signals concept lives here anymore —
-   see `remediation/paymentmethods` below. Depends on nothing else in
+   see `remediation/dpm` below. Depends on nothing else in
    this module.
 2. **`scan`** — the AST-based matching engine: cgo-free tree-sitter over 7
    languages (Ruby, Python, PHP, JS/TS, Go, Java, C#). Resolution follows
@@ -54,7 +54,7 @@ where listed.
    by intent (CANDIDATE/SKIP/REVIEW, or ADVISE for a detect-only rule): no
    live account facts and no remediation-level guidance are part of this
    judgment anymore — that's entirely a remediation's own concern now
-   (see `remediation/paymentmethods`). Also owns `FetchRule` (the live
+   (see `remediation/dpm`). Also owns `FetchRule` (the live
    rule fetch, via `stripeapi`), not currently called by `cmd.go` — see
    `catalog.DpmRule` above. Depends on `catalog` for the `Rule`/`Finding`
    shapes.
@@ -66,18 +66,21 @@ where listed.
    `Kind`/`Options` data on the rule describing what to do — a topic
    defines all of that directly in its own Go code. See the package doc
    comment for the three-step guide to plugging one in, and
-   **`remediation/paymentmethods`** for dpm's worked example, which
-   hardcodes its own Dashboard-link guidance, webhook signals, and
-   offering policy, and reassembles recent API versions, the Dashboard's
-   payment-method configuration, and the scanned findings into one
-   readiness `Result`.
+   **`remediation/dpm`** for dpm's worked example, which
+   hardcodes its own Dashboard-link guidance and webhook signals, and
+   reassembles recent API versions, the Dashboard's payment-method
+   configuration, and the scanned findings into one readiness `Result`.
 7. **`webhookcheck`** — the live webhook round-trip check behind
    `doctor --verify-webhooks`. Fully standalone.
 
 ## Contracts
 
 - `--json`: one JSON object on stdout, logs on stderr (`reports.go` is the
-  schema). Exit codes: 0 clean/verified, 1 findings/not-verified, 2 error.
+  schema). Exit codes: 0 once the report completes — findings present or
+  an unverified webhook check are reported outcomes, not failures, so
+  check the report's contents rather than the exit code for those; 2
+  means doctor couldn't produce a report at all (bad arguments, a scan
+  error, a webhook-check operational failure).
 - `remediation_result` is what `cmd.go`'s `runRemediation` actually
   computed by looking up the rule's `doctorTopic` in the `remediation`
   registry — `unknown` status if the topic has no registered
@@ -109,5 +112,5 @@ wants them declares and scans for its own, below.
 See `pkg/doctor/remediation/README.md` for the full integration guide and
 function reference; short version: implement `remediation.Implementation`,
 `Register` it (under your rule's `doctorTopic` string) from an `init()` in
-your own subpackage (model it on `remediation/paymentmethods`), and
+your own subpackage (model it on `remediation/dpm`), and
 blank-import that subpackage from `cmd.go`.

@@ -24,7 +24,7 @@ package catalog
 // There is no "fixes" field here: what a remediation actually does (which
 // params to touch, what guidance to surface) is no longer data on the
 // rule at all — it's defined directly in that topic's own Go
-// implementation. See pkg/doctor/remediation/paymentmethods for dpm's
+// implementation. See pkg/doctor/remediation/dpm for dpm's
 // hardcoded equivalent. Action is therefore always "remove": every topic
 // doctor knows today is a remove-this-parameter migration, judged per
 // finding by intent alone (see the judge package) — a future detect-only
@@ -39,7 +39,7 @@ package catalog
 //
 // The API has no "signals" field (webhook events, etc.) and this package
 // doesn't model one: a remediation that cares about code signals declares
-// and scans for its own — see pkg/doctor/remediation/paymentmethods.
+// and scans for its own — see pkg/doctor/remediation/dpm.
 
 import (
 	"encoding/json"
