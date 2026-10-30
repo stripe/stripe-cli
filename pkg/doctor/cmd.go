@@ -23,9 +23,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/judge"
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/scan"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
-
-	// Registers the "dpm" remediation via init().
-	_ "github.com/stripe/stripe-cli/pkg/doctor/remediation/dpm"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 

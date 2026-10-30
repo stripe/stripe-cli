@@ -44,9 +44,9 @@ var dashboardNotes = []string{
 const dashboardReviewLead = "Enable or disable the payment methods you want in the Dashboard:"
 const dashboardConfigURL = "https://dashboard.stripe.com/settings/payment_methods?types[0]=direct&types[1]=subaccount"
 
-func init() {
-	remediation.Register(Topic, implementation{})
-}
+// New builds the "dpm" topic's remediation.Implementation. Add it to the
+// remediation.Set in pkg/cmd/root.go under Topic.
+func New() remediation.Implementation { return implementation{} }
 
 type implementation struct{}
 
