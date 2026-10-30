@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -112,6 +113,7 @@ func TestRun_MissingCredentialsDiscoveryFailures(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/ajax/stripecli/plugins_metadata", r.URL.Path)
 		w.WriteHeader(http.StatusNotFound)
+		_, _ = io.WriteString(w, `{"error":{"message":"discovery response details"}}`)
 	}))
 	defer server.Close()
 	failingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -173,9 +175,19 @@ func TestRun_MissingCredentialsDiscoveryFailures(t *testing.T) {
 				category, ok := errorcategory.Get(err)
 				require.True(t, ok)
 				require.Equal(t, errorcategory.Auth, category)
-				require.ErrorContains(t, err, "stripe login")
-				require.ErrorContains(t, err, "stripe whoami")
-				require.ErrorContains(t, err, "retry")
+				require.EqualError(t, err, "You're not logged in.\nRun 'stripe login', check the account with 'stripe whoami', then retry 'stripe plugin install example'.")
+				var notFound *plugins.ErrPluginNotFound
+				require.ErrorAs(t, err, &notFound)
+				require.Equal(t, "example", notFound.Name)
+				var requestErr requests.RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
+				require.Contains(t, requestErr.Error(), "discovery response details")
+				for _, detail := range []string{validators.ErrAPIKeyNotConfigured.Error(), "404", "body=", "discovery response details"} {
+					require.NotContains(t, err.Error(), detail)
+				}
+				require.Empty(t, p.output())
+				require.Empty(t, p.errOutput())
 				return
 			}
 			require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
@@ -350,9 +362,21 @@ func TestRun_PluginNotFound_CredentialsAvailable(t *testing.T) {
 }
 
 func TestRun_MissingCredentials_OffersLoginDespiteSavedAccount(t *testing.T) {
+	var debugOutput bytes.Buffer
+	logger := log.StandardLogger()
+	oldOutput, oldLevel := logger.Out, logger.GetLevel()
+	logger.SetOutput(&debugOutput)
+	logger.SetLevel(log.DebugLevel)
+	t.Cleanup(func() {
+		logger.SetOutput(oldOutput)
+		logger.SetLevel(oldLevel)
+	})
+
 	p := newTestCmd("docs")
+	cause := fmt.Errorf("anonymous lookup failed: %w: %w", validators.ErrAPIKeyNotConfigured,
+		requests.RequestError{StatusCode: http.StatusNotFound, Body: "discovery response details"})
 	p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) {
-		return nil, fmt.Errorf("anonymous lookup failed: %w", validators.ErrAPIKeyNotConfigured)
+		return nil, cause
 	}
 	loginCalled := false
 	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
@@ -361,9 +385,14 @@ func TestRun_MissingCredentials_OffersLoginDespiteSavedAccount(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, loginCalled)
-	assert.Contains(t, p.output(), "stripe login")
-	assert.Contains(t, p.output(), "stripe whoami")
-	assert.Contains(t, p.output(), "retry")
+	assert.Equal(t, "You're not logged in.\nRun 'stripe login', check the account with 'stripe whoami', then retry 'stripe plugin install docs'.\n\n"+
+		"Press Enter to run 'stripe login', or type anything to cancel: "+
+		"Run 'stripe whoami' to verify the active account before retrying your command.\n", p.output())
+	for _, detail := range []string{validators.ErrAPIKeyNotConfigured.Error(), "404", "body=", "discovery response details"} {
+		assert.NotContains(t, p.output(), detail)
+		assert.Contains(t, debugOutput.String(), detail)
+	}
+	assert.Empty(t, p.errOutput())
 }
 
 func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {

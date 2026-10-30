@@ -7,6 +7,8 @@ import (
 	"io"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
@@ -16,15 +18,25 @@ func CanPrompt(getEnv func(string) string, stdinIsTerminal bool) bool {
 	return stdinIsTerminal && useragent.DetectAIAgent(getEnv) == ""
 }
 
+type loginRequiredError struct {
+	message string
+	cause   error
+}
+
+func (e loginRequiredError) Error() string { return e.message }
+
+func (e loginRequiredError) Unwrap() error { return e.cause }
+
 // Offer only starts login after an interactive human explicitly accepts it.
 // The caller controls whether to retry discovery after a successful login.
 func Offer(name string, cause error, stdin io.Reader, stdout io.Writer, interactive bool, login func() error) error {
-	guidance := fmt.Sprintf("Run 'stripe login', then 'stripe whoami' to verify the active account, then retry 'stripe plugin install %s'.", name)
+	message := fmt.Sprintf("You're not logged in.\nRun 'stripe login', check the account with 'stripe whoami', then retry 'stripe plugin install %s'.", name)
+	log.WithField("prefix", "pluginlogin.Offer").Debugf("plugin discovery requires login: %v", cause)
 	if !interactive {
-		return errorcategory.Errorf(errorcategory.Auth, "%w. %s", cause, guidance)
+		return errorcategory.With(loginRequiredError{message: message, cause: cause}, errorcategory.Auth)
 	}
 
-	fmt.Fprintf(stdout, "%v. %s\n\n", cause, guidance)
+	fmt.Fprintf(stdout, "%s\n\n", message)
 	fmt.Fprint(stdout, "Press Enter to run 'stripe login', or type anything to cancel: ")
 	input, err := bufio.NewReader(stdin).ReadString('\n')
 	if err != nil || strings.TrimSpace(input) != "" {

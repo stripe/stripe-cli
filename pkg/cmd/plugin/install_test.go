@@ -241,9 +241,17 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 			category, ok := errorcategory.Get(err)
 			require.True(t, ok)
 			require.Equal(t, errorcategory.Auth, category)
-			require.ErrorContains(t, err, "stripe login")
-			require.ErrorContains(t, err, "stripe whoami")
-			require.ErrorContains(t, err, "retry")
+			require.EqualError(t, err, "You're not logged in.\nRun 'stripe login', check the account with 'stripe whoami', then retry 'stripe plugin install nonexistent-plugin'.")
+			var notFound *plugins.ErrPluginNotFound
+			require.ErrorAs(t, err, &notFound)
+			require.Equal(t, "nonexistent-plugin", notFound.Name)
+			var requestErr requests.RequestError
+			require.ErrorAs(t, err, &requestErr)
+			require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
+			require.Contains(t, requestErr.Error(), "not found")
+			for _, detail := range []string{validators.ErrAPIKeyNotConfigured.Error(), "404", "body=", `{"error"`} {
+				require.NotContains(t, err.Error(), detail)
+			}
 		})
 	}
 }
