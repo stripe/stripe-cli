@@ -100,8 +100,8 @@ func TestCoreCLIHelperRendersToConfiguredWriters(t *testing.T) {
 		}}}},
 	}))
 
-	require.Equal(t, "starting\n✔ built files\n  app_id: app_123\n", stdout.String())
-	require.Empty(t, stderr.String())
+	require.Equal(t, "starting\n  app_id: app_123\n", stdout.String())
+	require.Equal(t, "✔ built files\n", stderr.String())
 }
 
 // Output is written by the host, so nothing should reach the process's own
