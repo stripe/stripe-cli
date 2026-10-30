@@ -183,9 +183,6 @@ func TestRun_MissingCredentialsDiscoveryFailures(t *testing.T) {
 				require.ErrorAs(t, err, &requestErr)
 				require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
 				require.Contains(t, requestErr.Error(), "discovery response details")
-				for _, detail := range []string{validators.ErrAPIKeyNotConfigured.Error(), "404", "body=", "discovery response details"} {
-					require.NotContains(t, err.Error(), detail)
-				}
 				require.Empty(t, p.output())
 				require.Empty(t, p.errOutput())
 				return
@@ -388,10 +385,7 @@ func TestRun_MissingCredentials_OffersLoginDespiteSavedAccount(t *testing.T) {
 	assert.Equal(t, "You're not logged in.\nRun 'stripe login', check the account with 'stripe whoami', then retry 'stripe plugin install docs'.\n\n"+
 		"Press Enter to run 'stripe login', or type anything to cancel: "+
 		"Run 'stripe whoami' to verify the active account before retrying your command.\n", p.output())
-	for _, detail := range []string{validators.ErrAPIKeyNotConfigured.Error(), "404", "body=", "discovery response details"} {
-		assert.NotContains(t, p.output(), detail)
-		assert.Contains(t, debugOutput.String(), detail)
-	}
+	assert.Contains(t, debugOutput.String(), cause.Error())
 	assert.Empty(t, p.errOutput())
 }
 

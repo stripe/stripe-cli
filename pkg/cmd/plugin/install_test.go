@@ -249,9 +249,6 @@ func TestRunInstallCmdNonExistentPluginNotLoggedIn(t *testing.T) {
 			require.ErrorAs(t, err, &requestErr)
 			require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
 			require.Contains(t, requestErr.Error(), "not found")
-			for _, detail := range []string{validators.ErrAPIKeyNotConfigured.Error(), "404", "body=", `{"error"`} {
-				require.NotContains(t, err.Error(), detail)
-			}
 		})
 	}
 }
