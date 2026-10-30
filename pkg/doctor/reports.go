@@ -3,7 +3,6 @@ package doctor
 import (
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/judge"
-	"github.com/stripe/stripe-cli/pkg/doctor/internal/webhookcheck"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 )
 
@@ -24,22 +23,20 @@ type ScanStats struct {
 	Skipped      int `json:"skipped_by_prefilter"`
 }
 
-// DoctorReport is the output of `stripe doctor`: scan + verdicts,
-// optionally with live behavioral checks. Message/Action/Docs are the
-// migration rule's own top-level fields. DoctorTopic mirrors
-// Rule.RemediationTopic, the lookup key into pkg/doctor/remediation's
-// registry; RemediationResult is what running that topic's
-// Implementation produced, if one is registered.
+// DoctorReport is the output of `stripe doctor`: scan + verdicts.
+// Message/Action/Docs are the migration rule's own top-level fields.
+// DoctorTopic mirrors Rule.RemediationTopic, the lookup key into
+// pkg/doctor/remediation's registry; RemediationResult is what running
+// that topic's Implementation produced, if one is registered.
 type DoctorReport struct {
-	Command           string               `json:"command"`
-	Topic             string               `json:"topic"`
-	Message           string               `json:"message,omitempty"`
-	Action            string               `json:"action,omitempty"`
-	Docs              string               `json:"docs,omitempty"`
-	DoctorTopic       string               `json:"doctorTopic,omitempty"`
-	RemediationResult *remediation.Result  `json:"remediation_result,omitempty"`
-	Findings          []judge.Finding      `json:"findings"`
-	Summary           map[string]int       `json:"summary"` // verdict class -> count
-	Stats             ScanStats            `json:"stats"`
-	WebhookCheck      *webhookcheck.Report `json:"webhook_check,omitempty"`
+	Command           string              `json:"command"`
+	Topic             string              `json:"topic"`
+	Message           string              `json:"message,omitempty"`
+	Action            string              `json:"action,omitempty"`
+	Docs              string              `json:"docs,omitempty"`
+	DoctorTopic       string              `json:"doctorTopic,omitempty"`
+	RemediationResult *remediation.Result `json:"remediation_result,omitempty"`
+	Findings          []judge.Finding     `json:"findings"`
+	Summary           map[string]int      `json:"summary"` // verdict class -> count
+	Stats             ScanStats           `json:"stats"`
 }

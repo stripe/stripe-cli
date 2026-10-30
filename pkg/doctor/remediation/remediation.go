@@ -216,14 +216,6 @@ type Implementation interface {
 	Run(ctx Context) (Result, error)
 }
 
-// WebhookChecker is an optional interface for `doctor --verify-webhooks`'s
-// webhook round-trip check: WebhookCheckEvents names the events to
-// listen for and which one to trigger. A topic that doesn't implement
-// it makes --verify-webhooks fail clearly instead of guessing.
-type WebhookChecker interface {
-	WebhookCheckEvents() (events []string, triggerEvent string)
-}
-
 var registry = map[string]Implementation{}
 
 // Register makes impl available under topic, the same string as the

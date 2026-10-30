@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/codesignals"
-	"github.com/stripe/stripe-cli/pkg/doctor/internal/webhookcheck"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 )
 
@@ -17,10 +16,6 @@ func renderDoctor(r *DoctorReport) {
 		renderRule(r)
 		renderSummary(r)
 		renderDetails(r)
-	}
-	if r.WebhookCheck != nil {
-		fmt.Println()
-		renderWebhookCheck(r.WebhookCheck)
 	}
 }
 
@@ -343,27 +338,5 @@ func renderWebhookHandlers(r *DoctorReport) {
 		default:
 			fmt.Println(warnLine(fmt.Sprintf("%s: not found in scanned code", e.Event)))
 		}
-	}
-}
-
-func renderWebhookCheck(r *webhookcheck.Report) {
-	fmt.Println(titleStyle.Render("Live check: delayed-notification webhooks"))
-	if r.ListenReady {
-		fmt.Println(okLine("stripe listen ready (signing secret captured, not shown)"))
-	}
-	if r.Triggered != "" {
-		fmt.Println(okLine("triggered " + r.Triggered))
-	}
-	for _, e := range r.Events {
-		if e.Signature == "verified" {
-			fmt.Println(okLine(fmt.Sprintf("received %s: signature verified", e.Type)))
-		} else {
-			fmt.Println(failLine(fmt.Sprintf("received %s: signature INVALID", e.Type)))
-		}
-	}
-	if r.Verified {
-		fmt.Println(okLine(titleStyle.Render("verified: the handler round-trips end to end")))
-	} else {
-		fmt.Println(warnLine("not fully verified" + mutedStyle.Render(" — "+r.Note)))
 	}
 }

@@ -282,23 +282,6 @@ leaves `Report` `nil` is rendered via the generic schema as before. See
 `pkg/doctor/remediation/dpm/jsonreport.go` for a complete
 worked example (schema key `"dynamic_payment_methods"`).
 
-### `WebhookChecker` (optional)
-
-```go
-type WebhookChecker interface {
-	WebhookCheckEvents() (events []string, triggerEvent string)
-}
-```
-
-Implement this on the same type as your `Implementation` to support
-`doctor --verify-webhooks` — the webhook round-trip check
-(`pkg/doctor/internal/webhookcheck`). Doctor's engine has no idea which webhook
-events matter for any given topic; `WebhookCheckEvents` names the full
-set of events the round-trip check should listen for, and which one of
-those to trigger to exercise it. A topic with nothing to verify this way
-simply doesn't implement `WebhookChecker` — `doctor --verify-webhooks`
-then fails clearly rather than guessing.
-
 ## Helper packages
 
 Your `Run` almost certainly needs to fetch its own evidence. These are
@@ -361,31 +344,6 @@ type EventSignal struct {
 ```
 
 These are honest substring checks, reported as signals — never verdicts.
-
-### `pkg/doctor/internal/webhookcheck` — the `--verify-webhooks` round trip
-
-You don't call this directly — doctor's `cmd.go` calls
-`webhookcheck.Run(events, triggerEvent)` using the values your
-`WebhookChecker` returned, and attaches the result to the report's
-`webhook_check` field:
-
-```go
-type Report struct {
-	Command     string
-	ListenReady bool
-	Triggered   string
-	Events      []Event
-	Verified    bool
-	Note        string
-}
-type Event struct {
-	Type      string
-	Signature string // "verified" | "invalid"
-}
-```
-
-`Verified` becomes `true` once your `triggerEvent` itself arrives with a
-valid signature.
 
 ## Minimal example
 

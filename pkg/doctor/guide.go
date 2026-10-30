@@ -30,9 +30,9 @@ previously lived here as detect-only "advise" topics; they were removed to
 keep this tool to one steel thread and may return later.
 Every command supports --json (single JSON object on stdout; logs on
 stderr). Exit codes: 0 once the report completes — check its contents,
-not the exit code, for what it found (findings present or a webhook
-check that didn't verify are legitimate outcomes, not failures); 2
-operational error, meaning doctor couldn't produce a report at all.
+not the exit code, for what it found (findings present is a legitimate
+outcome, not a failure); 2 operational error, meaning doctor couldn't
+produce a report at all.
 
 ## 1. Diagnose
     stripe doctor dpm <dir> --json
@@ -71,11 +71,6 @@ whatever signals it needs on its own.
 After editing per the verdict messages above, re-run the same command.
 An empty .findings proves payment_method_types is gone (or safely
 replaced) — the exit code stays 0 either way, so check the field.
-
-## 3. Confirm runtime behavior (recommended)
-    stripe doctor dpm --verify-webhooks --json
-Adds .webhook_check (webhook round-trip via stripe listen/trigger); require
-.webhook_check.verified == true.
 
 ## Notes
 - The migration rule is fetched live from the doctor_rules API

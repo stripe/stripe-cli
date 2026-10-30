@@ -22,7 +22,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/catalog"
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/judge"
 	"github.com/stripe/stripe-cli/pkg/doctor/internal/scan"
-	"github.com/stripe/stripe-cli/pkg/doctor/internal/webhookcheck"
 	"github.com/stripe/stripe-cli/pkg/doctor/remediation"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
@@ -109,15 +108,13 @@ func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 // ---------- doctor ----------
 
 func newDoctorCmd(cfg *config.Config) *cobra.Command {
-	var verifyWebhooks bool
 	c := &cobra.Command{
 		Use:    "doctor [topic] [dir]",
 		Short:  "Diagnose a migration: code findings checked against the migration rule (read-only)",
 		Hidden: true,
 		Long: `Scans the directory and judges each finding against the migration rule —
 the rule already carries whatever account-dependent guidance applies, so no
-separate account lookup is made. --verify-webhooks additionally proves
-runtime behavior (webhook round-trip via stripe listen/trigger).`,
+separate account lookup is made.`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			available, err := judge.RulesAPIAvailable(cfg, flagStripeAccount)
@@ -166,23 +163,6 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 				}
 			}
 
-			if verifyWebhooks {
-				events, triggerEvent, ok := webhookCheckEvents(rule.RemediationTopic)
-				if !ok {
-					fail(errorcategory.Errorf(errorcategory.UserInput, "no webhook check defined for topic %q", rule.RemediationTopic))
-				}
-				var checkResult *webhookcheck.Report
-				err := withSpinnerUnlessJSON("Verifying webhooks: round-trip (listen + trigger)", func() error {
-					var derr error
-					checkResult, derr = webhookcheck.Run(events, triggerEvent)
-					return derr
-				})
-				if err != nil {
-					fail(err)
-				}
-				rep.WebhookCheck = checkResult
-			}
-
 			if flagJSON {
 				if rep.RemediationResult != nil && rep.RemediationResult.Report != nil {
 					emitJSON(rep.RemediationResult.Report)
@@ -195,7 +175,6 @@ runtime behavior (webhook round-trip via stripe listen/trigger).`,
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&verifyWebhooks, "verify-webhooks", false, "also run behavioral checks (spawns stripe listen/trigger)")
 	return c
 }
 
@@ -259,21 +238,6 @@ func applyFindingVerdicts(rep *DoctorReport, verdicts map[string]string) {
 		}
 		rep.Summary[f.Class]++
 	}
-}
-
-// webhookCheckEvents returns topic's declared webhook round-trip events,
-// if its remediation implements WebhookChecker.
-func webhookCheckEvents(topic string) (events []string, triggerEvent string, ok bool) {
-	impl, found := remediation.Lookup(topic)
-	if !found {
-		return nil, "", false
-	}
-	lc, ok := impl.(remediation.WebhookChecker)
-	if !ok {
-		return nil, "", false
-	}
-	events, triggerEvent = lc.WebhookCheckEvents()
-	return events, triggerEvent, true
 }
 
 // topicHint decorates a scan error when dir looks like a typo'd topic name.

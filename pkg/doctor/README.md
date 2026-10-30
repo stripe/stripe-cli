@@ -76,17 +76,14 @@ to, by following the same pattern dpm does — see `remediation/README.md`.
    hardcodes its own Dashboard-link guidance and webhook signals, and
    reassembles recent API versions, the Dashboard's payment-method
    configuration, and the scanned findings into one readiness `Result`.
-7. **`internal/webhookcheck`** — the live webhook round-trip check behind
-   `doctor --verify-webhooks`. Fully standalone.
 
 ## Contracts
 
 - `--json`: one JSON object on stdout, logs on stderr (`reports.go` is the
-  schema). Exit codes: 0 once the report completes — findings present or
-  an unverified webhook check are reported outcomes, not failures, so
-  check the report's contents rather than the exit code for those; 2
-  means doctor couldn't produce a report at all (bad arguments, a scan
-  error, a webhook-check operational failure).
+  schema). Exit codes: 0 once the report completes — findings present is
+  a reported outcome, not a failure, so check the report's contents
+  rather than the exit code for that; 2 means doctor couldn't produce a
+  report at all (bad arguments, a scan error).
 - `remediation_result` is what `cmd.go`'s `runRemediation` actually
   computed by looking up the rule's `RemediationTopic` in the `remediation`
   registry — `unknown` status if the topic has no registered
