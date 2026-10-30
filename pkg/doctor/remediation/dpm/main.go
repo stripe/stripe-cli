@@ -50,15 +50,6 @@ func init() {
 
 type implementation struct{}
 
-// WebhookCheckEvents satisfies remediation.WebhookChecker.
-func (implementation) WebhookCheckEvents() ([]string, string) {
-	events := make([]string, len(webhookSignals.WebhookEvents))
-	for i, e := range webhookSignals.WebhookEvents {
-		events[i] = e.Event
-	}
-	return events, "checkout.session.async_payment_succeeded"
-}
-
 // Run scans for webhook-handler signals, fetches live account evidence,
 // and assesses readiness. A fetch failure returns a StatusUnknown
 // Result instead of an error, so the webhook evidence already gathered

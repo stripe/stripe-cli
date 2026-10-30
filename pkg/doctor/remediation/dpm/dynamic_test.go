@@ -235,19 +235,3 @@ func TestAssessNotesAppended(t *testing.T) {
 		}
 	}
 }
-
-func TestWebhookCheckEvents(t *testing.T) {
-	events, trigger := implementation{}.WebhookCheckEvents()
-	if len(events) != len(webhookSignals.WebhookEvents) {
-		t.Fatalf("expected %d events, got %d", len(webhookSignals.WebhookEvents), len(events))
-	}
-	found := false
-	for _, e := range events {
-		if e == trigger {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("trigger event %q is not among the listened-for events %v", trigger, events)
-	}
-}
