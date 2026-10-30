@@ -3,10 +3,11 @@
 // catalog.Rule.RemediationTopic; that string is all doctor's engine knows
 // about remediations. To add one:
 //
-//  1. Write a type satisfying Implementation.
-//  2. Register it from an init() in your own subpackage — see
-//     remediation/dpm for a worked example.
-//  3. Blank-import your subpackage from pkg/doctor/cmd.go.
+//  1. Write a type satisfying Implementation, with an exported
+//     constructor (e.g. New()) — see remediation/dpm for a worked
+//     example.
+//  2. Add it to the remediation.Set built in pkg/cmd/root.go, keyed by
+//     your topic string.
 //
 // See README.md in this directory for the full guide, and the example
 // subpackage for runnable samples (go test -run Example -v).
@@ -216,20 +217,8 @@ type Implementation interface {
 	Run(ctx Context) (Result, error)
 }
 
-var registry = map[string]Implementation{}
-
-// Register makes impl available under topic, the same string as the
-// rule's own topic (catalog.Rule.RemediationTopic). Call it from an
-// init() in your own package; it panics if topic is already registered.
-func Register(topic string, impl Implementation) {
-	if _, exists := registry[topic]; exists {
-		panic(fmt.Sprintf("remediation: topic %q already registered", topic))
-	}
-	registry[topic] = impl
-}
-
-// Lookup returns the Implementation registered for topic, if any.
-func Lookup(topic string) (Implementation, bool) {
-	impl, ok := registry[topic]
-	return impl, ok
-}
+// Set maps a topic string (catalog.Rule.RemediationTopic) to the
+// Implementation that handles it. Built explicitly in pkg/cmd/root.go
+// and passed into doctor.NewDoctorCmd — a nil Set is valid and behaves
+// as if no topic has a remediation.
+type Set map[string]Implementation

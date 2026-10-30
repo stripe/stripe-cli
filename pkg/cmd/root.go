@@ -393,7 +393,7 @@ func init() {
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newWhoamiCmd().cmd)
-	rootCmd.AddCommand(doctor.NewDoctorCmd(&Config))
+	rootCmd.AddCommand(doctor.NewDoctorCmd(&Config, nil))
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newProvisionCmd().cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)

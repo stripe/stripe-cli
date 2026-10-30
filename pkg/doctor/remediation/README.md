@@ -27,25 +27,26 @@ scanner/judge engine use to find and generically classify matches in
 source code; your remediation is a separate, later step that runs
 against the findings the rule produced.
 
-## The three steps
+## The two steps
 
-1. **Write a type satisfying `Implementation`** — see [Implementation](#implementation) below.
-2. **Register it from an `init()`** in your own subpackage:
+1. **Write a type satisfying `Implementation`**, with an exported
+   constructor — see [Implementation](#implementation) below.
    ```go
-   func init() { remediation.Register("my_topic", implementation{}) }
+   func New() remediation.Implementation { return implementation{} }
    ```
-   `Register` panics if `"my_topic"` is already registered — two
-   implementations silently fighting over one topic is always a bug, not
-   a runtime decision.
-3. **Blank-import your subpackage from `pkg/doctor/cmd.go`**, next to the
-   existing `dpm` import, so your `init()` actually runs:
+2. **Add it to the `remediation.Set` built in `pkg/cmd/root.go`**, next
+   to the existing `dpm` entry, keyed by your topic string:
    ```go
-   _ "github.com/stripe/stripe-cli/pkg/doctor/remediation/my_topic"
+   rootCmd.AddCommand(doctor.NewDoctorCmd(&Config, remediation.Set{
+   	dpm.Topic:     dpm.New(),
+   	"my_topic":    mytopic.New(),
+   }))
    ```
 
-That's it — doctor's engine (`cmd.go`) looks your topic up in the
-registry by its bare string and renders whatever `Result` your `Run`
-returns. It never calls into your package directly otherwise.
+That's it — doctor's engine (`cmd.go`) looks your topic up in the `Set`
+by its bare string and renders whatever `Result` your `Run` returns. It
+never calls into your package directly otherwise, and never needs to
+import it either — only `root.go` does.
 
 ## `Implementation`
 
@@ -82,7 +83,7 @@ topic actually has something to say about.
 
 | Field             | Type                     | Required? | Purpose                                                                                                   |
 | ----------------- | ------------------------ | --------- | ----------------------------------------------------------------------------------------------------------- |
-| `Topic`           | `string`                 | yes       | Your topic string (same as `Register`'s key).                                                             |
+| `Topic`           | `string`                 | yes       | Your topic string (same as your `remediation.Set` key).                                                    |
 | `Status`          | `Status`                 | yes       | Top-line verdict — see [Status](#status).                                                                  |
 | `Message`         | `string`                 | yes       | One sentence naming why. Shown up front, and used as the JSON `"message"`.                                |
 | `Title`           | `string`                 | no        | Plain-English name for the migration, for the text action-plan renderer. Falls back to the bare topic string. |
@@ -361,7 +362,7 @@ import (
 
 const Topic = "my_topic"
 
-func init() { remediation.Register(Topic, implementation{}) }
+func New() remediation.Implementation { return implementation{} }
 
 type implementation struct{}
 
@@ -374,9 +375,9 @@ func (implementation) Run(ctx remediation.Context) (remediation.Result, error) {
 }
 ```
 
-Then blank-import `mytopic` from `pkg/doctor/cmd.go`. That's a fully
-working remediation — it renders via doctor's generic layout in both text
-and `--json` modes.
+Then add `mytopic.Topic: mytopic.New()` to the `remediation.Set` in
+`pkg/cmd/root.go`. That's a fully working remediation — it renders via
+doctor's generic layout in both text and `--json` modes.
 
 See `pkg/doctor/remediation/example`'s `Example` (this exact shape) and
 `Example_actionPlan` (adding `Title`/`Findings`, and converting to JSON

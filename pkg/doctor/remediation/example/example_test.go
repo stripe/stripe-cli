@@ -13,9 +13,9 @@ import (
 
 // exampleImplementation is the minimum viable remediation.Implementation
 // — just a Status and Message, no live evidence or custom rendering.
-// Register it from your own package's init():
+// Add it to the remediation.Set built in pkg/cmd/root.go:
 //
-//	func init() { remediation.Register("my_topic", exampleImplementation{}) }
+//	remediation.Set{"my_topic": exampleImplementation{}}
 type exampleImplementation struct{}
 
 func (exampleImplementation) Run(ctx remediation.Context) (remediation.Result, error) {

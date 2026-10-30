@@ -97,8 +97,11 @@ func commonFlags(c *cobra.Command) {
 	c.Flags().StringVar(&flagStripeAccount, "stripe-account", "", "Connect: connected account (acct_...) whose configuration governs direct charges")
 }
 
-func NewDoctorCmd(cfg *config.Config) *cobra.Command {
-	root := newDoctorCmd(cfg)
+// NewDoctorCmd builds the doctor command. remediations maps a topic
+// string to the Implementation that handles it — see remediation.Set;
+// a nil/empty Set is valid and means no topic has a remediation yet.
+func NewDoctorCmd(cfg *config.Config, remediations remediation.Set) *cobra.Command {
+	root := newDoctorCmd(cfg, remediations)
 	commonFlags(root)
 
 	root.AddCommand(newGuideCmd(), newDumpCmd())
@@ -107,7 +110,7 @@ func NewDoctorCmd(cfg *config.Config) *cobra.Command {
 
 // ---------- doctor ----------
 
-func newDoctorCmd(cfg *config.Config) *cobra.Command {
+func newDoctorCmd(cfg *config.Config, remediations remediation.Set) *cobra.Command {
 	c := &cobra.Command{
 		Use:    "doctor [topic] [dir]",
 		Short:  "Diagnose a migration: code findings checked against the migration rule (read-only)",
@@ -155,7 +158,7 @@ separate account lookup is made.`,
 
 			if rule.RemediationTopic != "" {
 				_ = withSpinnerUnlessJSON("Assessing remediation (read-only)", func() error {
-					rep.RemediationResult = runRemediation(rule, dir, findings, cfg)
+					rep.RemediationResult = runRemediation(remediations, rule, dir, findings, cfg)
 					return nil
 				})
 				if rep.RemediationResult != nil {
@@ -197,9 +200,9 @@ func newDumpCmd() *cobra.Command {
 // runRemediation looks up and runs the rule's declared RemediationTopic.
 // A missing implementation or a Run error both come back as a
 // StatusUnknown Result rather than being dropped.
-func runRemediation(rule catalog.Rule, dir string, findings []catalog.Finding, cfg *config.Config) *remediation.Result {
+func runRemediation(remediations remediation.Set, rule catalog.Rule, dir string, findings []catalog.Finding, cfg *config.Config) *remediation.Result {
 	topic := rule.RemediationTopic
-	impl, ok := remediation.Lookup(topic)
+	impl, ok := remediations[topic]
 	if !ok {
 		return &remediation.Result{
 			Topic:   topic,

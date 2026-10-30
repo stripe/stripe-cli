@@ -65,13 +65,15 @@ to, by following the same pattern dpm does — see `remediation/README.md`.
    `Rule` it judges against. Depends on `catalog` for the `Rule`/`Finding`
    shapes.
 6. **`remediation`** — the plugin boundary for `Rule.RemediationTopic`
-   (the rule's own topic string, e.g. `"dpm"`): it maps directly
-   to a Go `Implementation` via a `Register`/`Lookup` registry, so teams
-   that own a topic can implement its remediation without doctor's engine
-   knowing anything about them. There's no "fixes" field or per-remediation
-   `Kind`/`Options` data on the rule describing what to do — a topic
-   defines all of that directly in its own Go code. See the package doc
-   comment for the three-step guide to plugging one in, and
+   (the rule's own topic string, e.g. `"dpm"`): a topic string maps
+   directly to a Go `Implementation` via the `remediation.Set` that
+   `pkg/cmd/root.go` builds explicitly and passes into
+   `doctor.NewDoctorCmd`, so teams that own a topic can implement its
+   remediation without doctor's engine knowing anything about them.
+   There's no "fixes" field or per-remediation `Kind`/`Options` data on
+   the rule describing what to do — a topic defines all of that directly
+   in its own Go code. See the package doc comment for the two-step
+   guide to plugging one in, and
    **`remediation/dpm`** for dpm's worked example, which
    hardcodes its own Dashboard-link guidance and webhook signals, and
    reassembles recent API versions, the Dashboard's payment-method
@@ -85,10 +87,10 @@ to, by following the same pattern dpm does — see `remediation/README.md`.
   rather than the exit code for that; 2 means doctor couldn't produce a
   report at all (bad arguments, a scan error).
 - `remediation_result` is what `cmd.go`'s `runRemediation` actually
-  computed by looking up the rule's `RemediationTopic` in the `remediation`
-  registry — `unknown` status if the topic has no registered
-  `Implementation` yet, or if gathering its evidence failed (e.g. no
-  credentials); never silently dropped.
+  computed by looking up the rule's `RemediationTopic` in the
+  `remediation.Set` passed into `NewDoctorCmd` — `unknown` status if the
+  topic has no `Implementation` in that Set yet, or if gathering its
+  evidence failed (e.g. no credentials); never silently dropped.
 - Any read-only GET against the live Stripe API (today: `stripeapi`'s
   callers) requires the active context to actually be in live mode — a
   test-mode context makes the call fail. For `judge.FetchRule` (needed
@@ -119,7 +121,7 @@ remediation that wants them declares and scans for its own, below.
 ## Adding a remediation for a topic
 
 See `pkg/doctor/remediation/README.md` for the full integration guide and
-function reference; short version: implement `remediation.Implementation`,
-`Register` it (under your rule's own topic string) from an `init()` in
-your own subpackage (model it on `remediation/dpm`), and
-blank-import that subpackage from `cmd.go`.
+function reference; short version: implement `remediation.Implementation`
+with an exported constructor (model it on `remediation/dpm`), and add it
+to the `remediation.Set` built in `pkg/cmd/root.go`, keyed by your rule's
+own topic string.
