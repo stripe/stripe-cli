@@ -30,25 +30,38 @@ func TestCheckForUpdateOnlyStagesNewerVersions(t *testing.T) {
 	for _, tc := range []struct {
 		target string
 		staged bool
+		attack string
 	}{
-		{"v1.55.10", true},
-		{"v1.55.6", false},
-		{"v1.51.1", false},
-		{"v1.55.6-rc.1", false},
-		{"v2.0.0", false},
-		{"invalid", false},
+		{"v1.55.10", true, ""},
+		{"v1.55.10", false, "missing signature"},
+		{"v1.55.10", false, "forged checksums"},
+		{"v1.55.6", false, ""},
+		{"v1.51.1", false, ""},
+		{"v1.55.6-rc.1", false, ""},
+		{"v2.0.0", false, ""},
+		{"invalid", false, ""},
 	} {
-		t.Run(tc.target, func(t *testing.T) {
+		t.Run(tc.target+"/"+tc.attack, func(t *testing.T) {
 			withVersionPolicyState(t)
+			marker := &UpdateMarker{Version: strings.TrimPrefix(tc.target, "v"), Checksum: strings.Repeat("a", 64)}
+			authorizeTestMarker(t, marker)
+			if tc.attack == "missing signature" {
+				marker.ChecksumSignature = ""
+			}
+			if tc.attack == "forged checksums" {
+				marker.SignedChecksums = strings.ReplaceAll(marker.SignedChecksums, "a", "b")
+			}
 			original := http.DefaultTransport
 			t.Cleanup(func() { http.DefaultTransport = original })
 			http.DefaultTransport = versionPolicyTransport(func(r *http.Request) (*http.Response, error) {
 				var body string
 				switch r.URL.Path {
 				case "/repos/stripe/stripe-cli/releases/latest":
-					body = fmt.Sprintf(`{"tag_name":%q,"assets":[{"name":%q,"browser_download_url":"https://example.test/archive"},{"name":%q,"browser_download_url":"https://example.test/checksums"}]}`, tc.target, binaryAssetName(strings.TrimPrefix(tc.target, "v")), checksumAssetName())
+					body = fmt.Sprintf(`{"tag_name":%q,"assets":[{"name":%q,"browser_download_url":"https://example.test/archive"},{"name":%q,"browser_download_url":"https://example.test/checksums"},{"name":%q,"browser_download_url":"https://example.test/signature"}]}`, tc.target, binaryAssetName(strings.TrimPrefix(tc.target, "v")), checksumAssetName(), checksumAssetName()+".sig")
 				case "/checksums":
-					body = strings.Repeat("a", 64) + "  " + binaryAssetName(strings.TrimPrefix(tc.target, "v"))
+					body = marker.SignedChecksums
+				case "/signature":
+					body = marker.ChecksumSignature
 				default:
 					t.Fatalf("unexpected request: %s", r.URL)
 				}
@@ -58,6 +71,8 @@ func TestCheckForUpdateOnlyStagesNewerVersions(t *testing.T) {
 			if tc.staged {
 				require.NotNil(t, ReadMarker())
 				assert.Equal(t, strings.TrimPrefix(tc.target, "v"), ReadMarker().Version)
+				assert.Equal(t, marker.SignedChecksums, ReadMarker().SignedChecksums)
+				assert.Equal(t, marker.ChecksumSignature, ReadMarker().ChecksumSignature)
 			} else {
 				assert.Nil(t, ReadMarker())
 			}
