@@ -251,15 +251,16 @@ func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName stri
 func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values) (*http.Response, error) {
 	a.wg.Add(1)
 	defer a.wg.Done()
-	if a.BaseURL == nil {
-		analyticsURL, err := url.Parse(DefaultTelemetryEndpoint)
+	baseURL := a.BaseURL
+	if baseURL == nil {
+		parsed, err := url.Parse(DefaultTelemetryEndpoint)
 		if err != nil {
 			return nil, err
 		}
-		a.BaseURL = analyticsURL
+		baseURL = parsed
 	}
 
-	req, err := http.NewRequest(http.MethodPost, a.BaseURL.String(), strings.NewReader(data.Encode()))
+	req, err := http.NewRequest(http.MethodPost, baseURL.String(), strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
