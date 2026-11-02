@@ -137,12 +137,17 @@ separate account lookup is made.`,
 				fail(err)
 			}
 
-			findings, scanned, parsed, err := scan.Scan(dir, rule)
+			findings, scanned, parsed, skipped, incomplete, err := scan.Scan(dir, rule)
 			if err != nil {
 				fail(topicHint(err, dir))
 			}
 			scan.SortFindings(findings)
-			stats := ScanStats{FilesScanned: scanned, FilesParsed: parsed, Skipped: scanned - parsed}
+			stats := ScanStats{
+				FilesScanned:    scanned,
+				FilesParsed:     parsed,
+				Skipped:         skipped,
+				FilesIncomplete: incomplete,
+			}
 
 			rep := &DoctorReport{
 				Command:     "doctor",

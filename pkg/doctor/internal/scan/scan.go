@@ -15,15 +15,35 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
+// parseTimeoutMicros, when non-zero, caps every parse's time budget —
+// a test-only seam for deterministically forcing ParseStoppedEarly()
+// (real usage never sets this; the default parser has no timeout).
+var parseTimeoutMicros uint64
+
 // Scan walks root and returns every finding matching rule, plus how many
-// files were scanned (seen) and parsed (passed the prefilter).
-func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, parsed int, err error) {
+// files were scanned (seen), parsed (passed the prefilter), skipped
+// (rejected by the prefilter, counted directly rather than derived —
+// a partially-parsed file counts toward both parsed and incomplete,
+// so scanned-parsed-incomplete would double-subtract it and
+// undercount true prefilter skips), and incomplete — supported but
+// not fully inspected, either unreadable or only partially parsed
+// (the parser's budget ran out on pathological input) — never
+// silently folded into "skipped by prefilter".
+func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, parsed, skipped, incomplete int, err error) {
+	// filepath.WalkDir lstats the root itself rather than following
+	// it — a symlinked root would report IsDir() false and get
+	// skipped entirely, scanning nothing and returning no error.
+	// Resolve it upfront so a symlinked root is walked like any
+	// other directory.
+	if resolved, evalErr := filepath.EvalSymlinks(root); evalErr == nil {
+		root = resolved
+	}
 	info, statErr := os.Stat(root)
 	if statErr != nil {
-		return nil, 0, 0, fmt.Errorf("cannot scan %q: %w", root, statErr)
+		return nil, 0, 0, 0, 0, fmt.Errorf("cannot scan %q: %w", root, statErr)
 	}
 	if !info.IsDir() {
-		return nil, 0, 0, errorcategory.Errorf(errorcategory.UserInput, "cannot scan %q: not a directory", root)
+		return nil, 0, 0, 0, 0, errorcategory.Errorf(errorcategory.UserInput, "cannot scan %q: not a directory", root)
 	}
 	resources := map[string]bool{}
 	for _, m := range rule.Match {
@@ -56,10 +76,12 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 
 		src, err := os.ReadFile(path)
 		if err != nil {
+			incomplete++
 			return nil
 		}
 
 		if !prefilter(src, rule, spec) {
+			skipped++
 			return nil
 		}
 		parsed++
@@ -68,9 +90,21 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		if lang == nil {
 			return nil
 		}
-		tree, err := ts.NewParser(lang).Parse(src)
+		parser := ts.NewParser(lang)
+		if parseTimeoutMicros != 0 {
+			parser.SetTimeoutMicros(parseTimeoutMicros) // test-only seam, see parseTimeoutMicros
+		}
+		tree, err := parser.Parse(src)
 		if err != nil {
 			return nil
+		}
+		// A parser that exhausts its budget on pathological input returns
+		// a partial tree with a nil error — still scan what it did parse
+		// (better than nothing), but don't let that read as full coverage:
+		// a Stripe call beyond the parsed portion would otherwise be
+		// silently missed.
+		if tree.ParseStoppedEarly() {
+			incomplete++
 		}
 		q, err := ts.NewQuery(spec.query, lang)
 		if err != nil {
@@ -85,23 +119,10 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		sort.Strings(tokens)
 		idx := buildIndex(tree.RootNode(), spec, lang, src, tokens)
 
-		// Scope tokens per ParamMatch so a rule nested under subscriptions
-		// can't resolve against a PaymentIntent call, and vice versa.
-		pmTokens := make([][]string, len(rule.Match))
-		for i, pm := range rule.Match {
-			set := map[string]bool{}
-			for _, op := range pm.Operations {
-				if r := resourceFromOperation(op); r != "" {
-					for _, t := range spec.resourceTokens(r) {
-						set[t] = true
-					}
-				}
-			}
-			for t := range set {
-				pmTokens[i] = append(pmTokens[i], t)
-			}
-			sort.Strings(pmTokens[i])
-		}
+		// Scope tokens (and methods) per ParamMatch so a rule nested under
+		// subscriptions can't resolve against a PaymentIntent call, and
+		// vice versa.
+		pmTokens, pmMethods, pmUnambiguous := perMatchTokensAndMethods(rule, spec)
 
 		seen := map[string]bool{}
 		for _, m := range q.Execute(tree) {
@@ -109,10 +130,21 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 				if c.Name != "key" {
 					continue
 				}
-				keyText := strings.Trim(c.Text(src), `"'`)
+				// None of these queries are field-anchored (PHP's
+				// array_element_initializer has no key/value field names
+				// at all to anchor to), so each would also match a bare
+				// string/identifier sitting in the *value* position —
+				// e.g. create({"description": "payment_method_types"}).
+				// Reject anything that isn't structurally in the key slot.
+				if !keyInKeyPosition(c.Node, spec, lang) {
+					continue
+				}
+				// Ruby's simple_symbol (hash-rocket ":key => value") keeps
+				// its leading ":" as part of its own text; strip it too.
+				keyText := strings.Trim(c.Text(src), `"':`)
 
 				for pmIdx, pm := range rule.Match {
-					if keyText != spec.spell(leafParam(pm.Param)) {
+					if !containsStr(spec.spell(leafParam(pm.Param)), keyText) {
 						continue
 					}
 					// Enforce the rule's nesting path exactly: a rule for
@@ -121,7 +153,7 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 					if !pathSatisfied(c.Node, pm.Param, spec, lang, src) {
 						continue
 					}
-					res := resolve(c.Node, spec, lang, src, pmTokens[pmIdx], idx)
+					res := resolve(c.Node, spec, lang, src, pmTokens[pmIdx], pmMethods[pmIdx], pmUnambiguous[pmIdx], idx)
 					if !res.confirmed {
 						continue
 					}
@@ -150,17 +182,75 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		return nil
 	})
 	if walkErr != nil {
-		return nil, scanned, parsed, walkErr
+		return nil, scanned, parsed, skipped, incomplete, walkErr
 	}
-	return findings, scanned, parsed, nil
+	return findings, scanned, parsed, skipped, incomplete, nil
+}
+
+// perMatchTokensAndMethods returns, per rule.Match entry: its resource
+// tokens; the SDK method name(s) consistent with its operations (see
+// expectedMethodNames) — e.g. a create-only ParamMatch doesn't also
+// match PaymentIntent.modify — with no constraint at all when its
+// operations mix modeled and unmodeled shapes, rather than guessing
+// from only the modeled ones; and its unambiguous tokens (see
+// langSpec.unambiguousTokens).
+func perMatchTokensAndMethods(rule catalog.Rule, spec langSpec) (tokens, methods, unambiguous [][]string) {
+	tokens = make([][]string, len(rule.Match))
+	methods = make([][]string, len(rule.Match))
+	unambiguous = make([][]string, len(rule.Match))
+	for i, pm := range rule.Match {
+		set := map[string]bool{}
+		methodSet := map[string]bool{}
+		unambiguousSet := map[string]bool{}
+		mixedShapes := false
+		for _, op := range pm.Operations {
+			if r := resourceFromOperation(op); r != "" {
+				for _, t := range spec.resourceTokens(r) {
+					set[t] = true
+				}
+				if spec.unambiguousTokens != nil {
+					for _, t := range spec.unambiguousTokens(r) {
+						unambiguousSet[t] = true
+					}
+				}
+			}
+			opMethods := expectedMethodNames(op)
+			if opMethods == nil {
+				mixedShapes = true // an unmodeled operation shape - don't guess
+				continue
+			}
+			for _, mname := range opMethods {
+				methodSet[mname] = true
+			}
+		}
+		for t := range set {
+			tokens[i] = append(tokens[i], t)
+		}
+		sort.Strings(tokens[i])
+		if spec.unambiguousTokens != nil {
+			for t := range unambiguousSet {
+				unambiguous[i] = append(unambiguous[i], t)
+			}
+			sort.Strings(unambiguous[i])
+		}
+		if !mixedShapes {
+			for mname := range methodSet {
+				methods[i] = append(methods[i], mname)
+			}
+			sort.Strings(methods[i])
+		}
+	}
+	return tokens, methods, unambiguous
 }
 
 // prefilter is a cheap substring check run on every file before parsing.
 func prefilter(src []byte, rule catalog.Rule, spec langSpec) bool {
 	s := string(src)
 	for _, pm := range rule.Match {
-		if strings.Contains(s, spec.spell(leafParam(pm.Param))) {
-			return true
+		for _, sp := range spec.spell(leafParam(pm.Param)) {
+			if strings.Contains(s, sp) {
+				return true
+			}
 		}
 	}
 	return false
@@ -177,7 +267,7 @@ func pathSatisfied(key *ts.Node, param string, spec langSpec, lang *ts.Language,
 		return false
 	}
 	for i := range want {
-		if spec.spell(want[i]) != got[i] {
+		if !containsStr(spec.spell(want[i]), got[i]) {
 			return false
 		}
 	}
@@ -202,6 +292,28 @@ func resourceFromOperation(op string) string {
 		last = s
 	}
 	return last
+}
+
+// expectedMethodNames maps op's HTTP method + path shape to the SDK
+// method name(s) real Stripe client libraries use for it — modeled for
+// create only (a plain POST with no path parameter: "create" is
+// spelled identically across Python/Ruby/PHP/JS/TS), since that's the
+// only shape any current rule's operations use. Any other shape
+// returns nil (no constraint), so an unmodeled verb falls back to
+// resource-only matching rather than guessing a wrong name.
+// create_async is Python's asyncio spelling of the same create call.
+func expectedMethodNames(op string) []string {
+	parts := strings.Fields(op)
+	if len(parts) != 2 || parts[0] != "POST" {
+		return nil
+	}
+	segs := strings.Split(strings.TrimPrefix(parts[1], "/"), "/")
+	for _, s := range segs[1:] {
+		if strings.HasPrefix(s, "{") {
+			return nil // POST with a path parameter (update/action) - not modeled
+		}
+	}
+	return []string{"create", "create_async"}
 }
 
 // leafParam: "payment_settings.payment_method_types" -> "payment_method_types"
@@ -246,6 +358,12 @@ func SortFindings(findings []catalog.Finding) {
 
 // extractValue returns the value expression paired with a matched key.
 func extractValue(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) string {
+	if key.Type(lang) == "shorthand_property_identifier" {
+		// {payment_method_types} is sugar for {payment_method_types:
+		// payment_method_types} — the identifier doubles as its own
+		// value, and isn't nested in a pair to climb to.
+		return firstLine(nodeText(key, src))
+	}
 	kinds := spec.pairKinds
 	if kinds == nil { // java: the key IS the method name of the invocation
 		kinds = spec.anchorKinds
@@ -278,13 +396,18 @@ func ancestorKeys(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) []
 		}
 		return false
 	}
-	// Skip the key's own enclosing pair before collecting.
+	// Skip the key's own enclosing pair before collecting — except a
+	// shorthand property identifier, which has no enclosing pair of
+	// its own to skip (it's a direct child of object, not nested in
+	// one), so collection starts climbing from there immediately.
 	cur := key.Parent()
-	for cur != nil && !isPair(cur.Type(lang)) {
-		cur = cur.Parent()
-	}
-	if cur != nil {
-		cur = cur.Parent()
+	if key.Type(lang) != "shorthand_property_identifier" {
+		for cur != nil && !isPair(cur.Type(lang)) {
+			cur = cur.Parent()
+		}
+		if cur != nil {
+			cur = cur.Parent()
+		}
 	}
 
 	var keys []string
@@ -296,10 +419,66 @@ func ancestorKeys(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) []
 			continue
 		}
 		if kn := firstNamedChild(cur); kn != nil {
-			keys = append([]string{strings.Trim(nodeText(kn, src), `"'`)}, keys...)
+			k := strings.Trim(nodeText(kn, src), `"':`)
+			if isRequestEnvelope(cur, bound, k) {
+				continue // the SDK's reserved request-body keyword, not a nested API field
+			}
+			keys = append([]string{k}, keys...)
 		}
 	}
 	return keys
+}
+
+// isRequestEnvelope reports whether cur is a pair/keyword-argument node
+// directly inside anchor's own argument list, spelling the SDK's
+// reserved request-envelope keyword ("params") rather than a real
+// nested API field name — e.g. Python/Ruby's
+// client.v1.payment_intents.create(params: {...}).
+func isRequestEnvelope(cur, anchor *ts.Node, key string) bool {
+	if key != "params" || anchor == nil {
+		return false
+	}
+	n := anchor.NamedChildCount()
+	if n == 0 {
+		return false
+	}
+	argsNode := anchor.NamedChild(n - 1)
+	return argsNode != nil && cur.Parent() != nil && sameSpan(cur.Parent(), argsNode)
+}
+
+// keyInKeyPosition reports whether key — a query capture — sits in the
+// key/name slot of its enclosing pair-shaped node (pairKinds), rather
+// than its value slot. Climbs past wrapper nodes (e.g. Python's
+// string_content inside string inside pair) to the pairKind's own
+// direct child first. For Java (pairKinds is nil, key is the invoked
+// method's own name) the equivalent slot is the method_invocation's
+// second-to-last named child — the one immediately before its trailing
+// argument_list, whether or not it also has an explicit receiver.
+func keyInKeyPosition(key *ts.Node, spec langSpec, lang *ts.Language) bool {
+	if key.Type(lang) == "shorthand_property_identifier" {
+		// Always in key position — it has no separate value slot to
+		// be mistaken for.
+		return true
+	}
+	isParent := func(n *ts.Node) bool {
+		if spec.pairKinds != nil {
+			return containsStr(spec.pairKinds, n.Type(lang))
+		}
+		return containsStr(spec.anchorKinds, n.Type(lang))
+	}
+	child := key
+	for child.Parent() != nil && !isParent(child.Parent()) {
+		child = child.Parent()
+	}
+	parent := child.Parent()
+	if parent == nil {
+		return false
+	}
+	if spec.pairKinds == nil {
+		n := parent.NamedChildCount()
+		return n >= 2 && sameSpan(parent.NamedChild(n-2), child)
+	}
+	return parent.NamedChildCount() > 0 && sameSpan(parent.NamedChild(0), child)
 }
 
 func firstNamedChild(n *ts.Node) *ts.Node {

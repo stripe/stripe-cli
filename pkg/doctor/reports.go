@@ -21,6 +21,12 @@ type ScanStats struct {
 	FilesScanned int `json:"files_scanned"`
 	FilesParsed  int `json:"files_parsed"`
 	Skipped      int `json:"skipped_by_prefilter"`
+	// FilesIncomplete counts supported files that weren't fully
+	// inspected — unreadable (e.g. a permissions error) or only
+	// partially parsed (the parser's budget ran out) — never folded
+	// into Skipped, since those weren't inspected at all, not ruled out
+	// by the prefilter.
+	FilesIncomplete int `json:"files_incomplete,omitempty"`
 }
 
 // DoctorReport is the output of `stripe doctor`: scan + verdicts.

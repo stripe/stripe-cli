@@ -17,6 +17,10 @@ func renderDoctor(r *DoctorReport) {
 		renderSummary(r)
 		renderDetails(r)
 	}
+	if r.Stats.FilesIncomplete > 0 {
+		fmt.Println()
+		fmt.Println(warnLine(fmt.Sprintf("%d file(s) weren't fully inspected (unreadable or only partially parsed) — scan coverage is incomplete", r.Stats.FilesIncomplete)))
+	}
 }
 
 // ---------- action-plan renderer ----------

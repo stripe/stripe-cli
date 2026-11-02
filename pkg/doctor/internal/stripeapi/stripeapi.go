@@ -18,11 +18,24 @@ import (
 // facts aren't a meaningful stand-in for the account's real configuration.
 // It errors rather than silently resolving test-mode credentials if the
 // active context is in test mode.
+//
+// ResolveCredentials(true)'s livemode argument is only honored on the
+// OAuth path — a STRIPE_API_KEY/--api-key override bypasses it entirely
+// (see Profile.GetAPIKey), so a test-mode override key would otherwise
+// come back here unchallenged. Check the resolved credentials'
+// effective mode directly rather than trusting the request succeeded.
 func LoadCredentials(cfg *config.Config) (stripe.Credentials, error) {
 	if cfg == nil {
 		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.Internal, "no CLI configuration available")
 	}
-	return cfg.GetProfile().ResolveCredentials(true)
+	creds, err := cfg.GetProfile().ResolveCredentials(true)
+	if err != nil {
+		return stripe.Credentials{}, err
+	}
+	if !creds.Livemode() {
+		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.UserInput, "resolved credentials are test mode, but this command requires live mode — check STRIPE_API_KEY/--api-key overrides and the active login context")
+	}
+	return creds, nil
 }
 
 // NewClient builds the shared stripe.Client used for read-only GETs, so
