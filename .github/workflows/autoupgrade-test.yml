@@ -92,15 +92,20 @@ jobs:
             esac
             ASSET="stripe_${LATEST}_${ASSET_OS}_${ARCH}.tar.gz"
             BASE="https://github.com/stripe/stripe-cli/releases/download/v$LATEST"
-            CHECKSUM=$(curl -sSL "$BASE/$SUMS" | awk -v asset="$ASSET" '$2 == asset { print $1 }')
+            curl -fsSL "$BASE/$SUMS" -o "$RUNNER_TEMP/checksums.txt"
+            curl -fsSL "$BASE/$SUMS.sig" -o "$RUNNER_TEMP/checksums.txt.sig"
+            CHECKSUM=$(awk -v asset="$ASSET" '$2 == asset { print $1 }' "$RUNNER_TEMP/checksums.txt")
             # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
             mkdir -p "$HOME/.stripe/state"
-            printf '{"version":"%s","download_url":"%s","checksum":"%s","release_notes":""}' \
-              "$LATEST" "$BASE/$ASSET" "$CHECKSUM" > "$MARKER"
+            jq -cn --arg version "$LATEST" --arg url "$BASE/$ASSET" --arg checksum "$CHECKSUM" \
+              --rawfile checksums "$RUNNER_TEMP/checksums.txt" \
+              --rawfile signature "$RUNNER_TEMP/checksums.txt.sig" \
+              '{version: $version, download_url: $url, checksum: $checksum, release_notes: "",
+                signed_checksums: $checksums, checksum_signature: $signature}' > "$MARKER"
           fi
           cat "$MARKER"
           echo
-          if ! grep -q "\"version\":\"v\{0,1\}$LATEST\"" "$MARKER"; then
+          if ! jq -e --arg version "$LATEST" '(.version | ltrimstr("v")) == $version' "$MARKER" >/dev/null; then
             echo "Error: expected v$FROM to stage v$LATEST"
             exit 1
           fi
@@ -179,15 +184,20 @@ jobs:
             esac
             ASSET="stripe_${LATEST}_${ASSET_OS}_${ARCH}.tar.gz"
             BASE="https://github.com/stripe/stripe-cli/releases/download/v$LATEST"
-            CHECKSUM=$(curl -sSL "$BASE/$SUMS" | awk -v asset="$ASSET" '$2 == asset { print $1 }')
+            curl -fsSL "$BASE/$SUMS" -o "$RUNNER_TEMP/checksums.txt"
+            curl -fsSL "$BASE/$SUMS.sig" -o "$RUNNER_TEMP/checksums.txt.sig"
+            CHECKSUM=$(awk -v asset="$ASSET" '$2 == asset { print $1 }' "$RUNNER_TEMP/checksums.txt")
             # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
             mkdir -p "$HOME/.stripe/state"
-            printf '{"version":"%s","download_url":"%s","checksum":"%s","release_notes":""}' \
-              "$LATEST" "$BASE/$ASSET" "$CHECKSUM" > "$MARKER"
+            jq -cn --arg version "$LATEST" --arg url "$BASE/$ASSET" --arg checksum "$CHECKSUM" \
+              --rawfile checksums "$RUNNER_TEMP/checksums.txt" \
+              --rawfile signature "$RUNNER_TEMP/checksums.txt.sig" \
+              '{version: $version, download_url: $url, checksum: $checksum, release_notes: "",
+                signed_checksums: $checksums, checksum_signature: $signature}' > "$MARKER"
           fi
           cat "$MARKER"
           echo
-          if ! grep -q "\"version\":\"v\{0,1\}$LATEST\"" "$MARKER"; then
+          if ! jq -e --arg version "$LATEST" '(.version | ltrimstr("v")) == $version' "$MARKER" >/dev/null; then
             echo "Error: expected v$FROM to stage v$LATEST"
             exit 1
           fi
@@ -270,15 +280,20 @@ jobs:
             # .goreleaser/windows.yml publishes x86_64 and i386 only, and the runners are x64.
             ASSET="stripe_${LATEST}_windows_x86_64.zip"
             BASE="https://github.com/stripe/stripe-cli/releases/download/v$LATEST"
-            CHECKSUM=$(curl -sSL "$BASE/stripe-windows-checksums.txt" | awk -v asset="$ASSET" '$2 == asset { print $1 }')
+            curl -fsSL "$BASE/stripe-windows-checksums.txt" -o "$RUNNER_TEMP/checksums.txt"
+            curl -fsSL "$BASE/stripe-windows-checksums.txt.sig" -o "$RUNNER_TEMP/checksums.txt.sig"
+            CHECKSUM=$(awk -v asset="$ASSET" '$2 == asset { print $1 }' "$RUNNER_TEMP/checksums.txt")
             # Must match autoupdate.UpdateMarker's JSON encoding in pkg/autoupdate/checker.go.
             mkdir -p "$HOME/.stripe/state"
-            printf '{"version":"%s","download_url":"%s","checksum":"%s","release_notes":""}' \
-              "$LATEST" "$BASE/$ASSET" "$CHECKSUM" > "$MARKER"
+            jq -cn --arg version "$LATEST" --arg url "$BASE/$ASSET" --arg checksum "$CHECKSUM" \
+              --rawfile checksums "$RUNNER_TEMP/checksums.txt" \
+              --rawfile signature "$RUNNER_TEMP/checksums.txt.sig" \
+              '{version: $version, download_url: $url, checksum: $checksum, release_notes: "",
+                signed_checksums: $checksums, checksum_signature: $signature}' > "$MARKER"
           fi
           cat "$MARKER"
           echo
-          if ! grep -q "\"version\":\"v\{0,1\}$LATEST\"" "$MARKER"; then
+          if ! jq -e --arg version "$LATEST" '(.version | ltrimstr("v")) == $version' "$MARKER" >/dev/null; then
             echo "Error: expected v$FROM to stage v$LATEST"
             exit 1
           fi
