@@ -20,16 +20,8 @@ jobs:
     secrets:
       STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
 
-  approve-release:
-    needs: [canary-tests]
-    runs-on: ubuntu-latest
-    environment: release
-    permissions: {}
-    steps:
-      - run: echo "Release approved, proceeding."
-
   build-mac:
-    needs: [approve-release]
+    needs: [canary-tests]
     environment: release
     runs-on: macos-latest
     permissions:
@@ -83,7 +75,7 @@ jobs:
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
 
   build-linux:
-    needs: [approve-release]
+    needs: [canary-tests]
     environment: release
     runs-on: ubuntu-22.04
     permissions:
@@ -130,7 +122,7 @@ jobs:
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
-    needs: [approve-release]
+    needs: [canary-tests]
     environment: release
     runs-on: windows-latest
     permissions:
