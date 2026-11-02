@@ -16,8 +16,10 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/internal/pluginlogin"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
@@ -25,6 +27,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // AutoInstallOptOutEnvVar disables auto-installing plugins on first use when set
@@ -161,16 +164,17 @@ type pluginHintCmd struct {
 	privatePreview bool
 	accessBaseURL  string
 
-	lookupFn      pluginResolver
-	installFn     func(ctx context.Context) error
-	loginFn       func(ctx context.Context) error
-	runPluginFn   func(cmd *cobra.Command, args []string) error
-	accountIDFn   func() (string, error)
-	openBrowserFn func(url string) error
-	argvFn        func() []string
-	lookupEnvFn   func(key string) string
-	stdin         io.Reader
-	stdout        io.Writer
+	lookupFn        pluginResolver
+	installFn       func(ctx context.Context) error
+	loginFn         func(ctx context.Context) error
+	runPluginFn     func(cmd *cobra.Command, args []string) error
+	accountIDFn     func() (string, error)
+	openBrowserFn   func(url string) error
+	argvFn          func() []string
+	lookupEnvFn     func(key string) string
+	stdinIsTerminal func() bool
+	stdin           io.Reader
+	stdout          io.Writer
 	// stderr carries progress and next steps for the non-interactive auto-install
 	// path, so a first run leaves stdout holding only the plugin's own output and
 	// stays parseable by whatever asked for it.
@@ -242,13 +246,14 @@ func newPluginHintCmd(cfg *config.Config, name, description string, runPlugin Pl
 			runPostInstallHook(ctx, cfg, fs, resolvedPlugin, apiBaseURLOverride, dashboardBaseURLOverride, accessBaseURLOverride)
 			return nil
 		},
-		accountIDFn:   cfg.GetProfile().GetAccountID,
-		openBrowserFn: open.Browser,
-		argvFn:        func() []string { return os.Args },
-		lookupEnvFn:   os.Getenv,
-		stdin:         os.Stdin,
-		stdout:        os.Stdout,
-		stderr:        os.Stderr,
+		accountIDFn:     cfg.GetProfile().GetAccountID,
+		openBrowserFn:   open.Browser,
+		argvFn:          func() []string { return os.Args },
+		lookupEnvFn:     os.Getenv,
+		stdinIsTerminal: func() bool { return term.IsTerminal(int(os.Stdin.Fd())) },
+		stdin:           os.Stdin,
+		stdout:          os.Stdout,
+		stderr:          os.Stderr,
 	}
 	p.loginFn = func(ctx context.Context) error {
 		return login.Login(ctx, dashboardBaseURL, p.accessBaseURL, stripe.DefaultAPIBaseURL, cfg)
@@ -312,28 +317,16 @@ func (p *pluginHintCmd) run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// A plugin that exists but needs a newer core CLI is a version problem with one
-	// fix, so say so. Everything below treats a failed lookup as the plugin being
-	// unavailable or the user being logged out, and both of those answers would send
-	// the user after something that cannot help.
-	var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
-	if errors.As(lookupErr, &requiresNewerCLI) {
-		return lookupErr
+	if errors.Is(lookupErr, validators.ErrAPIKeyNotConfigured) {
+		return p.offerLogin(ctx, lookupErr)
 	}
 
-	if p.privatePreview {
+	var notFound *plugins.ErrPluginNotFound
+	if p.privatePreview && errors.As(lookupErr, &notFound) {
 		return p.suggestNotAvailable()
 	}
 
-	// If the user is not logged in, offer to kick off the login flow rather than
-	// a manual install that will also fail unauthenticated.
-	accountID, err := p.accountIDFn()
-	if err != nil || accountID == "" {
-		return p.promptLogin(ctx)
-	}
-
-	fmt.Fprintf(p.stdout, "The \"%s\" plugin is not currently available. Run 'stripe plugin install %s' to try installing it manually.\n", p.name, p.name)
-	return nil
+	return lookupErr
 }
 
 // setAutoInstallHelpFunc makes `stripe <plugin> --help` install the plugin and then
@@ -567,19 +560,10 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 	return nil
 }
 
-func (p *pluginHintCmd) promptLogin(ctx context.Context) error {
-	fmt.Fprintf(p.stdout, "You must be logged in to access the \"%s\" plugin.\n", p.name)
-	fmt.Fprintf(p.stdout, "\n")
-	fmt.Fprintf(p.stdout, "Press Enter to run 'stripe login', or type anything to cancel")
-
-	var input string
-	fmt.Fscanln(p.stdin, &input)
-
-	if input != "" {
-		return errorcategory.Errorf(errorcategory.UserInput, "login canceled")
-	}
-
-	return p.loginFn(ctx)
+func (p *pluginHintCmd) offerLogin(ctx context.Context, cause error) error {
+	return pluginlogin.Offer(p.name, cause, p.stdin, p.stdout,
+		pluginlogin.CanPrompt(p.lookupEnvFn, p.stdinIsTerminal()),
+		func() error { return p.loginFn(ctx) })
 }
 
 func (p *pluginHintCmd) suggestNotAvailable() error {

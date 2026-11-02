@@ -551,9 +551,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		return nil, err
 	}
 
-	creds, err := config.GetProfile().ResolveCredentialsForAnyMode(false)
-	if err != nil && !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
-		return nil, err
+	creds, credentialsErr := config.GetProfile().ResolveCredentialsForAnyMode(false)
+	if credentialsErr != nil && !errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
+		return nil, credentialsErr
 	}
 	apiKey := creds.Token
 
@@ -585,11 +585,14 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 		}, nil
 	}
 
-	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && os.IsNotExist(cachedErr) {
-		return nil, normalizedErr
+	var cachedNotFound *ErrPluginNotFound
+	if normalizedErr := normalizePluginMetadataError(pluginName, err); normalizedErr != nil && (os.IsNotExist(cachedErr) || errors.As(cachedErr, &cachedNotFound)) {
+		if errors.Is(credentialsErr, validators.ErrAPIKeyNotConfigured) {
+			return nil, errorcategory.Errorf(errorcategory.Auth, "%w: %w: %w", credentialsErr, normalizedErr, err)
+		}
+		return nil, errorcategory.Errorf(errorcategory.UserInput, "%w: %w", normalizedErr, err)
 	}
-
-	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %v; cached lookup failed: %w", pluginName, err, cachedErr)
+	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %w; cached lookup failed: %w", pluginName, err, cachedErr)
 }
 
 // ResolvePluginForUpgrade resolves the latest plugin metadata for
@@ -1135,8 +1138,11 @@ func normalizePluginMetadataError(pluginName string, err error) error {
 	}
 
 	var requestErr requests.RequestError
-	if errors.As(err, &requestErr) && requestErr.StatusCode == http.StatusNotFound {
-		return &ErrPluginNotFound{Name: pluginName}
+	if errors.As(err, &requestErr) {
+		if requestErr.StatusCode == http.StatusNotFound {
+			return &ErrPluginNotFound{Name: pluginName}
+		}
+		return nil
 	}
 
 	switch {
@@ -1156,7 +1162,7 @@ type ErrPluginNotFound struct {
 }
 
 func (e *ErrPluginNotFound) Error() string {
-	return fmt.Sprintf("no plugin named %q exists", e.Name)
+	return fmt.Sprintf("could not find an available release for plugin %q; check the plugin name and run 'stripe whoami' to verify the active account", e.Name)
 }
 
 // FetchRemoteResource returns the remote resource body.
