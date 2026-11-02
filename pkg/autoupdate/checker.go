@@ -68,7 +68,7 @@ func CheckForUpdate() {
 	current := strings.TrimPrefix(version.Version, "v")
 	latestClean := strings.TrimPrefix(latest, "v")
 
-	if current == latestClean {
+	if !isNewerVersion(current, latestClean) {
 		recordLastCheck()
 		return
 	}
@@ -111,6 +111,16 @@ func recoverAndReport(phase string) {
 		"phase": phase,
 		"panic": fmt.Sprintf("%v", r),
 	})
+}
+
+// Unparseable versions cannot establish that an update moves forward.
+func isNewerVersion(current, target string) bool {
+	cur, err := semver.NewVersion(current)
+	if err != nil {
+		return false
+	}
+	next, err := semver.NewVersion(target)
+	return err == nil && next.GreaterThan(cur)
 }
 
 func isMajorVersionChange(current, latest string) bool {

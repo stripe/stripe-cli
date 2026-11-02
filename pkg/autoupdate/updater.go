@@ -76,7 +76,7 @@ func ApplyIfPending() {
 
 	current := strings.TrimPrefix(version.Version, "v")
 	target := strings.TrimPrefix(marker.Version, "v")
-	if current == target {
+	if !isNewerVersion(current, target) || isMajorVersionChange(current, target) {
 		ClearMarker()
 		return
 	}
