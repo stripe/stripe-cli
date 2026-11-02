@@ -81,6 +81,14 @@ run_install() {
     esac
 }
 
+# winget failures (e.g. 403s from cdn.winget.microsoft.com) tend to stick to a
+# runner, so retrying in place just delays the fresh-runner retry that the
+# workflow does via winget-attempt-2/3.
+if [ "$PACKAGE_MANAGER" = "winget" ]; then
+    run_install
+    exit $?
+fi
+
 if ! run_install
 then
     echo "Install failed. Retrying in 30 seconds..."
