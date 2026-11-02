@@ -32,6 +32,7 @@ matching private key and public key are provisioned.
 The private key uses PEM PKCS#8; the public key uses PEM SubjectPublicKeyInfo.
 The private key is read from the environment and never passed as an argument.
 Each platform build enters the protected `release` environment to access it.
+The unpublished snapshot workflow skips signing and requires no release key.
 
 ## Consumer rollout
 
