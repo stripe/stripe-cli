@@ -56,6 +56,30 @@ function Get-LatestVersion {
     } else {
         Write-Host "Latest version: v$script:Version"
     }
+    if ($script:Version -cnotmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$') {
+        throw "Invalid release version."
+    }
+}
+
+function Verify-ReleaseSignature($ChecksumsPath, $SignaturePath) {
+    # RSAParameters supports Windows PowerShell 5.1 as well as PowerShell 7.
+    # This is the public key pinned in pkg/autoupdate/release-key.pub.
+    $parameters = New-Object System.Security.Cryptography.RSAParameters
+    $parameters.Modulus = [Convert]::FromBase64String("vJcGeaAj29XQQiezpkI4PjiXIVEiFzzPIMA1u76vR82dhtOLFvD2Xdlb+uE3fAsiiJWOuWdcSxwmsu7X+fr3d3eY+SOL1qjRUpwOePtYB0iegPJMrK2syBSlHJB8nunUkAkE5rNJuq1b07c5JnXvfB3aRWkDQ2BYQNF5gvPlJ0U2jjXe9trC44VKW7T/KQ6ZgLpbmLXwF8JUofB0Bg2ondrGdrJ8Rv6nqECKYNg0IL6iPYrr9fC124LCtq7Q0Heetn4Lr7LBK3EJzcoqc0cBmPMTtC8jgc0i7yA3QCoPsvY6boFlrMw4AnHhaBx+5bUmmGze87hJjOYWIoLJT3sWBLX/608J9J2hWd6Yx1LLwCzfrD36rsbJHrfkdoAzMpSQ05IeePlHIR8/z4N43awZJpy0X8X4cQ+DH4Kv+J6wLoXhtTS1yxBnMsduKwLWxNKaf0GSa5h4riU3v917Mu77rxiDUOMNHXekgll+jKuCMWGEakLRRGvOgTheopk1YbUl")
+    $parameters.Exponent = [Convert]::FromBase64String("AQAB")
+    $rsa = [System.Security.Cryptography.RSA]::Create()
+    try {
+        $rsa.ImportParameters($parameters)
+        $signature = [Convert]::FromBase64String([IO.File]::ReadAllText($SignaturePath).Trim())
+        $valid = $rsa.VerifyData([IO.File]::ReadAllBytes($ChecksumsPath), $signature,
+            [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+            [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+        if (-not $valid) {
+            throw "Release signature verification failed. No files were installed."
+        }
+    } finally {
+        $rsa.Dispose()
+    }
 }
 
 function Download-And-Verify {
@@ -71,8 +95,10 @@ function Download-And-Verify {
     Write-Host "Downloading stripe v${script:Version}..."
     # No auth header here, deliberately: these URLs redirect to a signed object
     # store URL that rejects a second set of credentials. install.sh does the same.
-    Invoke-WebRequest -Uri "$baseUrl/$archive" -OutFile $archivePath -UseBasicParsing
     Invoke-WebRequest -Uri "$baseUrl/stripe-windows-checksums.txt" -OutFile $checksumsPath -UseBasicParsing
+    $signaturePath = Join-Path $script:TmpDir "checksums.txt.sig"
+    Invoke-WebRequest -Uri "$baseUrl/stripe-windows-checksums.txt.sig" -OutFile $signaturePath -UseBasicParsing
+    Verify-ReleaseSignature $checksumsPath $signaturePath
 
     Write-Host "Verifying checksum..."
     $expected = $null
@@ -80,14 +106,18 @@ function Download-And-Verify {
         # Format is "<sha256>  <filename>". Compare the filename exactly rather than
         # regex-matching the whole line, whose dots would be metacharacters.
         $parts = $line.Trim() -split "\s+", 2
-        if ($parts.Count -eq 2 -and $parts[1].Trim() -eq $archive) {
-            $expected = $parts[0].ToLower()
-            break
+        if ($parts.Count -eq 2 -and $parts[1].Trim() -ceq $archive) {
+            if ($expected -or $parts[0] -cnotmatch '^[a-fA-F0-9]{64}$') {
+                throw "Invalid or duplicate checksum for $archive"
+            }
+            $expected = $parts[0].ToLowerInvariant()
         }
     }
     if (-not $expected) {
         throw "Checksum entry not found for $archive"
     }
+
+    Invoke-WebRequest -Uri "$baseUrl/$archive" -OutFile $archivePath -UseBasicParsing
 
     $actual = (Get-FileHash -Path $archivePath -Algorithm SHA256).Hash.ToLower()
 

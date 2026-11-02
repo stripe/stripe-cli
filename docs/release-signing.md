@@ -44,3 +44,16 @@ upgrades and rejection of invalid signatures on supported operating systems.
 Do not sign downloaded historical release assets. Produce signed artifacts
 through an approved build. Once consumers pin a public key, rotation requires a
 transition that preserves those clients' ability to verify subsequent releases.
+
+## Installer rollout
+
+The shell and PowerShell installers embed the reviewed public key and require a
+valid checksum signature before downloading and extracting a release archive.
+The shell installer requires OpenSSL; PowerShell uses the built-in .NET RSA API.
+There is no fallback for unsigned releases, including explicitly requested versions.
+
+Before merging or deploying these installer changes, publish and verify a signed
+release using the signing workflow. The curl install canary reads scripts directly
+from master. The auto-upgrade canary installs the previous release, so publish at
+least two signed releases before that canary uses the updated installers. Keep the
+CLI, shell installer, and PowerShell public keys in sync during key rotation.

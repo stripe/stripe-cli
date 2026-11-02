@@ -54,9 +54,9 @@ http_get() {
   url="$1"
   if command -v curl >/dev/null 2>&1; then
     if [ -n "${GITHUB_TOKEN:-}" ]; then
-      curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" "$url"
+      curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" "$url"
     else
-      curl -sSL "$url"
+      curl -fsSL "$url"
     fi
   elif command -v wget >/dev/null 2>&1; then
     if [ -n "${GITHUB_TOKEN:-}" ]; then
@@ -74,7 +74,7 @@ http_download() {
   url="$1"
   output="$2"
   if command -v curl >/dev/null 2>&1; then
-    curl -sSL -o "$output" "$url"
+    curl -fsSL -o "$output" "$url"
   elif command -v wget >/dev/null 2>&1; then
     wget -q -O "$output" "$url"
   else
@@ -100,6 +100,38 @@ get_latest_version() {
     VERSION="$LATEST_VERSION"
     echo "Latest version: v$VERSION"
   fi
+  if ! printf '%s\n' "$VERSION" | LC_ALL=C grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+    echo "Error: invalid release version."
+    exit 1
+  fi
+}
+
+verify_release_signature() {
+  if ! command -v openssl >/dev/null 2>&1; then
+    echo "Error: OpenSSL is required to verify release signatures. Install it and retry."
+    exit 1
+  fi
+
+  # Pin the release key in the installer; release assets cannot replace it.
+  cat > "$TMP_DIR/release-key.pub" <<'STRIPE_RELEASE_PUBLIC_KEY'
+-----BEGIN PUBLIC KEY-----
+MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAvJcGeaAj29XQQiezpkI4
+PjiXIVEiFzzPIMA1u76vR82dhtOLFvD2Xdlb+uE3fAsiiJWOuWdcSxwmsu7X+fr3
+d3eY+SOL1qjRUpwOePtYB0iegPJMrK2syBSlHJB8nunUkAkE5rNJuq1b07c5JnXv
+fB3aRWkDQ2BYQNF5gvPlJ0U2jjXe9trC44VKW7T/KQ6ZgLpbmLXwF8JUofB0Bg2o
+ndrGdrJ8Rv6nqECKYNg0IL6iPYrr9fC124LCtq7Q0Heetn4Lr7LBK3EJzcoqc0cB
+mPMTtC8jgc0i7yA3QCoPsvY6boFlrMw4AnHhaBx+5bUmmGze87hJjOYWIoLJT3sW
+BLX/608J9J2hWd6Yx1LLwCzfrD36rsbJHrfkdoAzMpSQ05IeePlHIR8/z4N43awZ
+Jpy0X8X4cQ+DH4Kv+J6wLoXhtTS1yxBnMsduKwLWxNKaf0GSa5h4riU3v917Mu77
+rxiDUOMNHXekgll+jKuCMWGEakLRRGvOgTheopk1YbUlAgMBAAE=
+-----END PUBLIC KEY-----
+STRIPE_RELEASE_PUBLIC_KEY
+  if ! openssl base64 -d -A -in "$TMP_DIR/checksums.txt.sig" -out "$TMP_DIR/checksums.sig.bin" ||
+     ! openssl dgst -sha256 -verify "$TMP_DIR/release-key.pub" \
+       -signature "$TMP_DIR/checksums.sig.bin" "$TMP_DIR/checksums.txt" >/dev/null 2>&1; then
+    echo "Error: release signature verification failed. No files were installed."
+    exit 1
+  fi
 }
 
 download_and_verify() {
@@ -110,16 +142,20 @@ download_and_verify() {
   trap 'rm -rf "$TMP_DIR"; if [ "$INSTALL_SUCCESS" = "false" ]; then send_telemetry "Install Failed" "version=${VERSION:-unknown}"; fi' EXIT
 
   echo "Downloading stripe v${VERSION}..."
-  http_download "$BASE_URL/$ARCHIVE" "$TMP_DIR/$ARCHIVE"
   http_download "$BASE_URL/$CHECKSUMS_FILE" "$TMP_DIR/checksums.txt"
+  http_download "$BASE_URL/$CHECKSUMS_FILE.sig" "$TMP_DIR/checksums.txt.sig"
+  verify_release_signature
 
   echo "Verifying checksum..."
-  EXPECTED=$(sed -n "s/^\([a-f0-9]*\)  *${ARCHIVE}$/\1/p" "$TMP_DIR/checksums.txt")
-
-  if [ -z "$EXPECTED" ]; then
-    echo "Error: checksum entry not found for $ARCHIVE"
+  EXPECTED=$(awk -v asset="$ARCHIVE" 'NF == 2 && $2 == asset { print $1 }' "$TMP_DIR/checksums.txt")
+  if ! printf '%s\n' "$EXPECTED" | LC_ALL=C grep -Eq '^[a-fA-F0-9]{64}$' ||
+     [ "$(printf '%s\n' "$EXPECTED" | wc -l | tr -d ' ')" != "1" ]; then
+    echo "Error: missing, invalid, or duplicate checksum for $ARCHIVE"
     exit 1
   fi
+  EXPECTED=$(printf '%s' "$EXPECTED" | tr '[:upper:]' '[:lower:]')
+
+  http_download "$BASE_URL/$ARCHIVE" "$TMP_DIR/$ARCHIVE"
 
   if command -v sha256sum >/dev/null 2>&1; then
     ACTUAL=$(sha256sum "$TMP_DIR/$ARCHIVE" | cut -d' ' -f1)
