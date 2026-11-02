@@ -61,6 +61,10 @@ notarize:
         timeout: 20m
 checksum:
   name_template: "{{ .ProjectName }}-mac-checksums.txt"
+signs:
+  - cmd: go
+    args: ["run", "./scripts/sign-release-checksums", "${artifact}", "${signature}"]
+    artifacts: checksum
 release:
   replace_existing_artifacts: true
 snapshot:
