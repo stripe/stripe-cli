@@ -64,12 +64,14 @@ func TestInstallRequiresApprovedArchive(t *testing.T) {
 			if isShell {
 				require.Contains(t, script, strings.TrimSpace(string(pinned)), "installer must pin the reviewed release key")
 				script = strings.Replace(script, strings.TrimSpace(string(pinned)), strings.TrimSpace(testPEM), 1)
+				require.True(t, strings.HasSuffix(script, "\nmain\n"), "locate the installer entry point before injecting local downloads")
 				script = strings.TrimSuffix(script, "main\n") + shellHarness + "\nmain\n"
 			} else {
 				modulus := base64.StdEncoding.EncodeToString(pinnedKey.N.Bytes())
 				require.Contains(t, script, modulus, "installer must pin the reviewed release key")
 				require.Contains(t, script, `$parameters.Exponent = [Convert]::FromBase64String("AQAB")`)
 				script = strings.Replace(script, modulus, base64.StdEncoding.EncodeToString(key.N.Bytes()), 1)
+				require.Contains(t, script, "# Main\n", "locate the installer entry point before injecting local downloads")
 				script = strings.Replace(script, "# Main\n", powershellHarness+"\n# Main\n", 1)
 			}
 
