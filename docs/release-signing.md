@@ -5,10 +5,11 @@ SHA-256 digest of each platform's GoReleaser checksums file. The signature is
 uploaded beside that file with a `.sig` suffix. Consumers can verify it with
 the public key in `pkg/autoupdate/release-key.pub`.
 
-## Provision the key before merging
+## Key provisioning
 
-The public key is currently `UNCONFIGURED`. Release signing fails until a
-matching private key and public key are provisioned.
+The reviewed public key must match the private key stored in the protected
+`release` environment. Release signing fails if that key is missing or mismatched.
+Use the following procedure when provisioning a new signing identity.
 
 1. On an approved secure workstation, generate a 3072-bit RSA private key outside
    the repository:
