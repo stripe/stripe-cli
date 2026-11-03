@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 
@@ -149,15 +149,20 @@ func releaseIsSettled(publishedAt, now time.Time) bool {
 
 // newGithubClient is overridden in tests to point at a fake server instead of
 // the real GitHub API.
-var newGithubClient = func() *github.Client {
-	return github.NewClient(nil)
+var newGithubClient = func() (*github.Client, error) {
+	return github.NewClient()
 }
 
 // GetReleaseNotesFn fetches the GitHub release notes for the given version
 // (with or without a leading "v"). Exposed as a var so callers outside this
 // package can stub it out in tests.
 var GetReleaseNotesFn = func(ver string) (string, error) {
-	release, _, err := newGithubClient().Repositories.GetReleaseByTag(context.Background(), "stripe", "stripe-cli", releaseTag(ver))
+	client, err := newGithubClient()
+	if err != nil {
+		return "", err
+	}
+
+	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), "stripe", "stripe-cli", releaseTag(ver))
 	if err != nil {
 		return "", err
 	}
@@ -176,10 +181,15 @@ func releaseTag(ver string) string {
 }
 
 func getLatestVersion() (string, time.Time) {
-	rep, _, err := newGithubClient().Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
-
 	l := log.StandardLogger()
 
+	client, err := newGithubClient()
+	if err != nil {
+		l.Debug(err)
+		return "", time.Time{}
+	}
+
+	rep, _, err := client.Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
 	if err != nil {
 		// We don't want to fail any functionality or display errors for this
 		// so fail silently and output to debug log

@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -71,14 +70,14 @@ func withFakeGithub(t *testing.T, handler http.HandlerFunc) {
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
 
-	baseURL, err := url.Parse(server.URL + "/")
+	client, err := github.NewClient(
+		github.WithHTTPClient(server.Client()),
+		github.WithURLs(new(server.URL+"/"), nil),
+	)
 	require.NoError(t, err)
 
-	client := github.NewClient(server.Client())
-	client.BaseURL = baseURL
-
 	original := newGithubClient
-	newGithubClient = func() *github.Client { return client }
+	newGithubClient = func() (*github.Client, error) { return client, nil }
 	t.Cleanup(func() { newGithubClient = original })
 }
 
