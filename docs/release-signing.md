@@ -49,10 +49,3 @@ downloading and extracting a release archive. The shell installer requires
 OpenSSL; PowerShell uses the built-in .NET RSA API.
 
 Unsigned releases cannot be installed, including explicitly requested versions.
-
-## Key rotation
-
-Keep the CLI, shell installer, and PowerShell public keys in sync. Rotation must
-preserve the ability of clients using the previous key to verify future updates.
-Do not sign downloaded historical release assets; produce signed artifacts
-through an approved build.
