@@ -43,6 +43,30 @@ func TestValidateDashboardBaseURLWorks(t *testing.T) {
 	assert.ErrorIs(t, ValidateDashboardBaseURL("anything_else"), errInvalidDashboardBaseURL)
 }
 
+func TestValidateFixtureAPIBaseURLWorks(t *testing.T) {
+	assert.Nil(t, ValidateFixtureAPIBaseURL("https://api.stripe.com"))
+	assert.Nil(t, ValidateFixtureAPIBaseURL("https://api.stripe.com/"))
+	assert.Nil(t, ValidateFixtureAPIBaseURL("https://files.stripe.com/"))
+	assert.Nil(t, ValidateFixtureAPIBaseURL("https://meter-events.stripe.com"))
+	assert.Nil(t, ValidateFixtureAPIBaseURL("https://qa-api.stripe.com"))
+	assert.Nil(t, ValidateFixtureAPIBaseURL("https://foo-lv5r9y--api-mydev.dev.stripe.me"))
+
+	// Unlike --api-base, a fixture can't point at a local server or use plain HTTP
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("http://127.0.0.1:1337"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://127.0.0.1:1337"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://[::1]:1337"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://localhost"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("http://api.stripe.com"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("http://foo-api-mydev.dev.stripe.me"), errInvalidAPIBaseURL)
+
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://example.com"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://dashboard.stripe.com"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://api.stripe.com.evil.example"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://api.stripe.com@evil.example"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL("https://evil.example/https://api.stripe.com"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateFixtureAPIBaseURL(""), errInvalidAPIBaseURL)
+}
+
 // TestValidateBaseURLRejectsAllowlistBypasses covers URLs where the raw
 // string contains an allowlisted substring (e.g. "foo.dev.stripe.me" or
 // "127.0.0.1") but net/url resolves the actual request host to something
@@ -69,6 +93,7 @@ func TestValidateBaseURLRejectsAllowlistBypasses(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert.ErrorIs(t, ValidateAPIBaseURL(tc.url), errInvalidAPIBaseURL, "ValidateAPIBaseURL should reject %q", tc.url)
 			assert.ErrorIs(t, ValidateDashboardBaseURL(tc.url), errInvalidDashboardBaseURL, "ValidateDashboardBaseURL should reject %q", tc.url)
+			assert.ErrorIs(t, ValidateFixtureAPIBaseURL(tc.url), errInvalidAPIBaseURL, "ValidateFixtureAPIBaseURL should reject %q", tc.url)
 		})
 	}
 }

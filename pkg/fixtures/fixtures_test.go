@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -485,6 +486,56 @@ func TestMakeRequestRejectsPathTraversal(t *testing.T) {
 	}
 
 	require.False(t, serverCalled, "no request should have been sent for invalid paths")
+}
+
+func TestMakeRequestRejectsAPIBaseOutsideStripe(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	serverCalled := false
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		serverCalled = true
+	}))
+	defer ts.Close()
+
+	fxt := &Fixture{
+		Fs:          fs,
+		Credentials: stripe.NewAPIKeyCredentials("sk_test_1234"),
+		BaseURL:     ts.URL,
+		Responses:   make(map[string]gjson.Result),
+	}
+
+	_, err := fxt.makeRequest(context.Background(), FixtureRequest{
+		Name:    "test",
+		Path:    "/v1/customers",
+		Method:  "post",
+		Params:  map[string]interface{}{},
+		APIBase: ts.URL,
+	}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not an allowed Stripe API URL")
+
+	require.False(t, serverCalled, "no request should have been sent to the fixture's api_base")
+}
+
+func TestBundledFixtureAPIBasesAreAllowed(t *testing.T) {
+	entries, err := triggers.ReadDir("triggers")
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+
+	checked := 0
+	for _, entry := range entries {
+		data, err := triggers.ReadFile("triggers/" + entry.Name())
+		require.NoError(t, err)
+
+		var fixture FixtureData
+		require.NoError(t, json.Unmarshal(data, &fixture), entry.Name())
+		for _, request := range fixture.Requests {
+			if request.APIBase != "" {
+				checked++
+				assert.NoError(t, stripe.ValidateFixtureAPIBaseURL(request.APIBase), "%s: %s", entry.Name(), request.Name)
+			}
+		}
+	}
+	require.NotZero(t, checked, "expected some bundled fixtures to set api_base")
 }
 
 func TestExecuteReturnsRequestNames(t *testing.T) {

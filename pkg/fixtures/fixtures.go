@@ -346,11 +346,16 @@ func (fxt *Fixture) UpdateEnv() error {
 	return nil
 }
 
-func (fxt *Fixture) getAPIBase(request FixtureRequest) string {
-	if request.APIBase != "" {
-		return request.APIBase
+func (fxt *Fixture) getAPIBase(request FixtureRequest) (string, error) {
+	if request.APIBase == "" {
+		return fxt.BaseURL, nil
 	}
-	return fxt.BaseURL
+
+	// The request carries the user's credentials, so a fixture can only send it to Stripe.
+	if err := stripe.ValidateFixtureAPIBaseURL(request.APIBase); err != nil {
+		return "", errorcategory.Errorf(errorcategory.UserInput, "fixture api_base %q is not an allowed Stripe API URL", request.APIBase)
+	}
+	return request.APIBase, nil
 }
 
 func (fxt *Fixture) unsupportedAPIKey(path string) bool {
@@ -371,10 +376,15 @@ func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.R
 }
 
 func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
+	apiBase, err := fxt.getAPIBase(data)
+	if err != nil {
+		return make([]byte, 0), err
+	}
+
 	req := requests.Base{
 		Method:         strings.ToUpper(data.Method),
 		SuppressOutput: true,
-		APIBaseURL:     fxt.getAPIBase(data),
+		APIBaseURL:     apiBase,
 	}
 
 	path, err := parsers.ParsePath(data.Path, fxt.Responses)

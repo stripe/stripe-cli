@@ -28,6 +28,9 @@ func newDaemonCmd(cfg *config.Config) *daemonCmd {
 		Long: `Start a local gRPC server, enabling you to invoke Stripe CLI commands programmatically from a gRPC
 client.
 
+On startup, stripe daemon prints a line of JSON with the host, port, and token to connect with. Clients
+must send the token in the sec-x-stripe-cli metadata header of every request.
+
 Currently, stripe daemon only supports a subset of CLI commands. Documentation is not yet available.`,
 		Run:    dc.runDaemonCmd,
 		Hidden: true,

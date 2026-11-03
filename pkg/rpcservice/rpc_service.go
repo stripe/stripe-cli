@@ -3,6 +3,7 @@ package rpcservice
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -35,6 +36,10 @@ type Config struct {
 type RPCService struct {
 	cfg *Config
 
+	// token authenticates clients. It's only shared through the config printed to stdout on
+	// startup, which other local users can't read, even though they can connect to the port.
+	token string
+
 	grpcServer *grpc.Server
 
 	// TelemetryClient to use for sending telemetry events
@@ -49,6 +54,9 @@ type ConfigOutput struct {
 
 	// Port is port number of the gRPC server
 	Port int `json:"port"`
+
+	// Token must be sent in the sec-x-stripe-cli header of every request
+	Token string `json:"token"`
 }
 
 // New creates a new RPC service
@@ -67,6 +75,7 @@ func New(
 
 	return &RPCService{
 		cfg:             cfg,
+		token:           rand.Text(),
 		grpcServer:      grpcServer,
 		TelemetryClient: telemetryClient,
 	}
@@ -81,8 +90,9 @@ func (srv *RPCService) Run(ctx context.Context) {
 		srv.cfg.Log.Fatalf("Failed to get the TCP address of the gRPC server")
 	}
 	srv.printConfig(ConfigOutput{
-		Host: addr.IP.String(),
-		Port: addr.Port,
+		Host:  addr.IP.String(),
+		Port:  addr.Port,
+		Token: srv.token,
 	})
 
 	rpc.RegisterStripeCLIServer(srv.grpcServer, srv)
