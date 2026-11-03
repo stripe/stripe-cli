@@ -46,3 +46,26 @@ func TestEvaluateAdvise(t *testing.T) {
 		}
 	}
 }
+
+// TestEvaluatePossibleIsUnverified pins that a possible finding — one the
+// scanner couldn't trace to a request — is judged UNVERIFIED for either
+// rule action, ahead of any removal or advisory guidance.
+func TestEvaluatePossibleIsUnverified(t *testing.T) {
+	for _, action := range []string{"remove", "advise"} {
+		rule := catalog.Rule{Action: action, Message: "m"}
+		findings := []catalog.Finding{
+			{Param: "payment_method_types", Confidence: catalog.ConfidencePossible},
+			{Param: "payment_method_types", Confidence: catalog.ConfidenceConfirmed},
+		}
+		r := Evaluate(rule, findings)
+		if got := r.Findings[0].Class; got != "UNVERIFIED" {
+			t.Errorf("%s: possible finding class = %q, want UNVERIFIED", action, got)
+		}
+		if got := r.Findings[1].Class; got == "UNVERIFIED" {
+			t.Errorf("%s: confirmed finding must not be UNVERIFIED", action)
+		}
+		if r.Summary["UNVERIFIED"] != 1 {
+			t.Errorf("%s: summary = %v, want UNVERIFIED=1", action, r.Summary)
+		}
+	}
+}

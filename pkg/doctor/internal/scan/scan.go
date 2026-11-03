@@ -30,6 +30,11 @@ var parseTimeoutMicros uint64
 // (the parser's budget ran out on pathological input) — never
 // silently folded into "skipped by prefilter".
 func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, parsed, skipped, incomplete int, err error) {
+	parentMu.Lock() // the parent index (see parentOf) is per-tree, shared state
+	defer func() {
+		parentIndex = nil
+		parentMu.Unlock()
+	}()
 	// filepath.WalkDir lstats the root itself rather than following
 	// it — a symlinked root would report IsDir() false and get
 	// skipped entirely, scanning nothing and returning no error.
@@ -98,6 +103,7 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		if err != nil {
 			return nil
 		}
+		indexParents(tree.RootNode())
 		// A parser that exhausts its budget on pathological input returns
 		// a partial tree with a nil error — still scan what it did parse
 		// (better than nothing), but don't let that read as full coverage:
@@ -123,6 +129,10 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		// subscriptions can't resolve against a PaymentIntent call, and
 		// vice versa.
 		pmTokens, pmMethods, pmUnambiguous := perMatchTokensAndMethods(rule, spec)
+		var allTokens []string
+		for _, ts := range pmTokens {
+			allTokens = append(allTokens, ts...)
+		}
 
 		seen := map[string]bool{}
 		for _, m := range q.Execute(tree) {
@@ -143,40 +153,16 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 				// its leading ":" as part of its own text; strip it too.
 				keyText := strings.Trim(c.Text(src), `"':`)
 
-				for pmIdx, pm := range rule.Match {
-					if !containsStr(spec.spell(leafParam(pm.Param)), keyText) {
-						continue
-					}
-					// Enforce the rule's nesting path exactly: a rule for
-					// payment_settings.payment_method_types must not match a
-					// top-level payment_method_types, and vice versa.
-					if !pathSatisfied(c.Node, pm.Param, spec, lang, src) {
-						continue
-					}
-					res := resolve(c.Node, spec, lang, src, pmTokens[pmIdx], pmMethods[pmIdx], pmUnambiguous[pmIdx], idx)
-					if !res.confirmed {
-						continue
-					}
-					p := c.Node.StartPoint()
-					key := fmt.Sprintf("%s:%d:%d", path, p.Row+1, p.Column+1)
-					if seen[key] {
-						continue
-					}
-					seen[key] = true
-					findings = append(findings, catalog.Finding{
-						Value:    extractValue(c.Node, spec, lang, src),
-						File:     path,
-						Line:     int(p.Row) + 1,
-						Col:      int(p.Column) + 1,
-						RuleID:   rule.ID,
-						Severity: rule.Severity,
-						Param:    pm.Param,
-						Anchor:   res.anchor,
-						Via:      res.via,
-						Message:  rule.Message,
-						Docs:     rule.Docs,
-					})
+				hit := classifyKey(c.Node, keyText, path, rule, spec, lang, src, idx, pmTokens, pmMethods, pmUnambiguous, allTokens)
+				if hit == nil {
+					continue
 				}
+				pos := fmt.Sprintf("%s:%d:%d", hit.File, hit.Line, hit.Col)
+				if seen[pos] {
+					continue
+				}
+				seen[pos] = true
+				findings = append(findings, *hit)
 			}
 		}
 		return nil
@@ -185,6 +171,38 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 		return nil, scanned, parsed, skipped, incomplete, walkErr
 	}
 	return findings, scanned, parsed, skipped, incomplete, nil
+}
+
+// classifyKey judges one captured key against every ParamMatch: confirmed
+// by the first match that resolves it; failing that, possible for the
+// first match it plausibly belongs to (see plausible); else nil.
+func classifyKey(key *ts.Node, keyText, path string, rule catalog.Rule, spec langSpec, lang *ts.Language, src []byte, idx fileIndex,
+	pmTokens, pmMethods, pmUnambiguous [][]string, allTokens []string) *catalog.Finding {
+	var hit *catalog.Finding
+	for pmIdx, pm := range rule.Match {
+		if !containsStr(spec.spell(leafParam(pm.Param)), keyText) {
+			continue
+		}
+		// Enforce the rule's nesting path exactly: a rule for
+		// payment_settings.payment_method_types must not match a
+		// top-level payment_method_types, and vice versa.
+		if !pathSatisfied(key, pm.Param, spec, lang, src) {
+			continue
+		}
+		res := resolve(key, spec, lang, src, pmTokens[pmIdx], pmMethods[pmIdx], pmUnambiguous[pmIdx], idx)
+		if !res.confirmed {
+			if hit == nil && plausible(key, spec, lang, src, pmTokens[pmIdx], pmMethods[pmIdx], allTokens) {
+				f := newFinding(key, path, pm.Param, rule, spec, lang, src)
+				f.Anchor, f.Via, f.Confidence = unresolvedAnchor(key, spec, lang, src), "unresolved", catalog.ConfidencePossible
+				hit = &f
+			}
+			continue
+		}
+		f := newFinding(key, path, pm.Param, rule, spec, lang, src)
+		f.Anchor, f.Via, f.Confidence = res.anchor, res.via, catalog.ConfidenceConfirmed
+		return &f
+	}
+	return hit
 }
 
 // perMatchTokensAndMethods returns, per rule.Match entry: its resource
@@ -374,7 +392,7 @@ func extractValue(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) st
 	if kinds == nil { // java: the key IS the method name of the invocation
 		kinds = spec.anchorKinds
 	}
-	for cur := key.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(key); cur != nil; cur = parentOf(cur) {
 		if !containsStr(kinds, cur.Type(lang)) {
 			continue
 		}
@@ -409,18 +427,18 @@ func ancestorKeys(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) []
 	// shorthand property identifier, which has no enclosing pair of
 	// its own to skip (it's a direct child of object, not nested in
 	// one), so collection starts climbing from there immediately.
-	cur := key.Parent()
+	cur := parentOf(key)
 	if key.Type(lang) != "shorthand_property_identifier" {
 		for cur != nil && !isPair(cur.Type(lang)) {
-			cur = cur.Parent()
+			cur = parentOf(cur)
 		}
 		if cur != nil {
-			cur = cur.Parent()
+			cur = parentOf(cur)
 		}
 	}
 
 	var keys []string
-	for ; cur != nil; cur = cur.Parent() {
+	for ; cur != nil; cur = parentOf(cur) {
 		if bound != nil && sameSpan(cur, bound) {
 			break
 		}
@@ -452,7 +470,7 @@ func isRequestEnvelope(cur, anchor *ts.Node, key string) bool {
 		return false
 	}
 	argsNode := anchor.NamedChild(n - 1)
-	return argsNode != nil && cur.Parent() != nil && sameSpan(cur.Parent(), argsNode)
+	return argsNode != nil && parentOf(cur) != nil && sameSpan(parentOf(cur), argsNode)
 }
 
 // keyInKeyPosition reports whether key — a query capture — sits in the
@@ -480,10 +498,10 @@ func keyInKeyPosition(key *ts.Node, spec langSpec, lang *ts.Language, src []byte
 		return containsStr(spec.anchorKinds, n.Type(lang))
 	}
 	child := key
-	for child.Parent() != nil && !isParent(child.Parent()) {
-		child = child.Parent()
+	for parentOf(child) != nil && !isParent(parentOf(child)) {
+		child = parentOf(child)
 	}
-	parent := child.Parent()
+	parent := parentOf(child)
 	if parent == nil {
 		return false
 	}

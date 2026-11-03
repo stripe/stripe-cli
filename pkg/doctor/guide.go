@@ -40,11 +40,20 @@ produce a report at all.
 straight from the doctor_rules API — read these first, before the
 per-finding verdicts, for the overall what/why/where-to-read-more.
 An empty .findings means nothing to migrate; stop. Otherwise .findings[]
-each has file/line/col, via (resolution mechanism), value, and verdict_class:
-  CANDIDATE  safe to remove payment_method_types by hand (verify frontend
-             is Payment Element first)
-  SKIP       deliberate restriction — do not remove
-  REVIEW     needs human judgment (dynamic value / static multi)
+each has file/line/col, via (resolution mechanism), value, confidence,
+and verdict_class:
+  CANDIDATE   safe to remove payment_method_types by hand (verify frontend
+              is Payment Element first)
+  SKIP        deliberate restriction — do not remove
+  REVIEW      needs human judgment (dynamic value / static multi)
+  UNVERIFIED  confidence "possible" (via "unresolved"): the parameter is
+              set in a file that uses the resource, but doctor couldn't
+              trace it to a Stripe request (a helper, an alias, a shadowed
+              or overwritten variable). Read the code: if it reaches the
+              request, treat it like REVIEW; if it can't, leave it.
+confidence "confirmed" means doctor traced the parameter to a matching
+request. doctor reports what it can't rule out rather than dropping it,
+so an empty .findings is a stronger signal than a short one.
 Every verdict message also carries the migration rule's own guidance
 (e.g. a Dashboard deep link, or an API-version caveat) straight from the
 doctor_rules API — doctor doesn't independently probe the account itself

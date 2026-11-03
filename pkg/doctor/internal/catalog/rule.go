@@ -32,6 +32,12 @@ type Rule struct {
 	RemediationTopic string
 }
 
+// Finding.Confidence values.
+const (
+	ConfidenceConfirmed = "confirmed"
+	ConfidencePossible  = "possible"
+)
+
 type Finding struct {
 	File     string `json:"file"`
 	Line     int    `json:"line"`
@@ -40,8 +46,14 @@ type Finding struct {
 	Severity string `json:"severity"`
 	Param    string `json:"param"`
 	Anchor   string `json:"anchor"` // the matched param-bag text, trimmed
-	Via      string `json:"via"`    // how it resolved: direct, var:<name>, type:<name>
-	Value    string `json:"value"`  // the parameter's value expression, for intent ranking
-	Message  string `json:"message"`
-	Docs     string `json:"docs"`
+	Via      string `json:"via"`    // how it resolved: direct, var:<name>, type:<name>; "unresolved" when possible
+	// Confidence is "confirmed" when the scanner traced the parameter to a
+	// matching Stripe request, or "possible" when it couldn't trace it but
+	// couldn't rule it out either — the scanner reports what it can't
+	// prove rather than dropping it, so a pattern it doesn't understand
+	// surfaces for review instead of reading as already migrated.
+	Confidence string `json:"confidence"`
+	Value      string `json:"value"` // the parameter's value expression, for intent ranking
+	Message    string `json:"message"`
+	Docs       string `json:"docs"`
 }

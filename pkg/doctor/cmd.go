@@ -242,7 +242,10 @@ func applyFindingVerdicts(rep *DoctorReport, verdicts map[string]string) {
 	rep.Summary = map[string]int{}
 	for i := range rep.Findings {
 		f := &rep.Findings[i]
-		if v, ok := verdicts[remediation.FindingKey(f.File, f.Line)]; ok {
+		// An unverified finding keeps its UNVERIFIED verdict: a remediation
+		// judging the value (e.g. "safe to remove") mustn't mask that the
+		// scanner never traced it to a request.
+		if v, ok := verdicts[remediation.FindingKey(f.File, f.Line)]; ok && f.Confidence != catalog.ConfidencePossible {
 			f.Verdict = v
 			f.Class = v
 			if idx := strings.Index(v, ":"); idx > 0 {

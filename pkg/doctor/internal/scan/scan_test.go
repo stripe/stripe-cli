@@ -54,59 +54,118 @@ var want = []string{
 	"../../testdata/javascript/spread_merge.js:5:3",       // var: bag merged via object spread
 	"../../testdata/python/nested_same_scope.py:4:16",     // var: bag bound and used in the same nested function
 
-	"../../testdata/python/create_async.py:4:41",                       // direct (Python asyncio create_async)
-	"../../testdata/python/client_create_async.py:6:14",                // direct (StripeClient resource-style create_async)
-	"../../testdata/typescript/typed_decl.ts:5:3",                      // type: explicit params type, assigned separately
-	"../../testdata/python/unrelated_local_reassign.py:4:12",           // var: an unrelated nested function's own local reassignment must not invalidate the outer binding
-	"../../testdata/javascript/function_defined_before_assign.js:11:3", // var: a function's body runs when called, not at its earlier textual definition site
-	"../../testdata/python/conditional_reassign.py:5:12",               // var: a conditional reassignment isn't a definite overwrite on every path
-	"../../testdata/javascript/unrelated_block_scope.js:4:18",          // var: an unrelated block-scoped const in a sibling if-branch must not invalidate the outer binding
-	"../../testdata/ruby/do_block.rb:5:30",                             // direct (Ruby do...end block isn't the real argument list)
-	"../../testdata/javascript/comment_before_args.js:6:3",             // direct (comment between method name and argument list)
-	"../../testdata/javascript/if_block_scope.js:4:18",                 // var: an if-branch's own block-scoped const must not shadow the module-level bag reaching the call after it
-	"../../testdata/javascript/shorthand_prop.js:4:32",                 // direct (JS/TS shorthand property, {payment_method_types} sugar for {payment_method_types: payment_method_types})
-	"../../testdata/typescript/shorthand_prop.ts:4:32",                 // direct (same, TS grammar)
-	"../../testdata/go/var_legacy_create.go:12:3",                      // var: Go's legacy ambiguous type bound with `var` (not `:=`), reaching New
-	"../../testdata/python/nested_helper_scope.py:3:12",                // var: a nested helper function's own local must not shadow the module-level bag reaching the call in the outer function
-	"../../testdata/javascript/nested_helper_scope.js:3:18",            // var: same, JS grammar
-	"../../testdata/javascript/closure_conditional_write.js:3:16",      // var: a write (not a declaration) to a captured outer variable isn't a new local shadowing it
-	"../../testdata/php/braceless_conditional.php:4:13",                // var: PHP's brace-less single-statement if body is still conditional, not an unconditional overwrite
-	"../../testdata/javascript/braceless_conditional.js:3:16",          // var: JS's brace-less single-statement if body is still conditional, not an unconditional overwrite
-	"../../testdata/javascript/declare_then_assign.js:6:12",            // var: an empty `let` declaration is the binding a later write fills, not a shadow of it
-	"../../testdata/go/declare_then_assign.go:12:3",                    // var: same, Go `var` declaration then plain `=`
-	"../../testdata/javascript/self_merge.js:5:16",                     // var: `params = {...params, ...}` keeps the original keys
-	"../../testdata/python/self_merge.py:3:12",                         // var: `params = dict(params, ...)` keeps the original keys
-	"../../testdata/ruby/self_merge.rb:3:12",                           // var: `params = params.merge(...)` keeps the original keys
-	"../../testdata/go/address_of.go:11:3",                             // var: legacy value literal passed as New(&params)
-	"../../testdata/python/envelope_spread.py:4:12",                    // var: bag spread inside the params= request envelope
-	"../../testdata/ruby/block_captured_merge.rb:3:12",                 // var: a Ruby block's assignment writes the captured outer variable (here, merging it)
-	"../../testdata/python/dict_wrapper.py:4:36",                       // direct: dict(...) wrapper splatted into the call
-	"../../testdata/python/dict_wrapper.py:5:65",                       // direct: dict(...) wrapper as the params= envelope
-	"../../testdata/go/go_client_new.go:11:3",                          // var: legacy type reaching a client service's New (sc.PaymentIntents.New)
-	"../../testdata/ruby/merge_arg.rb:3:12",                            // var: bag passed through params.merge(...) as the argument
-	"../../testdata/python/merge_arg.py:3:12",                          // var: bag passed through **dict(params, ...)
-	"../../testdata/ruby/block_populated.rb:6:14",                      // var: a Ruby block populates the outer params, sent after the block
-	"../../testdata/javascript/closure_populated.js:5:14",              // var: a JS closure populates the outer params, sent after it
-	"../../testdata/go/go_if_shadow_expired.go:9:2",                    // var: an if-block's own := has expired by the call, so it doesn't shadow the package-level bag
-	"../../testdata/python/default_param.py:3:12",                      // var: params appears only in a parameter's default value, not as a bound parameter
-	"../../testdata/go/go_field_write.go:10:9",                         // field: Go field assigned after construction, legacy type confirmed by New
-	"../../testdata/go/go_field_write_create.go:7:9",                   // field: Go field assigned on a declared *CreateParams var
-	"../../testdata/javascript/merge_chain.js:3:16",                    // var: bag merged into an intermediate variable that reaches the call
-	"../../testdata/python/merge_chain.py:3:10",                        // var: same, via dict(base, ...)
-	"../../testdata/ruby/inline_merge.rb:3:53",                         // direct: key inside an inline {...}.merge(...) request argument
-	"../../testdata/javascript/inline_assign.js:3:64",                  // direct: key inside an inline Object.assign(...) request argument
-	"../../testdata/go/go_if_init_shadow.go:10:3",                      // var: an if-initializer's shadow has expired by the call
-	"../../testdata/javascript/for_let_expired.js:3:18",                // var: a for-initializer's let has expired by the call
-	"../../testdata/java/BuilderChain.java:6:7",                        // recv: chained builder call resolved through its base receiver
-	"../../testdata/javascript/delete_conditional.js:3:18",             // var: the deletion only runs on one path
-	"../../testdata/python/del_other_key.py:3:12",                      // var: a different key is deleted
-	"../../testdata/javascript/inplace_assign.js:4:25",                 // var: key merged into params in place by Object.assign
-	"../../testdata/javascript/inplace_assign_param.js:5:27",           // var: same, into a function parameter
-	"../../testdata/ruby/inplace_merge_bang.rb:4:15",                   // var: key merged into params in place by merge!
-	"../../testdata/python/inplace_update.py:4:17",                     // var: key merged into params in place by dict.update
-	"../../testdata/go/go_field_write_declared.go:14:9",                // field: declared type survives a later value assignment
-	"../../testdata/python/computed_delete.py:4:12",                    // var: a computed del key isn't a known deletion of this field
-	"../../testdata/javascript/computed_delete.js:4:18",                // var: same, JS computed delete
+	"../../testdata/python/create_async.py:4:41",                         // direct (Python asyncio create_async)
+	"../../testdata/python/client_create_async.py:6:14",                  // direct (StripeClient resource-style create_async)
+	"../../testdata/typescript/typed_decl.ts:5:3",                        // type: explicit params type, assigned separately
+	"../../testdata/python/unrelated_local_reassign.py:4:12",             // var: an unrelated nested function's own local reassignment must not invalidate the outer binding
+	"../../testdata/javascript/function_defined_before_assign.js:11:3",   // var: a function's body runs when called, not at its earlier textual definition site
+	"../../testdata/python/conditional_reassign.py:5:12",                 // var: a conditional reassignment isn't a definite overwrite on every path
+	"../../testdata/javascript/unrelated_block_scope.js:4:18",            // var: an unrelated block-scoped const in a sibling if-branch must not invalidate the outer binding
+	"../../testdata/ruby/do_block.rb:5:30",                               // direct (Ruby do...end block isn't the real argument list)
+	"../../testdata/javascript/comment_before_args.js:6:3",               // direct (comment between method name and argument list)
+	"../../testdata/javascript/if_block_scope.js:4:18",                   // var: an if-branch's own block-scoped const must not shadow the module-level bag reaching the call after it
+	"../../testdata/javascript/shorthand_prop.js:4:32",                   // direct (JS/TS shorthand property, {payment_method_types} sugar for {payment_method_types: payment_method_types})
+	"../../testdata/typescript/shorthand_prop.ts:4:32",                   // direct (same, TS grammar)
+	"../../testdata/go/var_legacy_create.go:12:3",                        // var: Go's legacy ambiguous type bound with `var` (not `:=`), reaching New
+	"../../testdata/python/nested_helper_scope.py:3:12",                  // var: a nested helper function's own local must not shadow the module-level bag reaching the call in the outer function
+	"../../testdata/javascript/nested_helper_scope.js:3:18",              // var: same, JS grammar
+	"../../testdata/javascript/closure_conditional_write.js:3:16",        // var: a write (not a declaration) to a captured outer variable isn't a new local shadowing it
+	"../../testdata/php/braceless_conditional.php:4:13",                  // var: PHP's brace-less single-statement if body is still conditional, not an unconditional overwrite
+	"../../testdata/javascript/braceless_conditional.js:3:16",            // var: JS's brace-less single-statement if body is still conditional, not an unconditional overwrite
+	"../../testdata/javascript/declare_then_assign.js:6:12",              // var: an empty `let` declaration is the binding a later write fills, not a shadow of it
+	"../../testdata/go/declare_then_assign.go:12:3",                      // var: same, Go `var` declaration then plain `=`
+	"../../testdata/javascript/self_merge.js:5:16",                       // var: `params = {...params, ...}` keeps the original keys
+	"../../testdata/python/self_merge.py:3:12",                           // var: `params = dict(params, ...)` keeps the original keys
+	"../../testdata/ruby/self_merge.rb:3:12",                             // var: `params = params.merge(...)` keeps the original keys
+	"../../testdata/go/address_of.go:11:3",                               // var: legacy value literal passed as New(&params)
+	"../../testdata/python/envelope_spread.py:4:12",                      // var: bag spread inside the params= request envelope
+	"../../testdata/ruby/block_captured_merge.rb:3:12",                   // var: a Ruby block's assignment writes the captured outer variable (here, merging it)
+	"../../testdata/python/dict_wrapper.py:4:36",                         // direct: dict(...) wrapper splatted into the call
+	"../../testdata/python/dict_wrapper.py:5:65",                         // direct: dict(...) wrapper as the params= envelope
+	"../../testdata/go/go_client_new.go:11:3",                            // var: legacy type reaching a client service's New (sc.PaymentIntents.New)
+	"../../testdata/ruby/merge_arg.rb:3:12",                              // var: bag passed through params.merge(...) as the argument
+	"../../testdata/python/merge_arg.py:3:12",                            // var: bag passed through **dict(params, ...)
+	"../../testdata/ruby/block_populated.rb:6:14",                        // var: a Ruby block populates the outer params, sent after the block
+	"../../testdata/javascript/closure_populated.js:5:14",                // var: a JS closure populates the outer params, sent after it
+	"../../testdata/go/go_if_shadow_expired.go:9:2",                      // var: an if-block's own := has expired by the call, so it doesn't shadow the package-level bag
+	"../../testdata/python/default_param.py:3:12",                        // var: params appears only in a parameter's default value, not as a bound parameter
+	"../../testdata/go/go_field_write.go:10:9",                           // field: Go field assigned after construction, legacy type confirmed by New
+	"../../testdata/go/go_field_write_create.go:7:9",                     // field: Go field assigned on a declared *CreateParams var
+	"../../testdata/javascript/merge_chain.js:3:16",                      // var: bag merged into an intermediate variable that reaches the call
+	"../../testdata/python/merge_chain.py:3:10",                          // var: same, via dict(base, ...)
+	"../../testdata/ruby/inline_merge.rb:3:53",                           // direct: key inside an inline {...}.merge(...) request argument
+	"../../testdata/javascript/inline_assign.js:3:64",                    // direct: key inside an inline Object.assign(...) request argument
+	"../../testdata/go/go_if_init_shadow.go:10:3",                        // var: an if-initializer's shadow has expired by the call
+	"../../testdata/javascript/for_let_expired.js:3:18",                  // var: a for-initializer's let has expired by the call
+	"../../testdata/java/BuilderChain.java:6:7",                          // recv: chained builder call resolved through its base receiver
+	"../../testdata/javascript/delete_conditional.js:3:18",               // var: the deletion only runs on one path
+	"../../testdata/python/del_other_key.py:3:12",                        // var: a different key is deleted
+	"../../testdata/javascript/inplace_assign.js:4:25",                   // var: key merged into params in place by Object.assign
+	"../../testdata/javascript/inplace_assign_param.js:5:27",             // var: same, into a function parameter
+	"../../testdata/ruby/inplace_merge_bang.rb:4:15",                     // var: key merged into params in place by merge!
+	"../../testdata/python/inplace_update.py:4:17",                       // var: key merged into params in place by dict.update
+	"../../testdata/go/go_field_write_declared.go:14:9",                  // field: declared type survives a later value assignment
+	"../../testdata/python/computed_delete.py:4:12",                      // var: a computed del key isn't a known deletion of this field
+	"../../testdata/javascript/computed_delete.js:4:18",                  // var: same, JS computed delete
+	"../../testdata/javascript/else_branch.js:6:16",                      // var: bag set in an if branch
+	"../../testdata/javascript/else_branch.js:9:16",                      // var: bag set in an else branch (gotreesitter's Parent() can't climb out of it; see parentOf)
+	"../../testdata/javascript/closure_conditional_write_braced.js:3:16", // var: a captured write inside a braced if may not run
+}
+
+// wantPossible is the exact set of possible (unverified) findings: keys
+// the resolver couldn't trace to a request but couldn't rule out
+// structurally either (see plausible). Each one is a fixture whose bag
+// the resolver proves never reaches the call — shadowed, overwritten,
+// deleted — reported for review rather than dropped, so a mistake in
+// that dataflow reasoning costs a review item instead of a silently
+// missed migration. The comment is why it isn't confirmed.
+var wantPossible = []string{
+	"../../testdata/ruby/possible_helper.rb:9:12",                   // reaches Stripe through a helper the resolver doesn't follow — the case this tier exists for
+	"../../testdata/go/neg_go_block_shadow.go:13:3",                 // the outer bag is used only by Update; the inner New call uses its own, block-scoped clean params
+	"../../testdata/go/neg_go_field_write_after_call.go:12:9",       // the field is set only after the create call ran
+	"../../testdata/go/neg_go_field_write_update.go:11:9",           // the field-written legacy bag only reaches paymentintent.Update
+	"../../testdata/go/neg_go_if_init_shadow.go:10:3",               // New receives the if-initializer's clean shadow; the dirty bag only reaches Update
+	"../../testdata/go/neg_go_slice_update.go:10:3",                 // a slice literal isn't an operation; the legacy bag only reaches Update
+	"../../testdata/go/neg_go_unrelated_new.go:11:3",                // the legacy bag reaches request.New and paymentintent.Update, never a PaymentIntent create
+	"../../testdata/go/neg_go_unrelated_new.go:21:3",                // the legacy bag reaches request.New and paymentintent.Update, never a PaymentIntent create
+	"../../testdata/go/neg_legacy_update.go:12:3",                   // the legacy, create-and-update-shared PaymentIntentParams type is passed to Update, not New
+	"../../testdata/go/neg_var_block_scoped.go:16:4",                // the dirty params never escapes its if-branch, so it must not be associated with the call after the branch closes
+	"../../testdata/go/neg_var_reassigned.go:14:3",                  // the var-bound bag is overwritten with a clean one before the call that actually runs
+	"../../testdata/javascript/neg_bare_block_shadow.js:4:18",       // the call's own params is a bare block's own let/const re-declaration, not the outer module-level object
+	"../../testdata/javascript/neg_callback_local.js:7:21",          // the callback's own local object is never passed to create — not a request argument at all
+	"../../testdata/javascript/neg_delete.js:3:18",                  // the key is deleted before the call
+	"../../testdata/javascript/neg_dominating_overwrite.js:5:14",    // an unconditional params = {} dominates the call, discarding the conditional bag
+	"../../testdata/javascript/neg_inplace_other_var.js:6:24",       // the merge mutates a different object than the one sent
+	"../../testdata/javascript/neg_inplace_then_overwrite.js:4:25",  // the in-place-merged bag is replaced before the call
+	"../../testdata/javascript/neg_let_block_scoped.js:7:22",        // the block-scoped const never escapes its if-branch, so it must not be associated with the call outside it
+	"../../testdata/javascript/neg_local_shadow.js:7:3",             // the call's own params is a body-level local re-declaration, not the outer module-level object
+	"../../testdata/javascript/neg_merge_chain_overwritten.js:3:14", // base is replaced before it's merged into params
+	"../../testdata/javascript/neg_reassigned_js.js:6:16",           // the bag is overwritten with a clean one before the call, despite mismatched statement-wrapper node types
+	"../../testdata/javascript/neg_shadowed_param.js:6:3",           // the call's own params is a shadowing function parameter, not the module-level object
+	"../../testdata/javascript/neg_spread.js:4:3",                   // bag nested under metadata, not spread into the call's own params
+	"../../testdata/javascript/neg_string_mention.js:3:16",          // the reassignment only mentions the name inside a string; the bag is replaced
+	"../../testdata/php/neg_reassigned.php:5:13",                    // the bag is overwritten with a clean one before the call that actually runs
+	"../../testdata/python/collide.py:5:16",                         // variable in an unrelated function must not resolve cross-function
+	"../../testdata/python/metadata_misattribution.py:4:12",         // bag bound to an unrelated keyword (metadata=params), not merged into the call's own params
+	"../../testdata/python/neg_del.py:3:12",                         // the key is deleted before the call
+	"../../testdata/python/neg_dominating_overwrite.py:6:20",        // an unconditional params = {} dominates the call, discarding the conditional bag
+	"../../testdata/python/neg_envelope_metadata_spread.py:5:12",    // the bag is spread into metadata=, not the params= request envelope
+	"../../testdata/python/neg_lambda_shadow.py:5:12",               // the call's own params is the lambda's own parameter, not the module-level dict
+	"../../testdata/python/neg_param_shadow.py:3:12",                // the function's own params parameter shadows the module-level bag
+	"../../testdata/python/neg_reassigned.py:6:6",                   // the bag is overwritten with a clean one before the call that actually runs
+	"../../testdata/python/neg_reassigned_after_call.py:8:12",       // the call already ran with a clean bag before the dirty reassignment ever happened
+	"../../testdata/ruby/neg_block_call_before_write.rb:7:14",       // the call runs before the block writes the bag
+	"../../testdata/ruby/neg_block_overwrite.rb:3:12",               // a Ruby block overwrites the captured outer params with a clean bag before the call
+	"../../testdata/ruby/neg_block_then_overwrite.rb:5:14",          // the block's bag is discarded by an unconditional overwrite before the call
+	"../../testdata/ruby/neg_do_block_local.rb:6:15",                // the do...end block's own local hash is never passed to create — not a request argument at all
+	"../../testdata/ruby/neg_except.rb:3:12",                        // params.except(:payment_method_types) removes the parameter; it is not a merge
+	"../../testdata/ruby/neg_merge_arg_metadata.rb:4:12",            // the merge is the metadata value, not the request's own params
+	"../../testdata/ruby/neg_merge_discarded.rb:5:14",               // a non-mutating merge whose result is discarded
+	"../../testdata/ruby/neg_wrong_model.rb:3:27",                   // PaymentIntentAudit merely contains PaymentIntent as a substring, it is not that resource
+	"../../testdata/typescript/neg_typed_decl_block_shadow.ts:5:3",  // the typed declaration belongs to an unrelated inner block's own re-declaration, not the outer bag
+	"../../testdata/typescript/neg_typed_decl_inner_block.ts:6:14",  // the inner block's own untyped params doesn't borrow the outer typed declaration
+	"../../testdata/typescript/neg_typed_decl_scope.ts:9:3",         // the typed declaration of the same name belongs to an unrelated nested function, not the outer module-level binding
+	"../../testdata/typescript/neg_untyped_decl.ts:7:18",            // untyped declarator whose initializer merely mentions the resource, not a typed declaration
 }
 
 func TestScanExactFindings(t *testing.T) {
@@ -114,44 +173,57 @@ func TestScanExactFindings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	var got []string
+	got := map[string][]string{}
 	for _, f := range findings {
-		got = append(got, fmt.Sprintf("%s:%d:%d", f.File, f.Line, f.Col))
+		got[f.Confidence] = append(got[f.Confidence], fmt.Sprintf("%s:%d:%d", f.File, f.Line, f.Col))
 	}
-	sort.Strings(got)
-
-	wantSet := map[string]bool{}
-	for _, w := range want {
-		wantSet[w] = true
+	for level, want := range map[string][]string{
+		catalog.ConfidenceConfirmed: want,
+		catalog.ConfidencePossible:  wantPossible,
+	} {
+		assertExactSet(t, level, got[level], want)
 	}
-	gotSet := map[string]bool{}
-	for _, g := range got {
-		gotSet[g] = true
-	}
-
-	for _, g := range got {
-		if !wantSet[g] {
-			t.Errorf("FALSE POSITIVE: %s", g)
+	for level := range got {
+		if level != catalog.ConfidenceConfirmed && level != catalog.ConfidencePossible {
+			t.Errorf("unexpected confidence %q on %v", level, got[level])
 		}
-	}
-	for _, w := range want {
-		if !gotSet[w] {
-			t.Errorf("FALSE NEGATIVE: %s", w)
-		}
-	}
-	if len(got) != len(want) {
-		t.Errorf("count: got %d findings, want %d", len(got), len(want))
 	}
 	if incomplete != 0 {
 		t.Errorf("expected every fixture to be readable, got %d incomplete", incomplete)
 	}
-	t.Logf("%d findings, %d files scanned, %d parsed, %d skipped by prefilter",
-		len(got), scanned, parsed, skipped)
+	t.Logf("%d confirmed + %d possible findings, %d files scanned, %d parsed, %d skipped by prefilter",
+		len(got[catalog.ConfidenceConfirmed]), len(got[catalog.ConfidencePossible]), scanned, parsed, skipped)
+}
+
+func assertExactSet(t *testing.T, level string, got, want []string) {
+	t.Helper()
+	gotSet, wantSet := map[string]bool{}, map[string]bool{}
+	for _, g := range got {
+		gotSet[g] = true
+	}
+	for _, w := range want {
+		wantSet[w] = true
+	}
+	sort.Strings(got)
+	for _, g := range got {
+		if !wantSet[g] {
+			t.Errorf("FALSE POSITIVE (%s): %s", level, g)
+		}
+	}
+	for _, w := range want {
+		if !gotSet[w] {
+			t.Errorf("FALSE NEGATIVE (%s): %s", level, w)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("count (%s): got %d findings, want %d", level, len(got), len(want))
+	}
 }
 
 // TestNegativesRejected names the adversarial cases explicitly so a regression
-// that starts matching them is obvious from the test name alone.
+// that starts confirming them is obvious from the test name alone. Some
+// are still reported as possible — exactly the ones pinned in
+// wantPossible — but none may be confirmed.
 func TestNegativesRejected(t *testing.T) {
 	findings, _, _, skipped, incomplete, err := Scan("../../testdata", testRule)
 	_ = skipped
@@ -228,7 +300,7 @@ func TestNegativesRejected(t *testing.T) {
 		"../../testdata/go/neg_go_slice_update.go":                 "a slice literal isn't an operation; the legacy bag only reaches Update",
 	}
 	for _, f := range findings {
-		if why, bad := banned[f.File]; bad {
+		if why, bad := banned[f.File]; bad && f.Confidence == catalog.ConfidenceConfirmed {
 			t.Errorf("matched %s but should not: %s", f.File, why)
 		}
 	}
@@ -247,7 +319,9 @@ func TestResolutionMechanisms(t *testing.T) {
 	}
 	byFile := map[string]string{}
 	for _, f := range findings {
-		byFile[f.File] = f.Via
+		if f.Confidence == catalog.ConfidenceConfirmed {
+			byFile[f.File] = f.Via
+		}
 	}
 	for file, wantVia := range map[string]string{
 		"../../testdata/python/var_indirect.py":    "var:params",
@@ -472,7 +546,9 @@ func TestTypedDeclScopedToMatchResource(t *testing.T) {
 	}
 	got := map[string]string{}
 	for _, f := range findings {
-		got[filepath.Base(f.File)] = f.Via
+		if f.Confidence == catalog.ConfidenceConfirmed {
+			got[filepath.Base(f.File)] = f.Via
+		}
 	}
 	want := map[string]string{"right.ts": "type:params", "Right.java": "recv:b"}
 	for name, via := range want {

@@ -440,7 +440,7 @@ const goCreateMethod = "New"
 // for Go), never the real call_expression that invokes them, so this
 // does its own walk over every call_expression in the file instead.
 func invokesCreateMethod(key, anchor *ts.Node, spec langSpec, lang *ts.Language, src []byte, unambiguous []string, idx fileIndex) bool {
-	for cur := anchor.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(anchor); cur != nil; cur = parentOf(cur) {
 		if containsStr(spec.anchorKinds, cur.Type(lang)) {
 			break // don't climb past an enclosing, unrelated literal
 		}
@@ -490,18 +490,18 @@ func goCreateReached(name string, assign, binding *ts.Node, spec langSpec, lang 
 // intermediate field path (["PaymentSettings"] for
 // `params.PaymentSettings.PaymentMethodTypes = ...`).
 func fieldWrite(key *ts.Node, lang *ts.Language, src []byte) (recv, stmt *ts.Node, path []string, ok bool) {
-	sel := key.Parent()
+	sel := parentOf(key)
 	if sel == nil || sel.Type(lang) != "selector_expression" {
 		return nil, nil, nil, false
 	}
 	if f := fieldChild(sel, lang, "field"); f == nil || !sameSpan(f, key) {
 		return nil, nil, nil, false
 	}
-	left := sel.Parent()
+	left := parentOf(sel)
 	if left == nil || left.Type(lang) != "expression_list" {
 		return nil, nil, nil, false
 	}
-	stmt = left.Parent()
+	stmt = parentOf(left)
 	if stmt == nil || stmt.Type(lang) != "assignment_statement" {
 		return nil, nil, nil, false
 	}
@@ -731,7 +731,7 @@ func inPlaceMerge(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) (s
 	if spec.anchorStyle != anchorCall {
 		return "", nil
 	}
-	for cur := key.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(key); cur != nil; cur = parentOf(cur) {
 		if containsStr(spec.funcKinds, cur.Type(lang)) {
 			return "", nil
 		}
@@ -761,8 +761,8 @@ func inPlaceMerge(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) (s
 
 // treeRoot climbs n up to the root of its syntax tree.
 func treeRoot(n *ts.Node) *ts.Node {
-	for n.Parent() != nil {
-		n = n.Parent()
+	for parentOf(n) != nil {
+		n = parentOf(n)
 	}
 	return n
 }
@@ -770,7 +770,7 @@ func treeRoot(n *ts.Node) *ts.Node {
 // enclosingFunc returns the byte span of the key's enclosing function body,
 // or the whole file when the key is at top level.
 func enclosingFunc(key *ts.Node, spec langSpec, lang *ts.Language) (uint32, uint32) {
-	for cur := key.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(key); cur != nil; cur = parentOf(cur) {
 		if containsStr(spec.funcKinds, cur.Type(lang)) {
 			return cur.StartByte(), cur.EndByte()
 		}
@@ -787,7 +787,7 @@ func enclosingFuncNode(n *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
 	if n == nil {
 		return nil
 	}
-	for cur := n.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(n); cur != nil; cur = parentOf(cur) {
 		if containsStr(spec.funcKinds, cur.Type(lang)) {
 			return cur
 		}
@@ -806,7 +806,7 @@ func enclosingFuncNode(n *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
 // stops at boundary, since that scope's own declaration, if it names
 // name, is exactly what the outer assignment itself binds.
 func shadowed(node, boundary *ts.Node, spec langSpec, lang *ts.Language, src []byte, name string, assign *ts.Node, assigns []assignment) bool {
-	for cur := node.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(node); cur != nil; cur = parentOf(cur) {
 		if boundary != nil && sameSpan(cur, boundary) {
 			return false
 		}
@@ -987,7 +987,7 @@ func paramBinds(p *ts.Node, lang *ts.Language, src []byte, name string) bool {
 // arguments, but its *body* is not).
 func climbAnchor(n *ts.Node, spec langSpec, lang *ts.Language, src []byte) *ts.Node {
 	var nearest *ts.Node
-	for cur := n; cur != nil; cur = cur.Parent() {
+	for cur := n; cur != nil; cur = parentOf(cur) {
 		if containsStr(spec.anchorKinds, cur.Type(lang)) {
 			if spec.anchorStyle == anchorCall {
 				if callee, _, _ := splitCall(cur, lang, src); mergeFuncs[calleeMethodName(callee)] {
@@ -1006,7 +1006,7 @@ func climbAnchor(n *ts.Node, spec langSpec, lang *ts.Language, src []byte) *ts.N
 	}
 	cur := nearest
 	for {
-		p := cur.Parent()
+		p := parentOf(cur)
 		if p == nil || !containsStr(spec.anchorKinds, p.Type(lang)) {
 			return cur
 		}
@@ -1026,7 +1026,7 @@ func sameSpan(a, b *ts.Node) bool {
 // in C# the parameter (PaymentMethodTypes = ...) is the same node kind
 // as the binding (options = new(){...}).
 func boundVariable(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) (string, *ts.Node) {
-	for cur := key; cur != nil; cur = cur.Parent() {
+	for cur := key; cur != nil; cur = parentOf(cur) {
 		if !containsStr(spec.assignKinds, cur.Type(lang)) {
 			continue
 		}
@@ -1228,7 +1228,7 @@ func writesOuterBinding(a assignment, assign, boundary *ts.Node, spec langSpec, 
 	if len(spec.captureKinds) == 0 || a.start <= assign.StartByte() {
 		return false
 	}
-	for cur := a.node.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(a.node); cur != nil; cur = parentOf(cur) {
 		if boundary != nil && sameSpan(cur, boundary) {
 			break
 		}
@@ -1245,15 +1245,15 @@ func writesOuterBinding(a assignment, assign, boundary *ts.Node, spec langSpec, 
 // statement list that also contains, as a later statement, the one
 // holding use.
 func overwritesBefore(a, use *ts.Node, spec langSpec, lang *ts.Language) bool {
-	container := a.Parent()
+	container := parentOf(a)
 	if len(spec.blockKinds) > 0 {
 		container = nearestBlock(a, spec, lang)
 	}
 	if container == nil || !isWholeStatement(a, container) {
 		return false
 	}
-	for cur := use; cur != nil && cur.Parent() != nil; cur = cur.Parent() {
-		if sameSpan(cur.Parent(), container) {
+	for cur := use; cur != nil && parentOf(cur) != nil; cur = parentOf(cur) {
+		if sameSpan(parentOf(cur), container) {
 			return cur.StartByte() > a.StartByte()
 		}
 	}
@@ -1394,7 +1394,7 @@ func mergesVariable(n *ts.Node, name string, lang *ts.Language, src []byte) bool
 // this way, so comparing Parent() directly already works.
 func unconditionalSibling(a, b *ts.Node, spec langSpec, lang *ts.Language) bool {
 	if len(spec.blockKinds) == 0 {
-		ap, bp := a.Parent(), b.Parent()
+		ap, bp := parentOf(a), parentOf(b)
 		return ap != nil && bp != nil && sameSpan(ap, bp)
 	}
 	ba, bb := nearestBlock(a, spec, lang), nearestBlock(b, spec, lang)
@@ -1410,14 +1410,14 @@ func unconditionalSibling(a, b *ts.Node, spec langSpec, lang *ts.Language) bool 
 // than part of a larger expression that may not evaluate it, like
 // `useDefaults && (params = {})`, or the body of a brace-less if.
 func isWholeStatement(a, container *ts.Node) bool {
-	p := a.Parent()
+	p := parentOf(a)
 	if p == nil {
 		return false
 	}
 	if sameSpan(p, container) {
 		return true
 	}
-	gp := p.Parent()
+	gp := parentOf(p)
 	return gp != nil && sameSpan(gp, container) && p.NamedChildCount() == 1
 }
 
@@ -1432,7 +1432,7 @@ func isWholeStatement(a, container *ts.Node) bool {
 // via blockKinds. Climbing through controlKinds between node and
 // block can.
 func nestedInControlFlow(node, block *ts.Node, spec langSpec, lang *ts.Language) bool {
-	for cur := node.Parent(); cur != nil && !sameSpan(cur, block); cur = cur.Parent() {
+	for cur := parentOf(node); cur != nil && !sameSpan(cur, block); cur = parentOf(cur) {
 		if containsStr(spec.controlKinds, cur.Type(lang)) {
 			return true
 		}
@@ -1443,7 +1443,7 @@ func nestedInControlFlow(node, block *ts.Node, spec langSpec, lang *ts.Language)
 // nearestBlock returns n's nearest ancestor whose type is a
 // statement-list container (see langSpec.blockKinds).
 func nearestBlock(n *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
-	for cur := n.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(n); cur != nil; cur = parentOf(cur) {
 		if containsStr(spec.blockKinds, cur.Type(lang)) {
 			return cur
 		}
@@ -1469,13 +1469,13 @@ func bindingBlock(node *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
 	case "var_spec", "short_var_declaration":
 		confined = true
 	}
-	if p := node.Parent(); p != nil && p.Type(lang) == "lexical_declaration" {
+	if p := parentOf(node); p != nil && p.Type(lang) == "lexical_declaration" {
 		confined = true
 	}
 	if !confined {
 		return nil
 	}
-	for cur := node.Parent(); cur != nil; cur = cur.Parent() {
+	for cur := parentOf(node); cur != nil; cur = parentOf(cur) {
 		if t := cur.Type(lang); containsStr(spec.blockKinds, t) || containsStr(spec.controlKinds, t) {
 			return cur
 		}

@@ -29,7 +29,12 @@ func Evaluate(rule catalog.Rule, findings []catalog.Finding) *Report {
 	r := &Report{Summary: map[string]int{}}
 	for _, f := range findings {
 		var v string
-		if rule.Action == "advise" {
+		switch {
+		case f.Confidence == catalog.ConfidencePossible:
+			// The scanner couldn't trace this to a request; whether it's
+			// sent at all is the open question, before anything else.
+			v = "UNVERIFIED: couldn't trace this " + f.Param + " to a Stripe request — check whether this code path sends it"
+		case rule.Action == "advise":
 			v = "ADVISE: " + rule.Message
 			if rule.ActionText != "" {
 				v += " " + rule.ActionText
@@ -37,7 +42,7 @@ func Evaluate(rule catalog.Rule, findings []catalog.Finding) *Report {
 			if rule.IntroducedIn != "" {
 				v += " (API " + rule.IntroducedIn + ")"
 			}
-		} else {
+		default:
 			v = "REVIEW: confirm whether removing " + f.Param + " here is safe"
 		}
 		class := v

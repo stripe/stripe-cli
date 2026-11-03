@@ -242,6 +242,8 @@ func classLabel(class string) string {
 		return "needs review"
 	case "ADVISE":
 		return "advisory"
+	case "UNVERIFIED":
+		return "unverified — not traced to a Stripe request"
 	default:
 		return strings.ToLower(class)
 	}
