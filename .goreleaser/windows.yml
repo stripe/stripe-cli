@@ -40,6 +40,10 @@ changelog:
   use: github-native
 checksum:
   name_template: "{{ .ProjectName }}-windows-checksums.txt"
+signs:
+  - cmd: go
+    args: ["run", "./scripts/sign-release-checksums", "${artifact}", "${signature}"]
+    artifacts: checksum
 release:
   replace_existing_artifacts: true
 snapshot:

@@ -42,4 +42,5 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release -f .goreleaser/linux.yml --clean --snapshot
+          # Snapshot jobs do not have access to the protected release key.
+          args: release -f .goreleaser/linux.yml --clean --snapshot --skip=sign

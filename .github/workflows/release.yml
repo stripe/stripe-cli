@@ -20,16 +20,9 @@ jobs:
     secrets:
       STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
 
-  approve-release:
-    needs: [canary-tests]
-    runs-on: ubuntu-latest
-    environment: release
-    permissions: {}
-    steps:
-      - run: echo "Release approved, proceeding."
-
   build-mac:
-    needs: [approve-release]
+    needs: [canary-tests]
+    environment: release
     runs-on: macos-latest
     permissions:
       contents: write # GoReleaser publishes the GitHub release
@@ -70,6 +63,7 @@ jobs:
           version: "~> v2"
           args: release -f .goreleaser/mac.yml --clean --release-notes=release-notes.md
         env:
+          STRIPE_CLI_RELEASE_SIGNING_KEY: ${{ secrets.STRIPE_CLI_RELEASE_SIGNING_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           # Signing/notarization in .goreleaser/mac.yml is gated on MACOS_SIGN_P12
@@ -81,7 +75,8 @@ jobs:
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
 
   build-linux:
-    needs: [approve-release]
+    needs: [canary-tests]
+    environment: release
     runs-on: ubuntu-22.04
     permissions:
       contents: write # GoReleaser publishes the GitHub release
@@ -123,10 +118,12 @@ jobs:
           args: release -f .goreleaser/linux.yml --clean --release-notes=release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STRIPE_CLI_RELEASE_SIGNING_KEY: ${{ secrets.STRIPE_CLI_RELEASE_SIGNING_KEY }}
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
-    needs: [approve-release]
+    needs: [canary-tests]
+    environment: release
     runs-on: windows-latest
     permissions:
       contents: write # GoReleaser publishes the GitHub release
@@ -167,6 +164,7 @@ jobs:
           version: "~> v2"
           args: release -f .goreleaser/windows.yml --clean --release-notes=release-notes.md
         env:
+          STRIPE_CLI_RELEASE_SIGNING_KEY: ${{ secrets.STRIPE_CLI_RELEASE_SIGNING_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           # The GitHub App token is scoped to the stripe org and cannot create
