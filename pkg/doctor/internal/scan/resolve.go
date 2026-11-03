@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"sort"
 	"strings"
 
 	ts "github.com/odvcencio/gotreesitter"
@@ -32,11 +33,24 @@ type fileIndex struct {
 	callSites []callSite
 	// typedDecls are declarations naming a params type, e.g.
 	// `PaymentIntentCreateOptions options;` for C# target-typed new().
+	// Built from every rule resource's tokens at once, so lookups must
+	// still check typeText against their own match's tokens.
 	typedDecls []typedDecl
 	// assigns are every variable assignment in the file (not just ones
 	// a rule resource cares about), for detecting reassignment — see
 	// reassignedBetween.
 	assigns []assignment
+	// deletions are field removals from a variable, for deletedBefore.
+	deletions []deletion
+}
+
+// deletion is a field removal from a variable's bag: JS's
+// `delete params.key` / `delete params['key']`, Python's
+// `del params['key']`. node is the statement-level node (the
+// unary_expression or delete_statement).
+type deletion struct {
+	name, key string
+	node      *ts.Node
 }
 
 type typedDecl struct {
@@ -83,6 +97,7 @@ func buildIndex(root *ts.Node, spec langSpec, lang *ts.Language, src []byte, tok
 				})
 			}
 		}
+		idx.deletions = append(idx.deletions, deletionsAt(n, lang, src)...)
 		if containsStr(spec.assignKinds, kind) {
 			if lhs := n.NamedChild(0); lhs != nil {
 				idx.assigns = append(idx.assigns, assignment{
@@ -147,16 +162,127 @@ func fieldChild(n *ts.Node, lang *ts.Language, field string) *ts.Node {
 // falsely establish the operation — e.g. a C# `new UnrelatedOptions {
 // Description = "PaymentIntentCreateOptions", ... }` must be judged
 // on "UnrelatedOptions", not on text appearing anywhere inside it.
-// Anchors with no "type" field (C#'s target-typed new(), which
-// relies on its own declaration's type instead — see resolve's
-// type: path; Java's builder-chain method_invocation, which has no
-// single type-naming field at all) fall back to their own full text,
-// unchanged.
-func constructedTypeText(anchor *ts.Node, lang *ts.Language, src []byte) string {
-	if t := fieldChild(anchor, lang, "type"); t != nil {
+// A Java builder chain names its type only at its root receiver —
+// `PaymentIntentCreateParams.builder()` or `new X.Builder()` — so the
+// chain is followed through its "object" fields, never its
+// arguments. An anchor with no type of its own (C#'s target-typed
+// `new()`) returns "": its type lives on the declaration, which the
+// type: path resolves.
+func constructedTypeText(anchor *ts.Node, spec langSpec, lang *ts.Language, src []byte) string {
+	cur := anchor
+	for containsStr(spec.anchorKinds, cur.Type(lang)) {
+		if t := fieldChild(cur, lang, "type"); t != nil {
+			return nodeText(t, src)
+		}
+		obj := fieldChild(cur, lang, "object")
+		if obj == nil {
+			return ""
+		}
+		cur = obj
+	}
+	if t := fieldChild(cur, lang, "type"); t != nil {
 		return nodeText(t, src)
 	}
-	return nodeText(anchor, src)
+	return nodeText(cur, src)
+}
+
+// maxMergeHops bounds how many intermediate merge assignments
+// (`params = {...base}`) resolveVar follows from one bag.
+const maxMergeHops = 4
+
+// resolveVar resolves a bag bound to name by assign: a Stripe call it
+// reaches (var:), a typed declaration of the same binding (type:), or —
+// following assignments that merge it into another variable, e.g.
+// `const params = {...base, amount: 1000}` — either of those for that
+// variable. A call is skipped when the matched key is unconditionally
+// deleted from the bag before it (see deletedBefore). binding, when
+// non-nil, is the variable assign writes; nil derives it (outerBinding).
+// For an operation-ambiguous type (unambiguous non-empty: Go's legacy
+// PaymentIntentParams), only a call site naming the operation-specific
+// type counts here — a composite literal like
+// []*stripe.PaymentIntentParams{params} is not an operation, and the
+// create call itself is proven by goCreateReached instead.
+func resolveVar(key *ts.Node, name string, assign, binding *ts.Node, spec langSpec, lang *ts.Language, src []byte, tokens, methods, unambiguous []string, idx fileIndex, hops int) resolution {
+	// A write into a captured outer variable (a Ruby block's
+	// assignment, a JS/Go closure's plain write) reaches calls
+	// throughout that variable's own scope, not just the write's.
+	if binding == nil {
+		binding = outerBinding(name, assign, spec, lang, idx.assigns)
+	}
+	assignFn := enclosingFuncNode(binding, spec, lang)
+	varInScope := funcScope(assignFn)
+	keyText := strings.Trim(nodeText(key, src), `"':`)
+	reaches := func(use *ts.Node, pos uint32) bool {
+		return reachedByAssignment(use, pos, name, assign, binding, assignFn, spec, lang, src, idx.assigns) &&
+			!deletedBefore(idx.deletions, name, keyText, assign, binding, assignFn, use, spec, lang, src, idx.assigns)
+	}
+	for _, cs := range idx.callSites {
+		if !varInScope(cs.start) || !operationMatches(spec, cs.callee, tokens, methods) || !argsBindVariable(cs.argsNode, lang, src, name) {
+			continue
+		}
+		if len(unambiguous) > 0 && !containsAny(cs.callee, unambiguous) {
+			continue
+		}
+		if reaches(cs.node, cs.start) {
+			return resolution{true, "var:" + name, firstLine(cs.callee + "(" + cs.args + ")")}
+		}
+	}
+	for _, d := range idx.typedDecls {
+		if varInScope(d.start) && d.name == name && containsAny(d.typeText, tokens) && sameFuncScope(enclosingFuncNode(d.node, spec, lang), assignFn) && sameLexicalBinding(binding, d.node, spec, lang) {
+			return resolution{true, "type:" + name, firstLine(d.text)}
+		}
+	}
+	if hops >= maxMergeHops {
+		return resolution{}
+	}
+	for _, a := range idx.assigns {
+		if a.name == name || a.start <= assign.EndByte() || !varInScope(a.start) {
+			continue
+		}
+		rhs := assignRHS(a.node, lang)
+		if rhs == nil || !mergesVariable(rhs, name, lang, src) || !reaches(a.node, a.start) {
+			continue
+		}
+		if res := resolveVar(key, a.name, a.node, nil, spec, lang, src, tokens, methods, unambiguous, idx, hops+1); res.confirmed {
+			res.via = "var:" + name + ">" + strings.TrimPrefix(res.via, "var:")
+			return res
+		}
+	}
+	return resolution{}
+}
+
+// deletedBefore reports whether the matched key is removed from name's
+// bag — `delete params.key` / `del params['key']`, see deletion —
+// after assign and unconditionally before use: a sibling of assign (so
+// every path through assign runs it) or dominating use, referring to
+// the same binding (not shadowed).
+func deletedBefore(dels []deletion, name, key string, assign, binding, assignFn, use *ts.Node, spec langSpec, lang *ts.Language, src []byte, assigns []assignment) bool {
+	for _, d := range dels {
+		if d.name != name || d.key != key || d.node.StartByte() <= assign.EndByte() || d.node.StartByte() >= use.StartByte() {
+			continue
+		}
+		if !unconditionalSibling(d.node, assign, spec, lang) && !overwritesBefore(d.node, use, spec, lang) {
+			continue
+		}
+		if !shadowed(d.node, assignFn, spec, lang, src, name, binding, assigns) {
+			return true
+		}
+	}
+	return false
+}
+
+// chainRoot follows a call chain's "object" fields from anchor down to
+// its base receiver — the identifier or constructor the chain starts from.
+func chainRoot(anchor *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
+	cur := anchor
+	for containsStr(spec.anchorKinds, cur.Type(lang)) {
+		obj := fieldChild(cur, lang, "object")
+		if obj == nil {
+			break
+		}
+		cur = obj
+	}
+	return cur
 }
 
 // resolve decides whether a matched parameter key belongs to one of the
@@ -167,9 +293,12 @@ func constructedTypeText(anchor *ts.Node, lang *ts.Language, src []byte) string 
 // is the subset of tokens that alone proves the operation — see
 // langSpec.unambiguousTokens.
 func resolve(key *ts.Node, spec langSpec, lang *ts.Language, src []byte, tokens, methods, unambiguous []string, idx fileIndex) resolution {
-	anchor := climbAnchor(key, spec, lang)
+	if recv, stmt, _, ok := fieldWrite(key, lang, src); ok {
+		return resolveFieldWrite(recv, stmt, spec, lang, src, tokens, unambiguous, idx)
+	}
+	anchor := climbAnchor(key, spec, lang, src)
 	if anchor != nil {
-		scope := constructedTypeText(anchor, lang, src)
+		scope := constructedTypeText(anchor, spec, lang, src)
 		if spec.anchorStyle == anchorCall {
 			scope, _, _ = splitCall(anchor, lang, src) // only the callee counts
 		}
@@ -179,7 +308,7 @@ func resolve(key *ts.Node, spec langSpec, lang *ts.Language, src []byte, tokens,
 			// PaymentIntentParams, shared by create and update) — its
 			// type name alone doesn't establish the operation; confirm
 			// by finding the call that actually invokes it.
-			if invokesCreateMethod(key, anchor, spec, lang, src, idx) {
+			if invokesCreateMethod(key, anchor, spec, lang, src, unambiguous, idx) {
 				return resolution{true, "direct", firstLine(nodeText(anchor, src))}
 			}
 		case operationMatches(spec, scope, tokens, methods):
@@ -192,31 +321,36 @@ func resolve(key *ts.Node, spec langSpec, lang *ts.Language, src []byte, tokens,
 	scopeStart, scopeEnd := enclosingFunc(key, spec, lang)
 	inScope := func(pos uint32) bool { return pos >= scopeStart && pos < scopeEnd }
 	if name, assign := boundVariable(key, spec, lang, src); name != "" {
-		assignFn := enclosingFuncNode(assign, spec, lang)
-		for _, cs := range idx.callSites {
-			if !inScope(cs.start) || !operationMatches(spec, cs.callee, tokens, methods) || !argsBindVariable(cs.argsNode, src, name) {
-				continue
-			}
-			if !reachedByAssignment(cs.node, cs.start, name, assign, assignFn, spec, lang, src, idx.assigns) {
-				continue
-			}
-			return resolution{true, "var:" + name, firstLine(cs.callee + "(" + cs.args + ")")}
+		if res := resolveVar(key, name, assign, nil, spec, lang, src, tokens, methods, unambiguous, idx, 0); res.confirmed {
+			return res
 		}
-		for _, d := range idx.typedDecls {
-			if inScope(d.start) && d.name == name && sameFuncScope(enclosingFuncNode(d.node, spec, lang), assignFn) && sameLexicalBinding(assign, d.node, spec, lang) {
-				return resolution{true, "type:" + name, firstLine(d.text)}
-			}
+	}
+	// An in-place merge — Object.assign(params, {...}), params.merge!(...),
+	// params.update(...) — writes the key into params itself.
+	if name, call := inPlaceMerge(key, spec, lang, src); name != "" {
+		var binding *ts.Node // nil when there's no prior assignment (e.g. a parameter): derived from call
+		if prior := priorBindings(name, call, spec, lang, idx.assigns); len(prior) > 0 {
+			binding = outerBinding(name, prior[0], spec, lang, idx.assigns)
+		}
+		if res := resolveVar(key, name, call, binding, spec, lang, src, tokens, methods, unambiguous, idx, 0); res.confirmed {
+			return res
 		}
 	}
 
 	// Receiver indirection: paramsBuilder.addPaymentMethodType(...) where
 	// paramsBuilder was declared with a params type earlier in the file.
-	if anchor := climbAnchor(key, spec, lang); anchor != nil {
-		if recv := anchor.NamedChild(0); recv != nil {
+	if anchor := climbAnchor(key, spec, lang, src); anchor != nil {
+		recv := anchor.NamedChild(0)
+		if spec.climbOutermost {
+			// A builder chain's receiver is its base, not the inner chain:
+			// b in b.addPaymentMethodType("card").setAmount(1000L).
+			recv = chainRoot(anchor, spec, lang)
+		}
+		if recv != nil {
 			rname := strings.TrimSpace(nodeText(recv, src))
 			keyFn := enclosingFuncNode(key, spec, lang)
 			for _, d := range idx.typedDecls {
-				if inScope(d.start) && d.name == rname && sameFuncScope(enclosingFuncNode(d.node, spec, lang), keyFn) && declVisibleAt(d.node, anchor.StartByte(), spec, lang) {
+				if inScope(d.start) && d.name == rname && containsAny(d.typeText, tokens) && sameFuncScope(enclosingFuncNode(d.node, spec, lang), keyFn) && declVisibleAt(d.node, anchor.StartByte(), spec, lang) {
 					return resolution{true, "recv:" + rname, firstLine(d.text)}
 				}
 			}
@@ -305,7 +439,7 @@ const goCreateMethod = "New"
 // answer this: it only holds anchorKinds nodes (composite literals,
 // for Go), never the real call_expression that invokes them, so this
 // does its own walk over every call_expression in the file instead.
-func invokesCreateMethod(key, anchor *ts.Node, spec langSpec, lang *ts.Language, src []byte, idx fileIndex) bool {
+func invokesCreateMethod(key, anchor *ts.Node, spec langSpec, lang *ts.Language, src []byte, unambiguous []string, idx fileIndex) bool {
 	for cur := anchor.Parent(); cur != nil; cur = cur.Parent() {
 		if containsStr(spec.anchorKinds, cur.Type(lang)) {
 			break // don't climb past an enclosing, unrelated literal
@@ -315,7 +449,7 @@ func invokesCreateMethod(key, anchor *ts.Node, spec langSpec, lang *ts.Language,
 		}
 		if cur.Type(lang) == "call_expression" {
 			callee, _, _ := splitCall(cur, lang, src)
-			return calleeMethodName(callee) == goCreateMethod
+			return goCreatesResource(callee, unambiguous)
 		}
 	}
 
@@ -323,51 +457,306 @@ func invokesCreateMethod(key, anchor *ts.Node, spec langSpec, lang *ts.Language,
 	if name == "" {
 		return false
 	}
-	assignFn := enclosingFuncNode(assign, spec, lang)
-	scopeStart, scopeEnd := enclosingFunc(key, spec, lang)
+	return goCreateReached(name, assign, outerBinding(name, assign, spec, lang, idx.assigns), spec, lang, src, unambiguous, idx)
+}
+
+// goCreateReached reports whether a stripe-go create call for one of
+// unambiguous's resources (see goCreatesResource) is passed name and
+// reached by assign's value of it, binding being the variable assign
+// writes. idx.callSites can't answer this — it only holds Go's
+// composite literals — so this walks every call_expression instead.
+func goCreateReached(name string, assign, binding *ts.Node, spec langSpec, lang *ts.Language, src []byte, unambiguous []string, idx fileIndex) bool {
+	assignFn := enclosingFuncNode(binding, spec, lang)
+	inScope := funcScope(assignFn)
 	found := false
-	walk(treeRoot(key), func(n *ts.Node) {
-		if found || n.Type(lang) != "call_expression" {
-			return
-		}
-		if n.StartByte() < scopeStart || n.StartByte() >= scopeEnd {
+	walk(treeRoot(assign), func(n *ts.Node) {
+		if found || n.Type(lang) != "call_expression" || !inScope(n.StartByte()) {
 			return
 		}
 		callee, _, argsNode := splitCall(n, lang, src)
-		if calleeMethodName(callee) != goCreateMethod || !argsBindVariable(argsNode, src, name) {
+		if !goCreatesResource(callee, unambiguous) || !argsBindVariable(argsNode, lang, src, name) {
 			return
 		}
-		if reachedByAssignment(n, n.StartByte(), name, assign, assignFn, spec, lang, src, idx.assigns) {
+		if reachedByAssignment(n, n.StartByte(), name, assign, binding, assignFn, spec, lang, src, idx.assigns) {
 			found = true
 		}
 	})
 	return found
 }
 
+// fieldWrite recognizes key as the field name of a field assignment's
+// left-hand side — Go's `params.PaymentMethodTypes = ...` — returning
+// the receiver variable's node, the assignment statement, and the
+// intermediate field path (["PaymentSettings"] for
+// `params.PaymentSettings.PaymentMethodTypes = ...`).
+func fieldWrite(key *ts.Node, lang *ts.Language, src []byte) (recv, stmt *ts.Node, path []string, ok bool) {
+	sel := key.Parent()
+	if sel == nil || sel.Type(lang) != "selector_expression" {
+		return nil, nil, nil, false
+	}
+	if f := fieldChild(sel, lang, "field"); f == nil || !sameSpan(f, key) {
+		return nil, nil, nil, false
+	}
+	left := sel.Parent()
+	if left == nil || left.Type(lang) != "expression_list" {
+		return nil, nil, nil, false
+	}
+	stmt = left.Parent()
+	if stmt == nil || stmt.Type(lang) != "assignment_statement" {
+		return nil, nil, nil, false
+	}
+	if l := fieldChild(stmt, lang, "left"); l == nil || !sameSpan(l, left) {
+		return nil, nil, nil, false
+	}
+	cur := fieldChild(sel, lang, "operand")
+	for cur != nil && cur.Type(lang) == "selector_expression" {
+		if f := fieldChild(cur, lang, "field"); f != nil {
+			path = append([]string{nodeText(f, src)}, path...)
+		}
+		cur = fieldChild(cur, lang, "operand")
+	}
+	if cur == nil || cur.Type(lang) != "identifier" {
+		return nil, nil, nil, false
+	}
+	return cur, stmt, path, true
+}
+
+// resolveFieldWrite resolves a field assignment (see fieldWrite) through
+// its receiver's declaration: the latest assignment of the receiver
+// still in scope before the write. Its declared or constructed type
+// names the operation — and, for an operation-ambiguous type (Go's
+// legacy PaymentIntentParams), a create call reached after the write
+// must confirm it.
+func resolveFieldWrite(recv, stmt *ts.Node, spec langSpec, lang *ts.Language, src []byte, tokens, unambiguous []string, idx fileIndex) resolution {
+	name := nodeText(recv, src)
+	// The binding is the variable's declaration; its type is the latest
+	// one stated from there on — a later `params = defaults()` doesn't
+	// change the declared `var params *stripe.PaymentIntentParams`.
+	var decl *ts.Node
+	typeText := ""
+	for _, a := range priorBindings(name, stmt, spec, lang, idx.assigns) {
+		if typeText == "" {
+			typeText = goValueType(a, spec, lang, src)
+		}
+		if !containsStr(spec.writeKinds, a.Type(lang)) {
+			decl = a
+			break
+		}
+	}
+	if decl == nil {
+		return resolution{}
+	}
+	if !containsAny(typeText, tokens) {
+		return resolution{}
+	}
+	if len(unambiguous) > 0 && !containsAny(typeText, unambiguous) && !goCreateReached(name, stmt, decl, spec, lang, src, unambiguous, idx) {
+		return resolution{}
+	}
+	return resolution{true, "field:" + name, firstLine(nodeText(decl, src))}
+}
+
+// goValueType returns the type a Go declaration gives its variable: a
+// `var params T` type, or the composite literal it's initialized from
+// (`params := &stripe.PaymentIntentParams{}`).
+func goValueType(decl *ts.Node, spec langSpec, lang *ts.Language, src []byte) string {
+	if t := fieldChild(decl, lang, "type"); t != nil {
+		return nodeText(t, src)
+	}
+	v := assignRHS(decl, lang)
+	if v != nil && v.Type(lang) == "expression_list" {
+		v = v.NamedChild(0)
+	}
+	if v != nil && v.Type(lang) == "unary_expression" {
+		v = fieldChild(v, lang, "operand")
+	}
+	if v == nil || !containsStr(spec.anchorKinds, v.Type(lang)) {
+		return ""
+	}
+	return constructedTypeText(v, spec, lang, src)
+}
+
+// goCreatesResource reports whether callee is stripe-go's create call
+// for one of the resources named by unambiguous (e.g.
+// PaymentIntentCreateParams -> PaymentIntent): goCreateMethod on the
+// resource's own package (paymentintent.New) or on a client service
+// (sc.V1PaymentIntents.New) — not an unrelated constructor that
+// happens to be named New, like request.New.
+func goCreatesResource(callee string, unambiguous []string) bool {
+	parts := calleeComponents(callee)
+	if len(parts) < 2 || parts[len(parts)-1] != goCreateMethod {
+		return false
+	}
+	recv := parts[len(parts)-2]
+	for _, tok := range unambiguous {
+		base := strings.TrimSuffix(tok, "CreateParams")
+		if recv == strings.ToLower(base) || strings.HasSuffix(recv, base+"s") {
+			return true
+		}
+	}
+	return false
+}
+
 // reachedByAssignment reports whether a candidate use site (node, at
-// pos) is actually reached by assign's binding of name: in the same
-// execution scope as the assignment, the use must run after it (not
-// before — a later assignment can't retroactively change what an
-// earlier use already saw; this ordering check doesn't apply across
-// a function boundary, since a function's body executes when it's
-// *called*, not at its textually fixed definition site); the
-// binding mustn't be shadowed by a closer declaration in between
-// (shadowed); it mustn't be overwritten by a clean reassignment
-// before the use (reassignedBetween); and assign's own binding must
-// actually still be in scope at pos at all (declVisibleAt) — e.g. a
-// block-scoped declaration doesn't reach a use outside its block,
-// independent of any of the other three checks.
-func reachedByAssignment(node *ts.Node, pos uint32, name string, assign, assignFn *ts.Node, spec langSpec, lang *ts.Language, src []byte, assigns []assignment) bool {
-	if sameFuncScope(enclosingFuncNode(node, spec, lang), assignFn) && pos < assign.EndByte() {
+// pos) is actually reached by assign's value of name. binding is the
+// variable assign writes (assign itself unless it writes a captured
+// outer variable — see outerBinding), and assignFn is binding's own
+// function. In the same execution scope as assign (its own function,
+// or binding's), the use must run after it — a later assignment can't
+// retroactively change what an earlier use already saw; this ordering
+// check doesn't apply across a function boundary, since a function's
+// body executes when it's *called*, not at its textually fixed
+// definition site. The binding mustn't be shadowed by a closer
+// declaration in between (shadowed); assign's value mustn't be
+// overwritten by a clean reassignment before the use
+// (reassignedBetween); and the binding must still be in scope at pos
+// (declVisibleAt) — e.g. a block-scoped declaration doesn't reach a
+// use outside its block, independent of the other checks.
+func reachedByAssignment(node *ts.Node, pos uint32, name string, assign, binding, assignFn *ts.Node, spec langSpec, lang *ts.Language, src []byte, assigns []assignment) bool {
+	useFn := enclosingFuncNode(node, spec, lang)
+	if pos < assign.EndByte() && (sameFuncScope(useFn, assignFn) || sameFuncScope(useFn, enclosingFuncNode(assign, spec, lang))) {
 		return false
 	}
-	if shadowed(node, assignFn, spec, lang, src, name, assign, assigns) {
+	if shadowed(node, assignFn, spec, lang, src, name, binding, assigns) {
 		return false
 	}
-	if reassignedBetween(assigns, name, assign, pos, assignFn, spec, lang) {
+	if reassignedBetween(assigns, name, assign, binding, node, pos, assignFn, spec, lang, src) {
 		return false
 	}
-	return declVisibleAt(assign, pos, spec, lang)
+	return declVisibleAt(binding, pos, spec, lang)
+}
+
+// funcScope returns a membership test for fn's byte span — the whole
+// file when fn is nil (module level).
+func funcScope(fn *ts.Node) func(uint32) bool {
+	if fn == nil {
+		return func(uint32) bool { return true }
+	}
+	start, end := fn.StartByte(), fn.EndByte()
+	return func(pos uint32) bool { return pos >= start && pos < end }
+}
+
+// outerBinding returns the assignment node whose variable assign
+// actually writes: assign itself, unless assign — from inside a nested
+// function — writes into a variable already bound by an enclosing scope
+// (see writesOuterBinding: a Ruby block's assignment, a JS/Go plain
+// write), in which case that enclosing binding, followed outward
+// through further captures. A plain write that follows its own
+// function's local declaration of the name stays local.
+func outerBinding(name string, assign *ts.Node, spec langSpec, lang *ts.Language, assigns []assignment) *ts.Node {
+	cur := assign
+	for range assigns {
+		curFn := enclosingFuncNode(cur, spec, lang)
+		if d := localDeclFor(name, cur, curFn, spec, lang, assigns); d != nil {
+			return d
+		}
+		if curFn == nil {
+			return cur
+		}
+		var best *ts.Node
+		for _, o := range assigns {
+			if o.name != name || o.start >= cur.StartByte() || (o.start >= curFn.StartByte() && o.start < curFn.EndByte()) {
+				continue
+			}
+			oFn := enclosingFuncNode(o.node, spec, lang)
+			if oFn != nil && (curFn.StartByte() < oFn.StartByte() || curFn.EndByte() > oFn.EndByte()) {
+				continue // o's function doesn't enclose cur
+			}
+			if !declVisibleAt(o.node, cur.StartByte(), spec, lang) {
+				continue
+			}
+			w := assignment{name: name, start: cur.StartByte(), end: cur.EndByte(), node: cur}
+			if !writesOuterBinding(w, o.node, oFn, spec, lang) {
+				continue
+			}
+			if best == nil || o.start > best.StartByte() {
+				best = o.node
+			}
+		}
+		if best == nil {
+			return cur
+		}
+		cur = best
+	}
+	return cur
+}
+
+// localDeclFor returns, for a plain write (see writeKinds), the
+// declaration in its own function (fn, nil for module level) that it
+// writes — the latest one still in scope at it — or nil when there is
+// none (the write targets something captured from outside fn, or isn't
+// a plain write at all).
+func localDeclFor(name string, write, fn *ts.Node, spec langSpec, lang *ts.Language, assigns []assignment) *ts.Node {
+	if !containsStr(spec.writeKinds, write.Type(lang)) {
+		return nil
+	}
+	var best *ts.Node
+	for _, a := range assigns {
+		if a.name == name && a.start < write.StartByte() && !containsStr(spec.writeKinds, a.node.Type(lang)) &&
+			sameFuncScope(enclosingFuncNode(a.node, spec, lang), fn) && declVisibleAt(a.node, write.StartByte(), spec, lang) &&
+			(best == nil || a.start > best.StartByte()) {
+			best = a.node
+		}
+	}
+	return best
+}
+
+// priorBindings returns the assignments of name before at that are still
+// in scope there — in at's own function or an enclosing one — latest
+// first.
+func priorBindings(name string, at *ts.Node, spec langSpec, lang *ts.Language, assigns []assignment) []*ts.Node {
+	var out []*ts.Node
+	for _, a := range assigns {
+		if a.name != name || a.start >= at.StartByte() || !declVisibleAt(a.node, at.StartByte(), spec, lang) {
+			continue
+		}
+		if fn := enclosingFuncNode(a.node, spec, lang); fn != nil && (at.StartByte() < fn.StartByte() || at.EndByte() > fn.EndByte()) {
+			continue
+		}
+		out = append(out, a.node)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].StartByte() > out[j].StartByte() })
+	return out
+}
+
+// inPlaceMergeMethods mutate their receiver: Ruby's Hash#merge!/update,
+// Python's dict.update.
+var inPlaceMergeMethods = map[string]bool{"merge!": true, "update": true, "deep_merge!": true, "reverse_merge!": true}
+
+// inPlaceMerge recognizes key as an argument of a merge that mutates a
+// variable in place — Object.assign(params, {...}) (its first argument),
+// params.merge!(...) / params.update(...) (its receiver) — returning that
+// variable's name and the merge call. Non-mutating merges around the key
+// (dict(...), {...}.merge(...)) are climbed past, as in climbAnchor.
+func inPlaceMerge(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) (string, *ts.Node) {
+	if spec.anchorStyle != anchorCall {
+		return "", nil
+	}
+	for cur := key.Parent(); cur != nil; cur = cur.Parent() {
+		if containsStr(spec.funcKinds, cur.Type(lang)) {
+			return "", nil
+		}
+		if !containsStr(spec.anchorKinds, cur.Type(lang)) {
+			continue
+		}
+		callee, _, args := splitCall(cur, lang, src)
+		if args == nil || key.StartByte() < args.StartByte() {
+			return "", nil // the key is in the receiver, not the merged-in arguments
+		}
+		method, parts := calleeMethodName(callee), calleeComponents(callee)
+		switch {
+		case inPlaceMergeMethods[method] && len(parts) == 2:
+			return parts[0], cur
+		case strings.TrimSpace(callee) == "Object.assign":
+			if first := args.NamedChild(0); first != nil && first.Type(lang) == "identifier" && key.StartByte() >= first.EndByte() {
+				return nodeText(first, src), cur
+			}
+			return "", nil
+		case mergeFuncs[method]:
+			continue
+		}
+		return "", nil
+	}
+	return "", nil
 }
 
 // treeRoot climbs n up to the root of its syntax tree.
@@ -424,13 +813,13 @@ func shadowed(node, boundary *ts.Node, spec langSpec, lang *ts.Language, src []b
 		kind := cur.Type(lang)
 		switch {
 		case containsStr(spec.funcKinds, kind):
-			if declaresParam(cur, src, name) {
+			if declaresParam(cur, lang, src, name) {
 				return true
 			}
-			if localAssignmentWithin(assigns, name, cur, node.StartByte(), assign, spec, lang) {
+			if localAssignmentWithin(assigns, name, cur, node.StartByte(), assign, boundary, spec, lang) {
 				return true
 			}
-		case containsStr(spec.blockKinds, kind):
+		case containsStr(spec.blockKinds, kind), containsStr(spec.controlKinds, kind):
 			if blockScopedShadow(assigns, name, cur, node.StartByte(), assign, spec, lang) {
 				return true
 			}
@@ -453,12 +842,12 @@ func shadowed(node, boundary *ts.Node, spec langSpec, lang *ts.Language, src []b
 // — not a new local shadowing it. Checked before the enclosing-
 // function comparison, which costs an ancestor climb this one avoids
 // needing at all.
-func localAssignmentWithin(assigns []assignment, name string, fn *ts.Node, pos uint32, assign *ts.Node, spec langSpec, lang *ts.Language) bool {
+func localAssignmentWithin(assigns []assignment, name string, fn *ts.Node, pos uint32, assign, boundary *ts.Node, spec langSpec, lang *ts.Language) bool {
 	for _, a := range assigns {
 		if a.name != name || a.start < fn.StartByte() || a.start >= fn.EndByte() || sameSpan(a.node, assign) {
 			continue
 		}
-		if containsStr(spec.writeKinds, a.node.Type(lang)) {
+		if writesOuterBinding(a, assign, boundary, spec, lang) {
 			continue
 		}
 		if !sameFuncScope(enclosingFuncNode(a.node, spec, lang), fn) {
@@ -471,21 +860,15 @@ func localAssignmentWithin(assigns []assignment, name string, fn *ts.Node, pos u
 	return false
 }
 
-// visibleAt reports whether assignment a's binding is visible at pos.
-// A block-scoped let/const (JS/TS) is only visible within its own
-// nearest enclosing block (see langSpec.blockKinds); any other
-// assignment kind — var, bare assignment, Python/Ruby's plain
-// assignment — is visible throughout its enclosing function once
-// declared.
+// visibleAt reports whether assignment a's binding is visible at pos:
+// declared at or before it and, for a block-confined declaration
+// (JS/TS let/const, Go := and var — see bindingBlock), still inside
+// its block.
 func visibleAt(a assignment, pos uint32, spec langSpec, lang *ts.Language) bool {
 	if a.start > pos {
 		return false
 	}
-	if p := a.node.Parent(); p != nil && p.Type(lang) == "lexical_declaration" {
-		block := nearestBlock(a.node, spec, lang)
-		return block != nil && pos >= block.StartByte() && pos < block.EndByte()
-	}
-	return true
+	return declVisibleAt(a.node, pos, spec, lang)
 }
 
 // blockScopedShadow reports whether name is given its own block-
@@ -506,30 +889,93 @@ func blockScopedShadow(assigns []assignment, name string, block *ts.Node, pos ui
 		if ab == nil || !sameSpan(ab, block) {
 			continue
 		}
+		if declaresTargetOf(a.node, assign, spec, lang) {
+			continue
+		}
 		return true
 	}
 	return false
 }
 
-// declaresParam reports whether fn's own parameter list — approximated
-// as its text up to its body, the last named child — names name.
-func declaresParam(fn *ts.Node, src []byte, name string) bool {
+// declaresTargetOf reports whether decl is the very binding a plain
+// write (see writeKinds) assigns into — e.g. `let params = {}` for a
+// later `params = {...}` — rather than a different, shadowing one:
+// decl precedes the write and is still in scope at it.
+func declaresTargetOf(decl, write *ts.Node, spec langSpec, lang *ts.Language) bool {
+	return containsStr(spec.writeKinds, write.Type(lang)) &&
+		decl.StartByte() < write.StartByte() &&
+		declVisibleAt(decl, write.StartByte(), spec, lang)
+}
+
+// declaresParam reports whether one of fn's own parameters binds name
+// — via its "parameters" (or single-parameter "parameter") field where
+// the grammar has one; otherwise the children before its body, the last
+// named child. Comments are never part of it, so a body opening with
+// a comment that mentions name doesn't read as a parameter.
+func declaresParam(fn *ts.Node, lang *ts.Language, src []byte, name string) bool {
+	if p := fieldChild(fn, lang, "parameter"); p != nil {
+		return paramBinds(p, lang, src, name)
+	}
+	if ps := fieldChild(fn, lang, "parameters"); ps != nil {
+		for i := 0; i < ps.NamedChildCount(); i++ {
+			if c := ps.NamedChild(i); c != nil && !strings.Contains(c.Type(lang), "comment") && paramBinds(c, lang, src, name) {
+				return true
+			}
+		}
+		return false
+	}
 	n := fn.NamedChildCount()
 	if n == 0 {
 		return false
 	}
 	body := fn.NamedChild(n - 1)
-	if body == nil || body.StartByte() > uint32(len(src)) {
+	for i := 0; i < fn.ChildCount(); i++ {
+		c := fn.Child(i)
+		if c == nil || body == nil || c.StartByte() >= body.StartByte() {
+			break
+		}
+		if !strings.Contains(c.Type(lang), "comment") && hasWord(nodeText(c, src), name) {
+			return true
+		}
+	}
+	return false
+}
+
+// paramBinds reports whether parameter node p binds name: p itself
+// when it's a bare identifier, else its binding part — the "name",
+// "pattern" or "left" fields (Python/Ruby default and keyword params,
+// Go/Java/C#/PHP typed params, TS's required_parameter, JS's
+// assignment_pattern), or its first named child (Python typed and
+// splat params). Defaults and type annotations are never consulted,
+// so `def f(options=params)` doesn't bind params.
+func paramBinds(p *ts.Node, lang *ts.Language, src []byte, name string) bool {
+	if p.NamedChildCount() == 0 {
+		return stripSpread(nodeText(p, src)) == name
+	}
+	found := false
+	for i := 0; i < p.ChildCount(); i++ {
+		switch p.FieldNameForChild(i, lang) {
+		case "name", "pattern", "left":
+			found = true
+			if hasWord(nodeText(p.Child(i), src), name) {
+				return true
+			}
+		}
+	}
+	if found {
 		return false
 	}
-	header := string(src[fn.StartByte():body.StartByte()])
-	return hasWord(header, name)
+	first := p.NamedChild(0)
+	return first != nil && hasWord(nodeText(first, src), name)
 }
 
 // climbAnchor finds the enclosing param-bag node — nearest by default,
 // or (with climbOutermost) the root of a builder chain, stopping as
 // soon as the current node isn't the *receiver* of its parent so it
-// doesn't swallow an enclosing route handler. The climb also stops at
+// doesn't swallow an enclosing route handler. A merge call (see
+// mergeFuncs: {...}.merge(...), Object.assign(...), Python's dict(...))
+// carries its keys into its result, so it's climbed past to the request
+// it builds, not returned. The climb also stops at
 // any funcKinds boundary before reaching an anchor: a bag built
 // inside a callback or do...end block — Ruby's
 // `Stripe::PaymentIntent.create(...) do |x| options = {...} end`, or
@@ -539,10 +985,15 @@ func declaresParam(fn *ts.Node, src []byte, name string) bool {
 // encloses it (Ruby's do...end attaches to the call via its own
 // "block" field; JS's callback is itself one of the call's
 // arguments, but its *body* is not).
-func climbAnchor(n *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
+func climbAnchor(n *ts.Node, spec langSpec, lang *ts.Language, src []byte) *ts.Node {
 	var nearest *ts.Node
 	for cur := n; cur != nil; cur = cur.Parent() {
 		if containsStr(spec.anchorKinds, cur.Type(lang)) {
+			if spec.anchorStyle == anchorCall {
+				if callee, _, _ := splitCall(cur, lang, src); mergeFuncs[calleeMethodName(callee)] {
+					continue // a merge carries the key into its result; keep climbing to the request
+				}
+			}
 			nearest = cur
 			break
 		}
@@ -640,10 +1091,12 @@ func splitCall(n *ts.Node, lang *ts.Language, src []byte) (callee, args string, 
 // reserved request-envelope keyword (create(params=params) /
 // create(params: params)), or spread into a top-level object/array
 // literal argument (create({ ...params, amount: 1000 })) — rather than
-// merely appearing as the value of some unrelated argument, e.g.
+// passed through a merge (create(params.merge(amount: 1000)),
+// create(**dict(params, amount=1000)); see mergesVariable) — rather
+// than merely appearing as the value of some unrelated argument, e.g.
 // create(metadata=params), where name ends up nested under metadata,
 // not merged into the call's own parameters.
-func argsBindVariable(argsNode *ts.Node, src []byte, name string) bool {
+func argsBindVariable(argsNode *ts.Node, lang *ts.Language, src []byte, name string) bool {
 	if argsNode == nil || name == "" {
 		return false
 	}
@@ -658,10 +1111,12 @@ func argsBindVariable(argsNode *ts.Node, src []byte, name string) bool {
 		// The SDK's reserved request-envelope keyword: params=params /
 		// params: params (Python/Ruby's StripeClient style) binds the
 		// whole bag the same way a bare positional/spread argument does.
+		// The envelope's value may itself merge name in, e.g.
+		// create(params={**params, 'amount': 1000}).
 		if arg.NamedChildCount() == 2 {
 			k := strings.TrimSpace(nodeText(arg.NamedChild(0), src))
-			v := strings.TrimSpace(nodeText(arg.NamedChild(1), src))
-			if k == "params" && v == name {
+			vNode := arg.NamedChild(1)
+			if k == "params" && (strings.TrimSpace(nodeText(vNode, src)) == name || mergesVariable(vNode, name, lang, src)) {
 				return true
 			}
 		}
@@ -670,8 +1125,13 @@ func argsBindVariable(argsNode *ts.Node, src []byte, name string) bool {
 		// create({ ...params, amount: 1000 }) — object merging, not
 		// argument spreading, so it isn't caught by the bare check
 		// above; a nested property whose value happens to equal name
-		// (not itself a spread) still doesn't count.
-		if spreadsVariable(arg, src, name) {
+		// (not itself a spread) still doesn't count. A splatted
+		// argument is judged by what it splats: **dict(params, ...).
+		expr := arg
+		if t := nodeText(arg, src); stripSpread(t) != strings.TrimSpace(t) && arg.NamedChildCount() == 1 {
+			expr = arg.NamedChild(0)
+		}
+		if mergesVariable(expr, name, lang, src) {
 			return true
 		}
 	}
@@ -700,10 +1160,12 @@ func spreadsVariable(container *ts.Node, src []byte, name string) bool {
 }
 
 // stripSpread removes a leading spread/splat marker ("**", "...", or
-// "*") from s, if present, along with surrounding whitespace.
+// "*"), or Go's address-of "&" (New(&params) passes the same bag as
+// New(params) with a pointer literal), from s, if present, along with
+// surrounding whitespace.
 func stripSpread(s string) string {
 	s = strings.TrimSpace(s)
-	for _, prefix := range []string{"**", "...", "*"} {
+	for _, prefix := range []string{"**", "...", "*", "&"} {
 		if strings.HasPrefix(s, prefix) {
 			return strings.TrimSpace(s[len(prefix):])
 		}
@@ -720,23 +1182,201 @@ func stripSpread(s string) string {
 // some other, unrelated nested function is a different binding
 // (shadowing) and doesn't count — mirrors shadowed's reasoning for
 // the call side.
-func reassignedBetween(assigns []assignment, name string, assign *ts.Node, to uint32, assignFn *ts.Node, spec langSpec, lang *ts.Language) bool {
+func reassignedBetween(assigns []assignment, name string, assign, binding, use *ts.Node, to uint32, assignFn *ts.Node, spec langSpec, lang *ts.Language, src []byte) bool {
 	from := assign.EndByte()
 	for _, a := range assigns {
 		if a.name != name || a.start <= from || a.start >= to {
 			continue
 		}
+		if selfMerge(a, lang, src) {
+			continue
+		}
+		// From a nested scope, only a write into assign's own variable
+		// (see writesOuterBinding) can overwrite it — and only when it
+		// definitely runs before the use, in the same statement list.
 		if !sameFuncScope(enclosingFuncNode(a.node, spec, lang), assignFn) {
+			if writesOuterBinding(a, binding, assignFn, spec, lang) && overwritesBefore(a.node, use, spec, lang) {
+				return true
+			}
 			continue
 		}
 		// Only an *unconditional* reassignment counts as definitely
-		// overwriting assign — one that's a sibling statement at the
-		// same nesting level, not nested inside an if/loop/try/etc.
+		// overwriting assign — not one nested inside an if/loop/try/etc.
 		// that might not execute (e.g. `if use_defaults: params = {}`
 		// doesn't overwrite params when use_defaults is false, so the
-		// original bag can still reach the call).
-		if unconditionalSibling(a.node, assign, spec, lang) {
+		// original bag can still reach the call). Either it's a sibling
+		// of assign, so every path through assign also runs it, or it
+		// dominates the use, so every path to the use runs it — e.g. an
+		// unconditional `params = {}` after an `if` that set the bag.
+		if unconditionalSibling(a.node, assign, spec, lang) || overwritesBefore(a.node, use, spec, lang) {
 			return true
+		}
+	}
+	return false
+}
+
+// writesOuterBinding reports whether a, inside a scope nested within
+// boundary (assign's own function, nil for module level), writes into
+// assign's variable rather than declaring its own: a plain write (see
+// writeKinds), or — where captureKinds applies — an assignment made
+// after assign already bound the name, with only capture scopes (Ruby
+// blocks, not `def`) in between.
+func writesOuterBinding(a assignment, assign, boundary *ts.Node, spec langSpec, lang *ts.Language) bool {
+	if containsStr(spec.writeKinds, a.node.Type(lang)) {
+		return true
+	}
+	if len(spec.captureKinds) == 0 || a.start <= assign.StartByte() {
+		return false
+	}
+	for cur := a.node.Parent(); cur != nil; cur = cur.Parent() {
+		if boundary != nil && sameSpan(cur, boundary) {
+			break
+		}
+		kind := cur.Type(lang)
+		if containsStr(spec.funcKinds, kind) && !containsStr(spec.captureKinds, kind) {
+			return false
+		}
+	}
+	return true
+}
+
+// overwritesBefore reports whether assignment node a unconditionally
+// runs before use: a is a whole statement (see isWholeStatement) in a
+// statement list that also contains, as a later statement, the one
+// holding use.
+func overwritesBefore(a, use *ts.Node, spec langSpec, lang *ts.Language) bool {
+	container := a.Parent()
+	if len(spec.blockKinds) > 0 {
+		container = nearestBlock(a, spec, lang)
+	}
+	if container == nil || !isWholeStatement(a, container) {
+		return false
+	}
+	for cur := use; cur != nil && cur.Parent() != nil; cur = cur.Parent() {
+		if sameSpan(cur.Parent(), container) {
+			return cur.StartByte() > a.StartByte()
+		}
+	}
+	return false
+}
+
+// selfMerge reports whether a's right-hand side structurally merges
+// its own target variable back in — `params = {...params, amount: 1}`,
+// `params = dict(params, amount=1)`, `params = params.merge(...)`,
+// `params = params | {...}` — so the earlier bag's keys survive the
+// reassignment. Any other right-hand side, even one that mentions the
+// name (`params.except(:payment_method_types)`, `{description:
+// 'params'}`), replaces the bag.
+func selfMerge(a assignment, lang *ts.Language, src []byte) bool {
+	rhs := assignRHS(a.node, lang)
+	return rhs != nil && mergesVariable(rhs, a.name, lang, src)
+}
+
+// assignRHS returns an assignment node's right-hand side.
+func assignRHS(n *ts.Node, lang *ts.Language) *ts.Node {
+	if rhs := fieldChild(n, lang, "right"); rhs != nil {
+		return rhs
+	}
+	return fieldChild(n, lang, "value")
+}
+
+// staticKey reports whether a deletion's key node names a field by its
+// literal spelling — a dot property (x.key) or a plain string (x['key']) —
+// rather than a computed expression (x[k], x[f"{k}"]) whose runtime value
+// is unknown.
+func staticKey(k *ts.Node, lang *ts.Language) bool {
+	switch k.Type(lang) {
+	case "property_identifier":
+		return true
+	case "string":
+		for i := 0; i < k.NamedChildCount(); i++ {
+			if c := k.NamedChild(i); c != nil && c.Type(lang) == "interpolation" {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// deletionsAt returns the field removals n itself performs: JS/TS's
+// `delete x.key` / `delete x['key']` (a unary_expression), Python's
+// `del x['key']` (a delete_statement, possibly listing several).
+func deletionsAt(n *ts.Node, lang *ts.Language, src []byte) []deletion {
+	var targets []*ts.Node
+	switch n.Type(lang) {
+	case "unary_expression":
+		if n.ChildCount() > 0 && nodeText(n.Child(0), src) == "delete" {
+			if arg := fieldChild(n, lang, "argument"); arg != nil {
+				targets = append(targets, arg)
+			}
+		}
+	case "delete_statement":
+		for i := 0; i < n.NamedChildCount(); i++ {
+			if c := n.NamedChild(i); c != nil {
+				targets = append(targets, c)
+			}
+		}
+	}
+	var out []deletion
+	for _, t := range targets {
+		obj, k := fieldChild(t, lang, "object"), fieldChild(t, lang, "property")
+		if k == nil {
+			k = fieldChild(t, lang, "index") // JS subscript_expression
+		}
+		if obj == nil {
+			obj, k = fieldChild(t, lang, "value"), fieldChild(t, lang, "subscript") // Python subscript
+		}
+		if obj == nil || k == nil || !staticKey(k, lang) {
+			continue
+		}
+		out = append(out, deletion{
+			name: strings.TrimSpace(nodeText(obj, src)),
+			key:  strings.Trim(strings.TrimSpace(nodeText(k, src)), `"'`),
+			node: n,
+		})
+	}
+	return out
+}
+
+// mergeFuncs are SDK-agnostic call names whose result carries forward
+// every key of the receiver and arguments.
+var mergeFuncs = map[string]bool{
+	"merge": true, "merge!": true, "deep_merge": true, "reverse_merge": true, "with_defaults": true, // Ruby
+	"dict":        true,                                                       // Python
+	"assign":      true,                                                       // JS Object.assign
+	"array_merge": true, "array_replace": true, "array_merge_recursive": true, // PHP
+}
+
+// mergesVariable reports whether expression n is a merge that includes
+// name: a literal spreading it, a merge call on or over it, or a
+// dict-union/array-union operator with it as an operand.
+func mergesVariable(n *ts.Node, name string, lang *ts.Language, src []byte) bool {
+	if spreadsVariable(n, src, name) {
+		return true
+	}
+	if args := fieldChild(n, lang, "arguments"); args != nil {
+		callee, _, _ := splitCall(n, lang, src)
+		if !mergeFuncs[calleeMethodName(callee)] {
+			return false
+		}
+		if parts := calleeComponents(callee); len(parts) >= 2 && parts[len(parts)-2] == name {
+			return true
+		}
+		for i := 0; i < args.NamedChildCount(); i++ {
+			if c := args.NamedChild(i); c != nil && stripSpread(nodeText(c, src)) == name {
+				return true
+			}
+		}
+		return false
+	}
+	if op := fieldChild(n, lang, "operator"); op != nil {
+		if o := strings.TrimSpace(nodeText(op, src)); o == "|" || o == "+" {
+			for _, side := range []string{"left", "right"} {
+				if c := fieldChild(n, lang, side); c != nil && strings.TrimSpace(nodeText(c, src)) == name {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -761,7 +1401,24 @@ func unconditionalSibling(a, b *ts.Node, spec langSpec, lang *ts.Language) bool 
 	if ba == nil || bb == nil || !sameSpan(ba, bb) {
 		return false
 	}
-	return !nestedInControlFlow(a, ba, spec, lang) && !nestedInControlFlow(b, bb, spec, lang)
+	return isWholeStatement(a, ba) && !nestedInControlFlow(b, bb, spec, lang)
+}
+
+// isWholeStatement reports whether assignment node a is an entire
+// statement of container — a direct child, or the sole content of a
+// per-statement wrapper (JS/PHP's expression_statement) that is — rather
+// than part of a larger expression that may not evaluate it, like
+// `useDefaults && (params = {})`, or the body of a brace-less if.
+func isWholeStatement(a, container *ts.Node) bool {
+	p := a.Parent()
+	if p == nil {
+		return false
+	}
+	if sameSpan(p, container) {
+		return true
+	}
+	gp := p.Parent()
+	return gp != nil && sameSpan(gp, container) && p.NamedChildCount() == 1
 }
 
 // nestedInControlFlow reports whether node sits inside a conditional
@@ -802,14 +1459,26 @@ func nearestBlock(n *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
 // finds) or JS/TS's let/const (variable_declarator whose parent is
 // lexical_declaration). Nil means node isn't block-confined at all —
 // it's visible throughout its enclosing function once declared (JS/TS
-// var, Go's plain reassignment, Python/Ruby's assignment).
+// var, Go's plain reassignment, Python/Ruby's assignment). A
+// declaration that is a control statement's initializer — Go's
+// `if params := ...; cond`, JS's `for (let i = ...)` — is confined to
+// that statement, not the block around it.
 func bindingBlock(node *ts.Node, spec langSpec, lang *ts.Language) *ts.Node {
+	confined := false
 	switch node.Type(lang) {
 	case "var_spec", "short_var_declaration":
-		return nearestBlock(node, spec, lang)
+		confined = true
 	}
 	if p := node.Parent(); p != nil && p.Type(lang) == "lexical_declaration" {
-		return nearestBlock(node, spec, lang)
+		confined = true
+	}
+	if !confined {
+		return nil
+	}
+	for cur := node.Parent(); cur != nil; cur = cur.Parent() {
+		if t := cur.Type(lang); containsStr(spec.blockKinds, t) || containsStr(spec.controlKinds, t) {
+			return cur
+		}
 	}
 	return nil
 }

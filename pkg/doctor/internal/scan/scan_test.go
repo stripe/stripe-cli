@@ -72,6 +72,41 @@ var want = []string{
 	"../../testdata/javascript/closure_conditional_write.js:3:16",      // var: a write (not a declaration) to a captured outer variable isn't a new local shadowing it
 	"../../testdata/php/braceless_conditional.php:4:13",                // var: PHP's brace-less single-statement if body is still conditional, not an unconditional overwrite
 	"../../testdata/javascript/braceless_conditional.js:3:16",          // var: JS's brace-less single-statement if body is still conditional, not an unconditional overwrite
+	"../../testdata/javascript/declare_then_assign.js:6:12",            // var: an empty `let` declaration is the binding a later write fills, not a shadow of it
+	"../../testdata/go/declare_then_assign.go:12:3",                    // var: same, Go `var` declaration then plain `=`
+	"../../testdata/javascript/self_merge.js:5:16",                     // var: `params = {...params, ...}` keeps the original keys
+	"../../testdata/python/self_merge.py:3:12",                         // var: `params = dict(params, ...)` keeps the original keys
+	"../../testdata/ruby/self_merge.rb:3:12",                           // var: `params = params.merge(...)` keeps the original keys
+	"../../testdata/go/address_of.go:11:3",                             // var: legacy value literal passed as New(&params)
+	"../../testdata/python/envelope_spread.py:4:12",                    // var: bag spread inside the params= request envelope
+	"../../testdata/ruby/block_captured_merge.rb:3:12",                 // var: a Ruby block's assignment writes the captured outer variable (here, merging it)
+	"../../testdata/python/dict_wrapper.py:4:36",                       // direct: dict(...) wrapper splatted into the call
+	"../../testdata/python/dict_wrapper.py:5:65",                       // direct: dict(...) wrapper as the params= envelope
+	"../../testdata/go/go_client_new.go:11:3",                          // var: legacy type reaching a client service's New (sc.PaymentIntents.New)
+	"../../testdata/ruby/merge_arg.rb:3:12",                            // var: bag passed through params.merge(...) as the argument
+	"../../testdata/python/merge_arg.py:3:12",                          // var: bag passed through **dict(params, ...)
+	"../../testdata/ruby/block_populated.rb:6:14",                      // var: a Ruby block populates the outer params, sent after the block
+	"../../testdata/javascript/closure_populated.js:5:14",              // var: a JS closure populates the outer params, sent after it
+	"../../testdata/go/go_if_shadow_expired.go:9:2",                    // var: an if-block's own := has expired by the call, so it doesn't shadow the package-level bag
+	"../../testdata/python/default_param.py:3:12",                      // var: params appears only in a parameter's default value, not as a bound parameter
+	"../../testdata/go/go_field_write.go:10:9",                         // field: Go field assigned after construction, legacy type confirmed by New
+	"../../testdata/go/go_field_write_create.go:7:9",                   // field: Go field assigned on a declared *CreateParams var
+	"../../testdata/javascript/merge_chain.js:3:16",                    // var: bag merged into an intermediate variable that reaches the call
+	"../../testdata/python/merge_chain.py:3:10",                        // var: same, via dict(base, ...)
+	"../../testdata/ruby/inline_merge.rb:3:53",                         // direct: key inside an inline {...}.merge(...) request argument
+	"../../testdata/javascript/inline_assign.js:3:64",                  // direct: key inside an inline Object.assign(...) request argument
+	"../../testdata/go/go_if_init_shadow.go:10:3",                      // var: an if-initializer's shadow has expired by the call
+	"../../testdata/javascript/for_let_expired.js:3:18",                // var: a for-initializer's let has expired by the call
+	"../../testdata/java/BuilderChain.java:6:7",                        // recv: chained builder call resolved through its base receiver
+	"../../testdata/javascript/delete_conditional.js:3:18",             // var: the deletion only runs on one path
+	"../../testdata/python/del_other_key.py:3:12",                      // var: a different key is deleted
+	"../../testdata/javascript/inplace_assign.js:4:25",                 // var: key merged into params in place by Object.assign
+	"../../testdata/javascript/inplace_assign_param.js:5:27",           // var: same, into a function parameter
+	"../../testdata/ruby/inplace_merge_bang.rb:4:15",                   // var: key merged into params in place by merge!
+	"../../testdata/python/inplace_update.py:4:17",                     // var: key merged into params in place by dict.update
+	"../../testdata/go/go_field_write_declared.go:14:9",                // field: declared type survives a later value assignment
+	"../../testdata/python/computed_delete.py:4:12",                    // var: a computed del key isn't a known deletion of this field
+	"../../testdata/javascript/computed_delete.js:4:18",                // var: same, JS computed delete
 }
 
 func TestScanExactFindings(t *testing.T) {
@@ -164,6 +199,33 @@ func TestNegativesRejected(t *testing.T) {
 		"../../testdata/go/neg_go_block_shadow.go":                 "the outer bag is used only by Update; the inner New call uses its own, block-scoped clean params",
 		"../../testdata/ruby/neg_do_block_local.rb":                "the do...end block's own local hash is never passed to create — not a request argument at all",
 		"../../testdata/javascript/neg_callback_local.js":          "the callback's own local object is never passed to create — not a request argument at all",
+		"../../testdata/python/neg_envelope_metadata_spread.py":    "the bag is spread into metadata=, not the params= request envelope",
+		"../../testdata/ruby/neg_block_overwrite.rb":               "a Ruby block overwrites the captured outer params with a clean bag before the call",
+		"../../testdata/ruby/neg_except.rb":                        "params.except(:payment_method_types) removes the parameter; it is not a merge",
+		"../../testdata/javascript/neg_string_mention.js":          "the reassignment only mentions the name inside a string; the bag is replaced",
+		"../../testdata/python/neg_dict_metadata.py":               "the dict(...) wrapper is nested under metadata, not the request's own params",
+		"../../testdata/csharp/neg_target_typed_string.cs":         "target-typed new() of UnrelatedOptions; the resource name is only a string value",
+		"../../testdata/java/NegBuilderArg.java":                   "the resource name is only a builder argument, not the builder's type",
+		"../../testdata/go/neg_go_unrelated_new.go":                "the legacy bag reaches request.New and paymentintent.Update, never a PaymentIntent create",
+		"../../testdata/ruby/neg_merge_arg_metadata.rb":            "the merge is the metadata value, not the request's own params",
+		"../../testdata/ruby/neg_block_then_overwrite.rb":          "the block's bag is discarded by an unconditional overwrite before the call",
+		"../../testdata/ruby/neg_block_call_before_write.rb":       "the call runs before the block writes the bag",
+		"../../testdata/python/neg_param_shadow.py":                "the function's own params parameter shadows the module-level bag",
+		"../../testdata/python/neg_dominating_overwrite.py":        "an unconditional params = {} dominates the call, discarding the conditional bag",
+		"../../testdata/javascript/neg_dominating_overwrite.js":    "an unconditional params = {} dominates the call, discarding the conditional bag",
+		"../../testdata/go/neg_go_field_write_update.go":           "the field-written legacy bag only reaches paymentintent.Update",
+		"../../testdata/go/neg_go_field_write_after_call.go":       "the field is set only after the create call ran",
+		"../../testdata/go/neg_go_field_nested.go":                 "a nested PaymentSettings field, not the rule's top-level parameter",
+		"../../testdata/javascript/neg_merge_chain_overwritten.js": "base is replaced before it's merged into params",
+		"../../testdata/ruby/neg_inline_merge_metadata.rb":         "the inline merge builds the metadata value, not the request's own params",
+		"../../testdata/go/neg_go_if_init_shadow.go":               "New receives the if-initializer's clean shadow; the dirty bag only reaches Update",
+		"../../testdata/javascript/neg_delete.js":                  "the key is deleted before the call",
+		"../../testdata/python/neg_del.py":                         "the key is deleted before the call",
+		"../../testdata/javascript/neg_inplace_then_overwrite.js":  "the in-place-merged bag is replaced before the call",
+		"../../testdata/ruby/neg_merge_discarded.rb":               "a non-mutating merge whose result is discarded",
+		"../../testdata/javascript/neg_inplace_other_var.js":       "the merge mutates a different object than the one sent",
+		"../../testdata/typescript/neg_typed_decl_inner_block.ts":  "the inner block's own untyped params doesn't borrow the outer typed declaration",
+		"../../testdata/go/neg_go_slice_update.go":                 "a slice literal isn't an operation; the legacy bag only reaches Update",
 	}
 	for _, f := range findings {
 		if why, bad := banned[f.File]; bad {
@@ -188,11 +250,14 @@ func TestResolutionMechanisms(t *testing.T) {
 		byFile[f.File] = f.Via
 	}
 	for file, wantVia := range map[string]string{
-		"../../testdata/python/var_indirect.py":   "var:params",
-		"../../testdata/csharp/typed_decl.cs":     "type:options",
-		"../../testdata/typescript/typed_decl.ts": "type:params",
-		"../../testdata/java/Recv.java":           "recv:paramsBuilder",
-		"../../testdata/ruby/pi.rb":               "direct",
+		"../../testdata/python/var_indirect.py":    "var:params",
+		"../../testdata/csharp/typed_decl.cs":      "type:options",
+		"../../testdata/typescript/typed_decl.ts":  "type:params",
+		"../../testdata/java/Recv.java":            "recv:paramsBuilder",
+		"../../testdata/ruby/pi.rb":                "direct",
+		"../../testdata/go/go_field_write.go":      "field:params",
+		"../../testdata/java/BuilderChain.java":    "recv:b",
+		"../../testdata/javascript/merge_chain.js": "var:base>params",
 	} {
 		if got := byFile[file]; got != wantVia {
 			t.Errorf("%s resolved via %q, want %q", file, got, wantVia)
@@ -370,6 +435,54 @@ func BenchmarkScanSyntheticRepo(b *testing.B) {
 		if len(findings) != dirty {
 			b.Fatalf("got %d findings, want %d (scanned=%d parsed=%d)",
 				len(findings), dirty, scanned, parsed)
+		}
+	}
+}
+
+// TestTypedDeclScopedToMatchResource guards the type: and recv:
+// fallbacks against confirming one ParamMatch through a declaration
+// whose type belongs to a different match's resource — idx.typedDecls
+// is built from every match's tokens at once.
+func TestTypedDeclScopedToMatchResource(t *testing.T) {
+	rule := catalog.Rule{
+		ID: "mixed",
+		Match: []catalog.ParamMatch{
+			{Param: "payment_method_types", Operations: []string{"POST /v1/payment_intents"}},
+			{Param: "usage", Operations: []string{"POST /v1/setup_intents"}},
+		},
+	}
+	dir := t.TempDir()
+	files := map[string]string{
+		"wrong.ts":   "let params: Stripe.SetupIntentCreateParams;\nparams = { payment_method_types: ['card'] };\n",
+		"right.ts":   "let params: Stripe.PaymentIntentCreateParams;\nparams = { payment_method_types: ['card'] };\n",
+		"Wrong.java": "class W { void go() {\n  SetupIntentCreateParams.Builder b = SetupIntentCreateParams.builder();\n  b.addPaymentMethodType(\"card\");\n} }\n",
+		"Right.java": "class R { void go() {\n  PaymentIntentCreateParams.Builder b = PaymentIntentCreateParams.builder();\n  b.addPaymentMethodType(\"card\");\n} }\n",
+	}
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	findings, scanned, _, _, incomplete, err := Scan(dir, rule)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scanned != len(files) || incomplete != 0 {
+		t.Fatalf("scanned=%d incomplete=%d, want %d and 0", scanned, incomplete, len(files))
+	}
+	got := map[string]string{}
+	for _, f := range findings {
+		got[filepath.Base(f.File)] = f.Via
+	}
+	want := map[string]string{"right.ts": "type:params", "Right.java": "recv:b"}
+	for name, via := range want {
+		if got[name] != via {
+			t.Errorf("%s resolved via %q, want %q", name, got[name], via)
+		}
+	}
+	for _, name := range []string{"wrong.ts", "Wrong.java"} {
+		if v, ok := got[name]; ok {
+			t.Errorf("%s matched via %q, but its declared type is a SetupIntent, not this match's PaymentIntent", name, v)
 		}
 	}
 }

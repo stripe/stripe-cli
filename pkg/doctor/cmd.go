@@ -71,6 +71,9 @@ func defaultTopic() string {
 }
 
 func topicAndDir(args []string) (string, string, error) {
+	if len(args) > 2 {
+		return "", "", errorcategory.Errorf(errorcategory.UserInput, "accepts at most 2 arguments ([topic] [dir]), received %d", len(args))
+	}
 	topic, dir := defaultTopic(), "."
 	var nonTopic []string
 	for _, a := range args {
@@ -118,7 +121,9 @@ func newDoctorCmd(cfg *config.Config, remediations remediation.Set) *cobra.Comma
 		Long: `Scans the directory and judges each finding against the migration rule —
 the rule already carries whatever account-dependent guidance applies, so no
 separate account lookup is made.`,
-		Args: cobra.MaximumNArgs(2),
+		// Arg counts are validated in topicAndDir rather than by Cobra, so
+		// a bad count goes through fail() — the JSON error body and exit 2.
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			available, err := judge.RulesAPIAvailable(cfg, flagStripeAccount)
 			if err != nil {

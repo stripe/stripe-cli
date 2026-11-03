@@ -136,7 +136,7 @@ func Scan(root string, rule catalog.Rule) (findings []catalog.Finding, scanned, 
 				// string/identifier sitting in the *value* position —
 				// e.g. create({"description": "payment_method_types"}).
 				// Reject anything that isn't structurally in the key slot.
-				if !keyInKeyPosition(c.Node, spec, lang) {
+				if !keyInKeyPosition(c.Node, spec, lang, src) {
 					continue
 				}
 				// Ruby's simple_symbol (hash-rocket ":key => value") keeps
@@ -358,6 +358,12 @@ func SortFindings(findings []catalog.Finding) {
 
 // extractValue returns the value expression paired with a matched key.
 func extractValue(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) string {
+	if _, stmt, _, ok := fieldWrite(key, lang, src); ok {
+		if v := assignRHS(stmt, lang); v != nil {
+			return firstLine(nodeText(v, src))
+		}
+		return ""
+	}
 	if key.Type(lang) == "shorthand_property_identifier" {
 		// {payment_method_types} is sugar for {payment_method_types:
 		// payment_method_types} — the identifier doubles as its own
@@ -387,7 +393,10 @@ func extractValue(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) st
 // anchor call, since e.g. C#'s `options = new(){...}` would otherwise be
 // miscounted as a nesting level.
 func ancestorKeys(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) []string {
-	bound := climbAnchor(key, spec, lang)
+	if _, _, path, ok := fieldWrite(key, lang, src); ok {
+		return path // params.PaymentSettings.PaymentMethodTypes -> [PaymentSettings]
+	}
+	bound := climbAnchor(key, spec, lang, src)
 	isPair := func(k string) bool {
 		for _, want := range spec.pairKinds {
 			if k == want {
@@ -454,11 +463,15 @@ func isRequestEnvelope(cur, anchor *ts.Node, key string) bool {
 // method's own name) the equivalent slot is the method_invocation's
 // second-to-last named child — the one immediately before its trailing
 // argument_list, whether or not it also has an explicit receiver.
-func keyInKeyPosition(key *ts.Node, spec langSpec, lang *ts.Language) bool {
+func keyInKeyPosition(key *ts.Node, spec langSpec, lang *ts.Language, src []byte) bool {
 	if key.Type(lang) == "shorthand_property_identifier" {
 		// Always in key position — it has no separate value slot to
 		// be mistaken for.
 		return true
+	}
+	if key.Type(lang) == "field_identifier" {
+		_, _, _, ok := fieldWrite(key, lang, src)
+		return ok
 	}
 	isParent := func(n *ts.Node) bool {
 		if spec.pairKinds != nil {

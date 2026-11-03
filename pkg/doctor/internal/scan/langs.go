@@ -108,6 +108,12 @@ type langSpec struct {
 	// local to it, so even a nested function's own plain assignment
 	// really is a distinct, shadowing binding there.
 	writeKinds []string
+
+	// captureKinds are funcKinds whose plain assignments write into an
+	// already-bound outer variable of the same name rather than
+	// declaring a local — Ruby blocks and lambdas, unlike `def`, which
+	// starts a fresh scope.
+	captureKinds []string
 }
 
 var specs = map[string]langSpec{
@@ -120,12 +126,13 @@ var specs = map[string]langSpec{
 		query: `(pair (hash_key_symbol) @key)
 				 (pair (simple_symbol) @key)
 				 (pair (string (string_content) @key))`,
-		spell:       identity,
-		anchorKinds: []string{"call"},
-		anchorStyle: anchorCall,
-		pairKinds:   []string{"pair"},
-		assignKinds: []string{"assignment"},
-		funcKinds:   []string{"method", "singleton_method", "lambda", "do_block", "block"},
+		spell:        identity,
+		anchorKinds:  []string{"call"},
+		anchorStyle:  anchorCall,
+		pairKinds:    []string{"pair"},
+		assignKinds:  []string{"assignment"},
+		funcKinds:    []string{"method", "singleton_method", "lambda", "do_block", "block"},
+		captureKinds: []string{"lambda", "do_block", "block"},
 		// pascalSingular(r) is the legacy static style (Stripe::PaymentIntent.create);
 		// r itself is the resource-style StripeClient spelling
 		// (client.v1.payment_intents.create).
@@ -229,9 +236,14 @@ var specs = map[string]langSpec{
 		},
 	},
 	".go": {
-		name:        "go",
-		lang:        grammars.GoLanguage,
-		query:       `(literal_value (keyed_element (literal_element (identifier) @key)))`,
+		name: "go",
+		lang: grammars.GoLanguage,
+		// keyed_element: a composite literal's field; selector_expression:
+		// a field assigned after construction (`params.PaymentMethodTypes =
+		// ...`) — fieldWrite rejects any match outside an assignment's left
+		// side.
+		query: `(literal_value (keyed_element (literal_element (identifier) @key)))
+				 (assignment_statement (expression_list (selector_expression (field_identifier) @key)))`,
 		spell:       pascalSpell,
 		anchorKinds: []string{"composite_literal"},
 		anchorStyle: anchorType,
@@ -244,6 +256,9 @@ var specs = map[string]langSpec{
 		// see blockKinds below for why that depth difference matters.
 		assignKinds: []string{"short_var_declaration", "assignment_statement", "var_spec"},
 		funcKinds:   []string{"function_declaration", "method_declaration", "func_literal"},
+		// A plain `params = ...` writes into an existing var/:= binding
+		// rather than declaring one.
+		writeKinds: []string{"assignment_statement"},
 		// var_spec's extra var_declaration wrapper means comparing
 		// Parent() directly no longer finds true statement-list
 		// siblings between a var_spec-based assignment and a
@@ -253,7 +268,10 @@ var specs = map[string]langSpec{
 		// blockScopedShadow's lexical_declaration check is JS/TS-only
 		// and never matches a Go node, so this is otherwise a no-op
 		// for Go's existing shadow detection.
-		blockKinds: []string{"source_file", "block"},
+		// statement_list is the actual statement container inside a block.
+		blockKinds: []string{"source_file", "block", "statement_list"},
+		// Each also scopes its own initializer: `if params := ...; cond`.
+		controlKinds: []string{"if_statement", "for_statement", "expression_switch_statement", "type_switch_statement", "select_statement"},
 		// <Resource>Params is the legacy type, shared by create and
 		// update; <Resource>CreateParams is the operation-specific type
 		// the current client-based stripe-go API generates.
