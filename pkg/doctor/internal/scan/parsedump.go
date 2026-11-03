@@ -11,10 +11,17 @@ import (
 	ts "github.com/odvcencio/gotreesitter"
 )
 
-// DumpTrees prints the parsed S-expression tree for every file in root whose
-// extension this package supports.
+// DumpTrees prints the parsed S-expression tree for every file under root
+// (recursively, e.g. testdata/<language>/) whose extension this package
+// supports.
 func DumpTrees(root string) {
-	files, _ := filepath.Glob(filepath.Join(root, "*"))
+	var files []string
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
 	for _, f := range files {
 		spec, ok := specs[strings.ToLower(filepath.Ext(f))]
 		if !ok {

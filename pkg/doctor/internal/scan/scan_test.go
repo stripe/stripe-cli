@@ -26,52 +26,52 @@ var testRule = catalog.Rule{
 // false positive; anything missing is a false negative. The fixtures live in
 // ../../testdata.
 var want = []string{
-	"../../testdata/Comp.tsx:7:5",        // direct (TSX grammar, JSX in file)
-	"../../testdata/Pi.cs:10:7",          // direct
-	"../../testdata/Pi.java:9:10",        // direct (builder chain)
-	"../../testdata/Recv.java:8:19",      // recv: receiver's declared type
-	"../../testdata/pi.go:13:3",          // direct
-	"../../testdata/pi.js:6:3",           // direct
-	"../../testdata/pi.php:7:4",          // direct
-	"../../testdata/pi.py:7:5",           // direct
-	"../../testdata/pi.rb:7:3",           // direct
-	"../../testdata/static.php:4:6",      // direct (legacy \Stripe\X::create static style)
-	"../../testdata/esm.mjs:4:3",         // direct (ESM via the JS grammar)
-	"../../testdata/typed_decl.cs:10:7",  // type: C# target-typed new()
-	"../../testdata/var_indirect.py:5:6", // var: bag bound then passed
+	"../../testdata/typescript/Comp.tsx:7:5",    // direct (TSX grammar, JSX in file)
+	"../../testdata/csharp/Pi.cs:10:7",          // direct
+	"../../testdata/java/Pi.java:9:10",          // direct (builder chain)
+	"../../testdata/java/Recv.java:8:19",        // recv: receiver's declared type
+	"../../testdata/go/pi.go:13:3",              // direct
+	"../../testdata/javascript/pi.js:6:3",       // direct
+	"../../testdata/php/pi.php:7:4",             // direct
+	"../../testdata/python/pi.py:7:5",           // direct
+	"../../testdata/ruby/pi.rb:7:3",             // direct
+	"../../testdata/php/static.php:4:6",         // direct (legacy \Stripe\X::create static style)
+	"../../testdata/javascript/esm.mjs:4:3",     // direct (ESM via the JS grammar)
+	"../../testdata/csharp/typed_decl.cs:10:7",  // type: C# target-typed new()
+	"../../testdata/python/var_indirect.py:5:6", // var: bag bound then passed
 
-	"../../testdata/bulk_adder.java:10:10", // direct (Java addAll* bulk builder adder)
-	"../../testdata/client_pi.py:6:6",      // direct (StripeClient resource-style call)
-	"../../testdata/client_pi.rb:6:3",      // direct (StripeClient resource-style call)
-	"../../testdata/create_params.go:13:3", // direct (operation-specific *CreateParams type)
-	"../../testdata/hash_rocket.rb:4:30",   // direct (hash-rocket symbol key)
-	"../../testdata/hash_rocket.rb:5:29",   // direct (hash-rocket string key)
-	"../../testdata/str_key.js:4:4",        // direct (quoted string key)
-	"../../testdata/str_key.ts:4:4",        // direct (quoted string key)
+	"../../testdata/java/bulk_adder.java:10:10", // direct (Java addAll* bulk builder adder)
+	"../../testdata/python/client_pi.py:6:6",    // direct (StripeClient resource-style call)
+	"../../testdata/ruby/client_pi.rb:6:3",      // direct (StripeClient resource-style call)
+	"../../testdata/go/create_params.go:13:3",   // direct (operation-specific *CreateParams type)
+	"../../testdata/ruby/hash_rocket.rb:4:30",   // direct (hash-rocket symbol key)
+	"../../testdata/ruby/hash_rocket.rb:5:29",   // direct (hash-rocket string key)
+	"../../testdata/javascript/str_key.js:4:4",  // direct (quoted string key)
+	"../../testdata/typescript/str_key.ts:4:4",  // direct (quoted string key)
 
-	"../../testdata/client_params_kw.py:6:6",       // direct (params= request envelope)
-	"../../testdata/client_params_indirect.py:7:6", // var: bag passed via params= envelope
-	"../../testdata/spread_merge.js:5:3",           // var: bag merged via object spread
-	"../../testdata/nested_same_scope.py:4:16",     // var: bag bound and used in the same nested function
+	"../../testdata/python/client_params_kw.py:6:6",       // direct (params= request envelope)
+	"../../testdata/python/client_params_indirect.py:7:6", // var: bag passed via params= envelope
+	"../../testdata/javascript/spread_merge.js:5:3",       // var: bag merged via object spread
+	"../../testdata/python/nested_same_scope.py:4:16",     // var: bag bound and used in the same nested function
 
-	"../../testdata/create_async.py:4:41",                   // direct (Python asyncio create_async)
-	"../../testdata/client_create_async.py:6:14",            // direct (StripeClient resource-style create_async)
-	"../../testdata/typed_decl.ts:5:3",                      // type: explicit params type, assigned separately
-	"../../testdata/unrelated_local_reassign.py:4:12",       // var: an unrelated nested function's own local reassignment must not invalidate the outer binding
-	"../../testdata/function_defined_before_assign.js:11:3", // var: a function's body runs when called, not at its earlier textual definition site
-	"../../testdata/conditional_reassign.py:5:12",           // var: a conditional reassignment isn't a definite overwrite on every path
-	"../../testdata/unrelated_block_scope.js:4:18",          // var: an unrelated block-scoped const in a sibling if-branch must not invalidate the outer binding
-	"../../testdata/do_block.rb:5:30",                       // direct (Ruby do...end block isn't the real argument list)
-	"../../testdata/comment_before_args.js:6:3",             // direct (comment between method name and argument list)
-	"../../testdata/if_block_scope.js:4:18",                 // var: an if-branch's own block-scoped const must not shadow the module-level bag reaching the call after it
-	"../../testdata/shorthand_prop.js:4:32",                 // direct (JS/TS shorthand property, {payment_method_types} sugar for {payment_method_types: payment_method_types})
-	"../../testdata/shorthand_prop.ts:4:32",                 // direct (same, TS grammar)
-	"../../testdata/var_legacy_create.go:12:3",              // var: Go's legacy ambiguous type bound with `var` (not `:=`), reaching New
-	"../../testdata/nested_helper_scope.py:3:12",            // var: a nested helper function's own local must not shadow the module-level bag reaching the call in the outer function
-	"../../testdata/nested_helper_scope.js:3:18",            // var: same, JS grammar
-	"../../testdata/closure_conditional_write.js:3:16",      // var: a write (not a declaration) to a captured outer variable isn't a new local shadowing it
-	"../../testdata/braceless_conditional.php:4:13",         // var: PHP's brace-less single-statement if body is still conditional, not an unconditional overwrite
-	"../../testdata/braceless_conditional.js:3:16",          // var: JS's brace-less single-statement if body is still conditional, not an unconditional overwrite
+	"../../testdata/python/create_async.py:4:41",                       // direct (Python asyncio create_async)
+	"../../testdata/python/client_create_async.py:6:14",                // direct (StripeClient resource-style create_async)
+	"../../testdata/typescript/typed_decl.ts:5:3",                      // type: explicit params type, assigned separately
+	"../../testdata/python/unrelated_local_reassign.py:4:12",           // var: an unrelated nested function's own local reassignment must not invalidate the outer binding
+	"../../testdata/javascript/function_defined_before_assign.js:11:3", // var: a function's body runs when called, not at its earlier textual definition site
+	"../../testdata/python/conditional_reassign.py:5:12",               // var: a conditional reassignment isn't a definite overwrite on every path
+	"../../testdata/javascript/unrelated_block_scope.js:4:18",          // var: an unrelated block-scoped const in a sibling if-branch must not invalidate the outer binding
+	"../../testdata/ruby/do_block.rb:5:30",                             // direct (Ruby do...end block isn't the real argument list)
+	"../../testdata/javascript/comment_before_args.js:6:3",             // direct (comment between method name and argument list)
+	"../../testdata/javascript/if_block_scope.js:4:18",                 // var: an if-branch's own block-scoped const must not shadow the module-level bag reaching the call after it
+	"../../testdata/javascript/shorthand_prop.js:4:32",                 // direct (JS/TS shorthand property, {payment_method_types} sugar for {payment_method_types: payment_method_types})
+	"../../testdata/typescript/shorthand_prop.ts:4:32",                 // direct (same, TS grammar)
+	"../../testdata/go/var_legacy_create.go:12:3",                      // var: Go's legacy ambiguous type bound with `var` (not `:=`), reaching New
+	"../../testdata/python/nested_helper_scope.py:3:12",                // var: a nested helper function's own local must not shadow the module-level bag reaching the call in the outer function
+	"../../testdata/javascript/nested_helper_scope.js:3:18",            // var: same, JS grammar
+	"../../testdata/javascript/closure_conditional_write.js:3:16",      // var: a write (not a declaration) to a captured outer variable isn't a new local shadowing it
+	"../../testdata/php/braceless_conditional.php:4:13",                // var: PHP's brace-less single-statement if body is still conditional, not an unconditional overwrite
+	"../../testdata/javascript/braceless_conditional.js:3:16",          // var: JS's brace-less single-statement if body is still conditional, not an unconditional overwrite
 }
 
 func TestScanExactFindings(t *testing.T) {
@@ -127,43 +127,43 @@ func TestNegativesRejected(t *testing.T) {
 		t.Errorf("expected every fixture to be readable, got %d incomplete", incomplete)
 	}
 	banned := map[string]string{
-		"../../testdata/neg.rb":                         "non-Stripe resource (MyOrderModel.create)",
-		"../../testdata/neg.py":                         "bare variable and plain dict, not a call argument",
-		"../../testdata/neg.js":                         "plain object literal with no enclosing call",
-		"../../testdata/attr_read.rb":                   "reading the field off a response, not passing it",
-		"../../testdata/client_opt.js":                  "client-side Elements option, not a server API param",
-		"../../testdata/collide.py":                     "variable in an unrelated function must not resolve cross-function",
-		"../../testdata/neg_pool.rb":                    "(param, operation) pairing not in the rule: nested-on-PI / top-level-on-subscription",
-		"../../testdata/metadata_misattribution.py":     "bag bound to an unrelated keyword (metadata=params), not merged into the call's own params",
-		"../../testdata/neg_spread.js":                  "bag nested under metadata, not spread into the call's own params",
-		"../../testdata/neg_wrong_method.py":            "PaymentIntent.modify targets a different operation than the create-only rule",
-		"../../testdata/neg_construct_from.py":          "construct_from makes no API request at all",
-		"../../testdata/neg_shadowed_param.js":          "the call's own params is a shadowing function parameter, not the module-level object",
-		"../../testdata/neg_reassigned.py":              "the bag is overwritten with a clean one before the call that actually runs",
-		"../../testdata/neg_value_py.py":                "the parameter name appears as a string VALUE, not a key",
-		"../../testdata/neg_value.rb":                   "the parameter name appears as a string VALUE, not a key",
-		"../../testdata/neg_value.js":                   "the parameter name appears as a string VALUE, not a key",
-		"../../testdata/neg_value.php":                  "the parameter name appears as a string VALUE, not a key",
-		"../../testdata/neg_value.go":                   "the parameter name appears as an identifier VALUE, not a field name",
-		"../../testdata/neg_value.cs":                   "the parameter name appears as an identifier VALUE, not a field name",
-		"../../testdata/neg_untyped_decl.ts":            "untyped declarator whose initializer merely mentions the resource, not a typed declaration",
-		"../../testdata/neg_reassigned_after_call.py":   "the call already ran with a clean bag before the dirty reassignment ever happened",
-		"../../testdata/neg_legacy_update.go":           "the legacy, create-and-update-shared PaymentIntentParams type is passed to Update, not New",
-		"../../testdata/neg_local_shadow.js":            "the call's own params is a body-level local re-declaration, not the outer module-level object",
-		"../../testdata/neg_lambda_shadow.py":           "the call's own params is the lambda's own parameter, not the module-level dict",
-		"../../testdata/neg_reassigned_js.js":           "the bag is overwritten with a clean one before the call, despite mismatched statement-wrapper node types",
-		"../../testdata/neg_reassigned.php":             "the bag is overwritten with a clean one before the call that actually runs",
-		"../../testdata/neg_bare_block_shadow.js":       "the call's own params is a bare block's own let/const re-declaration, not the outer module-level object",
-		"../../testdata/neg_typed_decl_scope.ts":        "the typed declaration of the same name belongs to an unrelated nested function, not the outer module-level binding",
-		"../../testdata/neg_var_reassigned.go":          "the var-bound bag is overwritten with a clean one before the call that actually runs",
-		"../../testdata/neg_typed_decl_block_shadow.ts": "the typed declaration belongs to an unrelated inner block's own re-declaration, not the outer bag",
-		"../../testdata/neg_var_block_scoped.go":        "the dirty params never escapes its if-branch, so it must not be associated with the call after the branch closes",
-		"../../testdata/neg_let_block_scoped.js":        "the block-scoped const never escapes its if-branch, so it must not be associated with the call outside it",
-		"../../testdata/neg_wrong_model.rb":             "PaymentIntentAudit merely contains PaymentIntent as a substring, it is not that resource",
-		"../../testdata/neg_unrelated_type_string.cs":   "the resource token only appears inside a string property value, not the constructed type itself",
-		"../../testdata/neg_go_block_shadow.go":         "the outer bag is used only by Update; the inner New call uses its own, block-scoped clean params",
-		"../../testdata/neg_do_block_local.rb":          "the do...end block's own local hash is never passed to create — not a request argument at all",
-		"../../testdata/neg_callback_local.js":          "the callback's own local object is never passed to create — not a request argument at all",
+		"../../testdata/ruby/neg.rb":                               "non-Stripe resource (MyOrderModel.create)",
+		"../../testdata/python/neg.py":                             "bare variable and plain dict, not a call argument",
+		"../../testdata/javascript/neg.js":                         "plain object literal with no enclosing call",
+		"../../testdata/ruby/attr_read.rb":                         "reading the field off a response, not passing it",
+		"../../testdata/javascript/client_opt.js":                  "client-side Elements option, not a server API param",
+		"../../testdata/python/collide.py":                         "variable in an unrelated function must not resolve cross-function",
+		"../../testdata/ruby/neg_pool.rb":                          "(param, operation) pairing not in the rule: nested-on-PI / top-level-on-subscription",
+		"../../testdata/python/metadata_misattribution.py":         "bag bound to an unrelated keyword (metadata=params), not merged into the call's own params",
+		"../../testdata/javascript/neg_spread.js":                  "bag nested under metadata, not spread into the call's own params",
+		"../../testdata/python/neg_wrong_method.py":                "PaymentIntent.modify targets a different operation than the create-only rule",
+		"../../testdata/python/neg_construct_from.py":              "construct_from makes no API request at all",
+		"../../testdata/javascript/neg_shadowed_param.js":          "the call's own params is a shadowing function parameter, not the module-level object",
+		"../../testdata/python/neg_reassigned.py":                  "the bag is overwritten with a clean one before the call that actually runs",
+		"../../testdata/python/neg_value_py.py":                    "the parameter name appears as a string VALUE, not a key",
+		"../../testdata/ruby/neg_value.rb":                         "the parameter name appears as a string VALUE, not a key",
+		"../../testdata/javascript/neg_value.js":                   "the parameter name appears as a string VALUE, not a key",
+		"../../testdata/php/neg_value.php":                         "the parameter name appears as a string VALUE, not a key",
+		"../../testdata/go/neg_value.go":                           "the parameter name appears as an identifier VALUE, not a field name",
+		"../../testdata/csharp/neg_value.cs":                       "the parameter name appears as an identifier VALUE, not a field name",
+		"../../testdata/typescript/neg_untyped_decl.ts":            "untyped declarator whose initializer merely mentions the resource, not a typed declaration",
+		"../../testdata/python/neg_reassigned_after_call.py":       "the call already ran with a clean bag before the dirty reassignment ever happened",
+		"../../testdata/go/neg_legacy_update.go":                   "the legacy, create-and-update-shared PaymentIntentParams type is passed to Update, not New",
+		"../../testdata/javascript/neg_local_shadow.js":            "the call's own params is a body-level local re-declaration, not the outer module-level object",
+		"../../testdata/python/neg_lambda_shadow.py":               "the call's own params is the lambda's own parameter, not the module-level dict",
+		"../../testdata/javascript/neg_reassigned_js.js":           "the bag is overwritten with a clean one before the call, despite mismatched statement-wrapper node types",
+		"../../testdata/php/neg_reassigned.php":                    "the bag is overwritten with a clean one before the call that actually runs",
+		"../../testdata/javascript/neg_bare_block_shadow.js":       "the call's own params is a bare block's own let/const re-declaration, not the outer module-level object",
+		"../../testdata/typescript/neg_typed_decl_scope.ts":        "the typed declaration of the same name belongs to an unrelated nested function, not the outer module-level binding",
+		"../../testdata/go/neg_var_reassigned.go":                  "the var-bound bag is overwritten with a clean one before the call that actually runs",
+		"../../testdata/typescript/neg_typed_decl_block_shadow.ts": "the typed declaration belongs to an unrelated inner block's own re-declaration, not the outer bag",
+		"../../testdata/go/neg_var_block_scoped.go":                "the dirty params never escapes its if-branch, so it must not be associated with the call after the branch closes",
+		"../../testdata/javascript/neg_let_block_scoped.js":        "the block-scoped const never escapes its if-branch, so it must not be associated with the call outside it",
+		"../../testdata/ruby/neg_wrong_model.rb":                   "PaymentIntentAudit merely contains PaymentIntent as a substring, it is not that resource",
+		"../../testdata/csharp/neg_unrelated_type_string.cs":       "the resource token only appears inside a string property value, not the constructed type itself",
+		"../../testdata/go/neg_go_block_shadow.go":                 "the outer bag is used only by Update; the inner New call uses its own, block-scoped clean params",
+		"../../testdata/ruby/neg_do_block_local.rb":                "the do...end block's own local hash is never passed to create — not a request argument at all",
+		"../../testdata/javascript/neg_callback_local.js":          "the callback's own local object is never passed to create — not a request argument at all",
 	}
 	for _, f := range findings {
 		if why, bad := banned[f.File]; bad {
@@ -188,11 +188,11 @@ func TestResolutionMechanisms(t *testing.T) {
 		byFile[f.File] = f.Via
 	}
 	for file, wantVia := range map[string]string{
-		"../../testdata/var_indirect.py": "var:params",
-		"../../testdata/typed_decl.cs":   "type:options",
-		"../../testdata/typed_decl.ts":   "type:params",
-		"../../testdata/Recv.java":       "recv:paramsBuilder",
-		"../../testdata/pi.rb":           "direct",
+		"../../testdata/python/var_indirect.py":   "var:params",
+		"../../testdata/csharp/typed_decl.cs":     "type:options",
+		"../../testdata/typescript/typed_decl.ts": "type:params",
+		"../../testdata/java/Recv.java":           "recv:paramsBuilder",
+		"../../testdata/ruby/pi.rb":               "direct",
 	} {
 		if got := byFile[file]; got != wantVia {
 			t.Errorf("%s resolved via %q, want %q", file, got, wantVia)
