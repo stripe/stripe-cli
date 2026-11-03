@@ -35,12 +35,17 @@ The private key is read from the environment and never passed as an argument.
 Each platform build enters the protected `release` environment to access it.
 The unpublished snapshot workflow skips signing and requires no release key.
 
-## Consumer rollout
+## Automatic update verification
 
-Publishing signatures does not change existing clients. Verification must also
-be enabled in the CLI and installation scripts. Validate both successful
-upgrades and rejection of invalid signatures on supported operating systems.
+The CLI verifies signed checksums before staging an automatic update and again
+before applying it. The downloaded archive must match the signed checksum for
+its exact version and platform. Unsigned updates and downgrades are rejected.
 
-Do not sign downloaded historical release assets. Produce signed artifacts
-through an approved build. Once consumers pin a public key, rotation requires a
-transition that preserves those clients' ability to verify subsequent releases.
+## Installer verification
+
+The shell installer for macOS and Linux and the PowerShell installer for Windows
+embed the reviewed public key. They require a valid checksum signature before
+downloading and extracting a release archive. The shell installer requires
+OpenSSL; PowerShell uses the built-in .NET RSA API.
+
+Unsigned releases cannot be installed, including explicitly requested versions.
