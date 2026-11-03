@@ -19,6 +19,7 @@ import (
 	semver "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -28,18 +29,20 @@ const checkInterval = 24 * time.Hour
 
 // UpdateMarker represents a staged update ready to be applied.
 type UpdateMarker struct {
-	Version      string `json:"version"`
-	DownloadURL  string `json:"download_url"`
-	Checksum     string `json:"checksum"`
-	ReleaseNotes string `json:"release_notes"`
+	Version           string `json:"version"`
+	DownloadURL       string `json:"download_url"`
+	Checksum          string `json:"checksum"`
+	ReleaseNotes      string `json:"release_notes"`
+	SignedChecksums   string `json:"signed_checksums"`
+	ChecksumSignature string `json:"checksum_signature"`
 
 	// StagedAt is when the check wrote this marker, as a Unix timestamp. The
 	// gap between it and the moment the update is applied is how long a user
 	// sat on a version we already knew was old, which is the number that says
 	// whether auto-update is actually keeping the fleet current.
 	//
-	// Omitted when empty so that a marker written by hand -- as the
-	// auto-upgrade canary does -- stays valid, and reported only when set.
+	// Omitted when empty so that a signed marker written by hand by the
+	// auto-upgrade canary stays valid, and reported only when set.
 	StagedAt int64 `json:"staged_at,omitempty"`
 }
 
@@ -53,8 +56,8 @@ func CheckForUpdate() {
 		return
 	}
 
-	latest, url, checksum, releaseNotes, checkErr := fetchLatestRelease()
-	if latest == "" {
+	marker, checkErr := fetchLatestRelease()
+	if marker == nil {
 		// Reported rather than only debug-logged: the GitHub API this calls is
 		// unauthenticated and rate-limited per source IP, so a NAT'd or CI
 		// population can stop checking entirely with nothing else to show it.
@@ -66,9 +69,9 @@ func CheckForUpdate() {
 	}
 
 	current := strings.TrimPrefix(version.Version, "v")
-	latestClean := strings.TrimPrefix(latest, "v")
+	latestClean := strings.TrimPrefix(marker.Version, "v")
 
-	if current == latestClean {
+	if !isNewerVersion(current, latestClean) {
 		recordLastCheck()
 		return
 	}
@@ -84,12 +87,8 @@ func CheckForUpdate() {
 		return
 	}
 
-	WriteMarker(UpdateMarker{
-		Version:      latestClean,
-		DownloadURL:  url,
-		Checksum:     checksum,
-		ReleaseNotes: releaseNotes,
-	})
+	WriteMarker(*marker)
+
 	sendEvent(eventAvailable, map[string]string{"from": current, "to": latestClean})
 }
 
@@ -111,6 +110,16 @@ func recoverAndReport(phase string) {
 		"phase": phase,
 		"panic": fmt.Sprintf("%v", r),
 	})
+}
+
+// Unparseable versions cannot establish that an update moves forward.
+func isNewerVersion(current, target string) bool {
+	cur, err := semver.NewVersion(current)
+	if err != nil {
+		return false
+	}
+	next, err := semver.NewVersion(target)
+	return err == nil && next.GreaterThan(cur)
 }
 
 func isMajorVersionChange(current, latest string) bool {
@@ -155,88 +164,73 @@ func shouldCheck() bool {
 	return time.Since(time.Unix(ts, 0)) >= checkInterval
 }
 
-// fetchLatestRelease resolves the release to update to. On failure every value
-// is empty except failureReason, which names which step gave up so the caller
-// can report it.
-func fetchLatestRelease() (ver string, downloadURL string, checksum string, releaseNotes string, failureReason string) {
+// GitHub release metadata locates assets; only signed checksums authorize them.
+func fetchLatestRelease() (*UpdateMarker, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
 	defer cancel()
-
 	client := github.NewClient(nil)
 	release, _, err := client.Repositories.GetLatestRelease(ctx, "stripe", "stripe-cli")
 	if err != nil {
-		log.Debug("autoupdate: failed to fetch latest release: ", err)
-		return "", "", "", "", reasonReleaseFetch
+		return nil, reasonReleaseFetch
 	}
-
-	ver = release.GetTagName()
-	releaseNotes = release.GetBody()
-	assetName := binaryAssetName(strings.TrimPrefix(ver, "v"))
+	ver := strings.TrimPrefix(release.GetTagName(), "v")
+	assetName := binaryAssetName(ver)
 	checksumAsset := checksumAssetName()
-
-	var binaryURL, checksumURL string
+	var binaryURL, checksumURL, signatureURL string
 	for _, asset := range release.Assets {
-		name := asset.GetName()
-		if name == assetName {
+		switch asset.GetName() {
+		case assetName:
 			binaryURL = asset.GetBrowserDownloadURL()
-		}
-		if name == checksumAsset {
+		case checksumAsset:
 			checksumURL = asset.GetBrowserDownloadURL()
+		case checksumAsset + ".sig":
+			signatureURL = asset.GetBrowserDownloadURL()
 		}
 	}
-
 	if binaryURL == "" {
-		log.Debug("autoupdate: binary asset not found: ", assetName)
-		return "", "", "", "", reasonAssetMissing
+		return nil, reasonAssetMissing
 	}
-
-	if checksumURL != "" {
-		checksum = fetchChecksumForAsset(checksumURL, assetName)
+	if checksumURL == "" || signatureURL == "" {
+		return nil, reasonSignature
 	}
-
-	// No checksum, no update. Both ways of ending up without one -- the release
-	// publishing no checksums file, or the fetch for it failing -- used to leave
-	// checksum empty and stage the update anyway, and VerifyChecksum treats an
-	// empty expectation as a pass. A single failed HTTP request was therefore
-	// enough to turn integrity checking off for that update, silently. Refusing
-	// to stage costs a day: the next check tries again.
-	if checksum == "" {
-		log.Debug("autoupdate: no checksum published for ", assetName, "; refusing to stage an unverifiable update")
-		return "", "", "", "", reasonChecksumMissing
+	checksums, err := fetchReleaseFile(ctx, checksumURL)
+	if err != nil {
+		return nil, reasonChecksumMissing
 	}
-
-	return ver, binaryURL, checksum, releaseNotes, ""
+	signature, err := fetchReleaseFile(ctx, signatureURL)
+	if err != nil {
+		return nil, reasonSignature
+	}
+	checksum, err := verifiedReleaseChecksum(ver, checksums, signature)
+	if err != nil {
+		return nil, reasonSignature
+	}
+	return &UpdateMarker{Version: ver, DownloadURL: binaryURL, Checksum: checksum,
+		ReleaseNotes: release.GetBody(), SignedChecksums: checksums, ChecksumSignature: signature}, ""
 }
 
-func fetchChecksumForAsset(checksumURL, assetName string) string {
-	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, checksumURL, nil)
+func fetchReleaseFile(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Debug("autoupdate: failed to create checksum request: ", err)
-		return ""
+		return "", err
 	}
-
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Debug("autoupdate: failed to fetch checksums: ", err)
-		return ""
+		return "", err
 	}
 	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return "", errorcategory.Errorf(errorcategory.Network, "release asset returned status %d", resp.StatusCode)
+	}
+	const maxSize = 1024 * 1024
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSize+1))
 	if err != nil {
-		return ""
+		return "", err
 	}
-
-	for _, line := range strings.Split(string(body), "\n") {
-		parts := strings.Fields(line)
-		if len(parts) == 2 && parts[1] == assetName {
-			return parts[0]
-		}
+	if len(body) > maxSize {
+		return "", errorcategory.New(errorcategory.Network, "release metadata exceeds size limit")
 	}
-	return ""
+	return string(body), nil
 }
 
 func binaryAssetName(ver string) string {
@@ -367,7 +361,7 @@ func ClearMarker() {
 // VerifyChecksum verifies the SHA256 checksum of a file.
 func VerifyChecksum(filePath, expected string) bool {
 	if expected == "" {
-		return true
+		return false
 	}
 
 	f, err := os.Open(filePath)

@@ -6,18 +6,29 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // pluginFound and pluginAutoInstallable stand in for the metadata lookup. The
@@ -48,7 +59,8 @@ func newTestCmdWithRunner(name string, runPlugin PluginRunner, opts ...option) *
 	p := newPluginHintCmd(&config.Config{}, name, "Test description.", runPlugin, opts...)
 	p.stdout = &bytes.Buffer{}
 	p.stderr = &bytes.Buffer{}
-	p.stdin = strings.NewReader("")
+	p.stdin = strings.NewReader("\n")
+	p.stdinIsTerminal = func() bool { return true }
 	p.accountIDFn = func() (string, error) { return "acct_test", nil }
 	p.loginFn = func(ctx context.Context) error { return nil }
 	p.argvFn = func() []string { return []string{"stripe", name} }
@@ -79,6 +91,132 @@ func findChildCommand(rootCmd *cobra.Command, name string) *cobra.Command {
 		}
 	}
 	return nil
+}
+
+type failOnRead struct{ t *testing.T }
+
+func (r failOnRead) Read([]byte) (int, error) {
+	r.t.Fatal("recovery must not read stdin")
+	return 0, io.EOF
+}
+
+func TestRun_MissingCredentialsDiscoveryFailures(t *testing.T) {
+	t.Setenv("STRIPE_API_KEY", "")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := &config.Config{LogLevel: "info", Color: "auto", ProfilesFile: filepath.Join(t.TempDir(), "config.toml")}
+	cfg.InitConfig()
+	defer viper.Reset()
+	cfg.Profile.AccountID = "saved-account"
+	oldKeyring := config.KeyRing
+	config.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { config.KeyRing = oldKeyring })
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/ajax/stripecli/plugins_metadata", r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = io.WriteString(w, `{"error":{"message":"discovery response details"}}`)
+	}))
+	defer server.Close()
+	failingServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = io.WriteString(w, `{"error":{"message":"metadata unavailable"}}`)
+	}))
+	defer failingServer.Close()
+	closedServer := httptest.NewServer(http.NotFoundHandler())
+	closedServer.Close()
+
+	for _, name := range []string{"headless not found", "agent not found", "transport", "server", "cancellation"} {
+		t.Run(name, func(t *testing.T) {
+			baseURL := server.URL
+			switch name {
+			case "transport":
+				baseURL = closedServer.URL
+			case "server":
+				baseURL = failingServer.URL
+			}
+			fs := afero.NewMemMapFs()
+			if name == "headless not found" {
+				cachePath := filepath.Join(cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "plugins.toml")
+				require.NoError(t, fs.MkdirAll(filepath.Dir(cachePath), 0755))
+				require.NoError(t, afero.WriteFile(fs, cachePath, []byte("[[Plugin]]\nShortname = \"another-plugin\"\nBinary = \"stripe-cli-another-plugin\"\n"), 0600))
+			}
+			p := newTestCmd("example")
+			p.lookupFn = func(ctx context.Context) (*plugins.ResolvedPluginVersion, error) {
+				return plugins.ResolvePluginForInstall(ctx, cfg, fs, "example", "", baseURL, baseURL)
+			}
+			p.stdinIsTerminal = func() bool { return name != "headless not found" }
+			p.lookupEnvFn = func(key string) string {
+				if name == "agent not found" && key == "CLAUDECODE" {
+					return "1"
+				}
+				return ""
+			}
+			p.stdin = failOnRead{t}
+			p.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+			p.openBrowserFn = func(string) error { t.Fatal("unexpected browser"); return nil }
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			if name == "cancellation" {
+				cancel()
+			}
+			p.SetContext(ctx)
+			err := p.run(p.Command, nil)
+			switch name {
+			case "transport":
+				var transportErr *url.Error
+				require.ErrorAs(t, err, &transportErr)
+			case "server":
+				var requestErr requests.RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusInternalServerError, requestErr.StatusCode)
+			case "cancellation":
+				require.ErrorIs(t, err, context.Canceled)
+			default:
+				require.ErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+				category, ok := errorcategory.Get(err)
+				require.True(t, ok)
+				require.Equal(t, errorcategory.Auth, category)
+				require.EqualError(t, err, "You're not logged in.\nRun 'stripe login', check the account with 'stripe whoami', then retry 'stripe plugin install example'.")
+				var notFound *plugins.ErrPluginNotFound
+				require.ErrorAs(t, err, &notFound)
+				require.Equal(t, "example", notFound.Name)
+				var requestErr requests.RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusNotFound, requestErr.StatusCode)
+				require.Contains(t, requestErr.Error(), "discovery response details")
+				require.Empty(t, p.output())
+				require.Empty(t, p.errOutput())
+				return
+			}
+			require.NotErrorIs(t, err, validators.ErrAPIKeyNotConfigured)
+			require.NotContains(t, err.Error(), "stripe login")
+			require.Empty(t, p.output())
+			require.Empty(t, p.errOutput())
+		})
+	}
+}
+
+func TestPromptLogin_EOFDoesNotConsent(t *testing.T) {
+	p := newTestCmd("example")
+	p.stdin = strings.NewReader("")
+	p.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+	err := p.offerLogin(context.Background(), validators.ErrAPIKeyNotConfigured)
+	require.EqualError(t, err, "login canceled")
+}
+
+func TestRun_PreservesLookupFailure(t *testing.T) {
+	for _, cause := range []error{
+		errors.New("session refresh failed"),
+		requests.RequestError{StatusCode: http.StatusUnauthorized},
+		&url.Error{Op: "Get", URL: "http://example.test", Err: errors.New("connection refused")},
+	} {
+		p := newAutoInstallTestCmd("example")
+		p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) { return nil, cause }
+		p.stdin = failOnRead{t}
+		p.loginFn = func(context.Context) error { t.Fatal("unexpected login"); return nil }
+		p.installFn = func(context.Context) error { t.Fatal("unexpected install"); return nil }
+		require.ErrorIs(t, p.run(p.Command, nil), cause)
+		require.Empty(t, p.output())
+	}
 }
 
 // --- AddHintCommands ---
@@ -206,20 +344,37 @@ func TestRun_PluginFound_CallsPromptInstall(t *testing.T) {
 	assert.Contains(t, p.output(), "The \"generate\" plugin is required")
 }
 
-func TestRun_PluginNotFound_PrivatePreviewFalse_LoggedIn_PrintsInstallHint(t *testing.T) {
-	p := newTestCmd("apps") // accountIDFn returns "acct_test" by default
-	p.lookupFn = pluginLookupFails("not found")
+func TestRun_PluginNotFound_CredentialsAvailable(t *testing.T) {
+	p := newTestCmd("apps")
+	p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+		return nil, &plugins.ErrPluginNotFound{Name: "apps"}
+	}
 
 	err := p.run(p.Command, nil)
 
-	require.NoError(t, err)
-	assert.Contains(t, p.output(), "stripe plugin install apps")
+	require.ErrorContains(t, err, "could not find an available release")
+	assert.Contains(t, err.Error(), "plugin name")
+	assert.Contains(t, err.Error(), "stripe whoami")
+	assert.Contains(t, err.Error(), "active account")
 }
 
-func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PromptsLogin(t *testing.T) {
+func TestRun_MissingCredentials_OffersLoginDespiteSavedAccount(t *testing.T) {
+	var debugOutput bytes.Buffer
+	logger := log.StandardLogger()
+	oldOutput, oldLevel := logger.Out, logger.GetLevel()
+	logger.SetOutput(&debugOutput)
+	logger.SetLevel(log.DebugLevel)
+	t.Cleanup(func() {
+		logger.SetOutput(oldOutput)
+		logger.SetLevel(oldLevel)
+	})
+
 	p := newTestCmd("docs")
-	p.lookupFn = pluginLookupFails("not found")
-	p.accountIDFn = func() (string, error) { return "", nil }
+	cause := fmt.Errorf("anonymous lookup failed: %w: %w", validators.ErrAPIKeyNotConfigured,
+		requests.RequestError{StatusCode: http.StatusNotFound, Body: "discovery response details"})
+	p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+		return nil, cause
+	}
 	loginCalled := false
 	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
 
@@ -227,23 +382,11 @@ func TestRun_PluginNotFound_PrivatePreviewFalse_NotLoggedIn_PromptsLogin(t *test
 
 	require.NoError(t, err)
 	assert.True(t, loginCalled)
-	assert.Contains(t, p.output(), "stripe login")
-	assert.NotContains(t, p.output(), "stripe plugin install")
-}
-
-func TestRun_PluginNotFound_PrivatePreviewFalse_AccountIDError_PromptsLogin(t *testing.T) {
-	p := newTestCmd("docs")
-	p.lookupFn = pluginLookupFails("not found")
-	p.accountIDFn = func() (string, error) { return "", errors.New("not configured") }
-	loginCalled := false
-	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
-
-	err := p.run(p.Command, nil)
-
-	require.NoError(t, err)
-	assert.True(t, loginCalled)
-	assert.Contains(t, p.output(), "stripe login")
-	assert.NotContains(t, p.output(), "stripe plugin install")
+	assert.Equal(t, "You're not logged in.\nRun 'stripe login', check the account with 'stripe whoami', then retry 'stripe plugin install docs'.\n\n"+
+		"Press Enter to run 'stripe login', or type anything to cancel: "+
+		"Run 'stripe whoami' to verify the active account before retrying your command.\n", p.output())
+	assert.Contains(t, debugOutput.String(), cause.Error())
+	assert.Empty(t, p.errOutput())
 }
 
 func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
@@ -259,7 +402,9 @@ func TestRun_PluginNotFound_PrivatePreviewTrue_ExitsWithOne(t *testing.T) {
 			lookupEnvFn:    func(string) string { return "" },
 		}
 		p.Command = &cobra.Command{Use: "generate", RunE: p.run}
-		p.lookupFn = pluginLookupFails("not found")
+		p.lookupFn = func(context.Context) (*plugins.ResolvedPluginVersion, error) {
+			return nil, &plugins.ErrPluginNotFound{Name: "generate"}
+		}
 		p.accountIDFn = func() (string, error) { return "acct_123", nil }
 		p.run(p.Command, nil) //nolint:errcheck
 		return
@@ -581,20 +726,6 @@ func TestRun_AutoInstall_UnsetOrFalsyOptOutStillInstalls(t *testing.T) {
 			assert.True(t, installCalled)
 		})
 	}
-}
-
-func TestRun_AutoInstall_LookupFailureStillFallsBackToHints(t *testing.T) {
-	// Auto-install must not mask the not-available and login paths.
-	p := newAutoInstallTestCmd("directory")
-	p.lookupFn = pluginLookupFails("not found")
-	installCalled := false
-	p.installFn = func(ctx context.Context) error { installCalled = true; return nil }
-
-	err := p.run(p.Command, nil)
-
-	require.NoError(t, err)
-	assert.False(t, installCalled)
-	assert.Contains(t, p.output(), "stripe plugin install directory")
 }
 
 // TestRun_PluginRequiresNewerCLI_ReportsVersionInsteadOfHints covers a lookup that
@@ -1048,26 +1179,13 @@ func TestPromptInstall_InstallError_ReturnsError(t *testing.T) {
 
 // --- promptLogin ---
 
-func TestPromptLogin_EnterKey_LogsIn(t *testing.T) {
-	p := newTestCmd("docs")
-	p.stdin = strings.NewReader("\n")
-	loginCalled := false
-	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
-
-	err := p.promptLogin(context.Background())
-
-	require.NoError(t, err)
-	assert.True(t, loginCalled)
-	assert.Contains(t, p.output(), "stripe login")
-}
-
 func TestPromptLogin_OtherInput_CancelsLogin(t *testing.T) {
 	p := newTestCmd("docs")
 	p.stdin = strings.NewReader("n\n")
 	loginCalled := false
 	p.loginFn = func(ctx context.Context) error { loginCalled = true; return nil }
 
-	err := p.promptLogin(context.Background())
+	err := p.offerLogin(context.Background(), validators.ErrAPIKeyNotConfigured)
 
 	assert.EqualError(t, err, "login canceled")
 	assert.False(t, loginCalled)
@@ -1078,7 +1196,7 @@ func TestPromptLogin_LoginError_ReturnsError(t *testing.T) {
 	p.stdin = strings.NewReader("\n")
 	p.loginFn = func(ctx context.Context) error { return errors.New("login failed") }
 
-	err := p.promptLogin(context.Background())
+	err := p.offerLogin(context.Background(), validators.ErrAPIKeyNotConfigured)
 
 	assert.EqualError(t, err, "login failed")
 }

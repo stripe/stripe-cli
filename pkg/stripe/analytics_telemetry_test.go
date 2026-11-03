@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -537,4 +539,51 @@ func TestNewEventMetadata_CategorizesCodexVSCode(t *testing.T) {
 	require.Equal(t, "codex_cli", tel.AIAgent)
 	require.Equal(t, "ide", tel.AgentHostKind)
 	require.Equal(t, "codex-vscode", tel.AgentHostRaw)
+}
+
+type recordingRoundTripper struct {
+	mu   sync.Mutex
+	urls []string
+}
+
+func (r *recordingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	r.mu.Lock()
+	r.urls = append(r.urls, req.URL.String())
+	r.mu.Unlock()
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader("")),
+		Header:     make(http.Header),
+		Request:    req,
+	}, nil
+}
+
+func TestConcurrentSendsWithDefaultBaseURL(t *testing.T) {
+	rt := &recordingRoundTripper{}
+	client := &stripe.AnalyticsTelemetryClient{HTTPClient: &http.Client{Transport: rt}}
+	ctx := stripe.WithEventMetadata(context.Background(), stripe.NewEventMetadata())
+
+	const n = 8
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			client.SendEvent(ctx, "Command Invoked", "")
+		}()
+		go func() {
+			defer wg.Done()
+			resp, err := client.SendAPIRequestEvent(ctx, "req_123", false)
+			if err == nil && resp != nil {
+				resp.Body.Close()
+			}
+		}()
+	}
+	wg.Wait()
+
+	require.Len(t, rt.urls, 2*n)
+	for _, u := range rt.urls {
+		require.Equal(t, stripe.DefaultTelemetryEndpoint, u)
+	}
+	require.Nil(t, client.BaseURL)
 }

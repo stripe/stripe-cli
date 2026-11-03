@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -194,6 +195,7 @@ func TestDownloadAndReplace(t *testing.T) {
 		Checksum:    checksum,
 	}
 
+	authorizeTestMarker(t, marker)
 	reason, err := downloadAndReplace(marker, exePath)
 	require.NoError(t, err)
 	assert.Empty(t, reason, "a successful update reports no failure reason")
@@ -238,6 +240,7 @@ func TestDownloadAndReplace_Zip(t *testing.T) {
 		Checksum:    sha256sum(archivePath),
 	}
 
+	authorizeTestMarker(t, marker)
 	reason, err := downloadAndReplace(marker, exePath)
 	require.NoError(t, err)
 	assert.Empty(t, reason)
@@ -268,6 +271,7 @@ func TestDownloadAndReplace_BadChecksum(t *testing.T) {
 		Checksum:    "0000000000000000000000000000000000000000000000000000000000000000",
 	}
 
+	authorizeTestMarker(t, marker)
 	reason, err := downloadAndReplace(marker, exePath)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "checksum verification failed")
@@ -290,8 +294,10 @@ func TestDownloadAndReplace_ServerError(t *testing.T) {
 	marker := &UpdateMarker{
 		Version:     "1.43.8",
 		DownloadURL: server.URL + "/stripe.tar.gz",
+		Checksum:    strings.Repeat("a", 64),
 	}
 
+	authorizeTestMarker(t, marker)
 	reason, err := downloadAndReplace(marker, exePath)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "status 500")
@@ -353,8 +359,9 @@ func TestDownloadAndReplace_StalledDownloadTimesOut(t *testing.T) {
 	exePath := filepath.Join(dir, binaryName())
 	require.NoError(t, os.WriteFile(exePath, []byte("old binary"), 0755))
 
-	marker := &UpdateMarker{Version: "1.43.8", DownloadURL: server.URL + "/stripe.tar.gz"}
+	marker := &UpdateMarker{Version: "1.43.8", DownloadURL: server.URL + "/stripe.tar.gz", Checksum: strings.Repeat("a", 64)}
 
+	authorizeTestMarker(t, marker)
 	start := time.Now()
 	reason, err := downloadAndReplace(marker, exePath)
 

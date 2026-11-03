@@ -15,11 +15,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/cmd/internal/pluginlogin"
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin/postinstall"
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -36,6 +37,9 @@ type InstallCmd struct {
 	apiBaseURL       string
 	dashboardBaseURL string
 	accessBaseURL    string
+	stdinIsTerminal  func() bool
+	lookupEnvFn      func(string) string
+	loginFn          func(context.Context) error
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -43,6 +47,11 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic := &InstallCmd{}
 	ic.fs = afero.NewOsFs()
 	ic.cfg = config
+	ic.stdinIsTerminal = func() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
+	ic.lookupEnvFn = os.Getenv
+	ic.loginFn = func(ctx context.Context) error {
+		return login.Login(ctx, resolveDashboardBaseURL(ic.apiBaseURL, ic.dashboardBaseURL), ic.accessBaseURL, ic.apiBaseURL, ic.cfg)
+	}
 
 	ic.Cmd = &cobra.Command{
 		Use:   "install <plugin>",
@@ -115,54 +124,17 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	isLatest := len(version) == 0
 	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
 	if err != nil {
-		// Reported before the branches below, which read every other failure as
-		// possibly an authentication problem and offer to log in. Logging in cannot
-		// make this CLI new enough to run the release, so prompting for it would send
-		// the user somewhere that never resolves.
-		var requiresNewerCLI *plugins.ErrPluginRequiresNewerCLI
-		if errors.As(err, &requiresNewerCLI) {
+		if !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
 			return err
 		}
-
-		var pluginNotFound *plugins.ErrPluginNotFound
-		if errors.As(err, &pluginNotFound) {
-			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
-			if aErr != nil || accountID == "" {
-				fmt.Printf("No plugin named %q found. If this is a private plugin, you must be logged in to install it.\n\n", pluginName)
-				fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
-				var input string
-				fmt.Fscanln(os.Stdin, &input)
-				if input != "" {
-					return errorcategory.Errorf(errorcategory.UserInput, "login canceled")
-				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.accessBaseURL, ic.apiBaseURL, ic.cfg); lErr != nil {
-					return lErr
-				}
-				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
-				if err != nil {
-					return errorcategory.Errorf(errorcategory.UserInput, "no plugin named %q exists", pluginName)
-				}
-			} else {
-				return errorcategory.Errorf(errorcategory.UserInput, "no plugin named %q exists", pluginName)
-			}
-		} else {
-			accountID, aErr := ic.cfg.GetProfile().GetAccountID()
-			if aErr != nil || accountID == "" {
-				fmt.Printf("You must be logged in to install the \"%s\" plugin.\n\n", pluginName)
-				fmt.Print("Press Enter to run 'stripe login', or type anything to cancel")
-				var input string
-				fmt.Fscanln(os.Stdin, &input)
-				if input != "" {
-					return errorcategory.Errorf(errorcategory.UserInput, "login canceled")
-				}
-				if lErr := login.Login(cmd.Context(), dashboardBaseURL, ic.accessBaseURL, ic.apiBaseURL, ic.cfg); lErr != nil {
-					return lErr
-				}
-				resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
-			}
-			if err != nil {
-				return err
-			}
+		if loginErr := pluginlogin.Offer(pluginName, err, cmd.InOrStdin(), cmd.ErrOrStderr(),
+			pluginlogin.CanPrompt(ic.lookupEnvFn, ic.stdinIsTerminal()),
+			func() error { return ic.loginFn(cmd.Context()) }); loginErr != nil {
+			return loginErr
+		}
+		resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
+		if err != nil {
+			return err
 		}
 	}
 	plugin := resolvedPlugin.Plugin
