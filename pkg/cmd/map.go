@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
@@ -16,12 +17,29 @@ import (
 type mapMode string
 
 const (
-	mapModeDefault mapMode = ""        // flag not passed
-	mapModeTree    mapMode = "tree"    // bare --map or --map=tree
-	mapModeCompact mapMode = "compact" // tree without descriptions
-	mapModePaths   mapMode = "paths"   // flat list of full command paths
-	mapModeJSON    mapMode = "json"    // machine-readable JSON tree
+	mapModeDefault    mapMode = ""            // flag not passed
+	mapModeTree       mapMode = "tree"        // bare --map or --map=tree
+	mapModeCompact    mapMode = "compact"     // tree without descriptions
+	mapModePaths      mapMode = "paths"       // flat list of full command paths
+	mapModeJSON       mapMode = "json"        // machine-readable JSON tree
+	mapModeJSONManual mapMode = "json-manual" // JSON tree of hand-authored commands only, with Long/Example/Flags
 )
+
+// generatedAnnotationValues are the Annotations values that pkg/cmd/resource
+// sets on a parent command's Annotations map to tag a child as an
+// auto-generated (OpenAPI-derived) namespace, resource, or operation command.
+var generatedAnnotationValues = map[string]bool{
+	"namespace": true,
+	"resource":  true,
+	"operation": true,
+}
+
+// isGeneratedCommand reports whether child is an auto-generated
+// (OpenAPI-derived) command, as tagged on parent's Annotations map.
+func isGeneratedCommand(parent, child *cobra.Command) bool {
+	kind, ok := parent.Annotations[child.Name()]
+	return ok && generatedAnnotationValues[kind]
+}
 
 // printCommandMap prints a sitemap of all available subcommands rooted at cmd,
 // using the specified output mode.
@@ -30,7 +48,9 @@ func printCommandMap(w io.Writer, cmd *cobra.Command, mode mapMode) {
 	case mapModePaths:
 		printCommandPaths(w, cmd)
 	case mapModeJSON:
-		printCommandJSON(w, cmd)
+		printCommandJSON(w, cmd, false)
+	case mapModeJSONManual:
+		printCommandJSON(w, cmd, true)
 	default: // mapModeTree, mapModeCompact
 		color := ansi.Color(w)
 		fmt.Fprintln(w, color.Sprintf(color.Bold(cmd.CommandPath())))
@@ -92,28 +112,129 @@ func printCommandPaths(w io.Writer, cmd *cobra.Command) {
 type commandNode struct {
 	Name     string        `json:"name"`
 	Desc     string        `json:"desc,omitempty"`
+	Long     string        `json:"long,omitempty"`
+	Examples []exampleNode `json:"examples,omitempty"`
+	Flags    []flagNode    `json:"flags,omitempty"`
 	Commands []commandNode `json:"commands,omitempty"`
 }
 
+// exampleNode is the JSON structure for a single example on a command. The
+// description carries context/annotation for the example (e.g. what it
+// demonstrates or why); command is the runnable stripe invocation.
+type exampleNode struct {
+	Description string `json:"description,omitempty"`
+	Command     string `json:"command"`
+}
+
+// splitExamples splits a cobra Command.Example string into individual
+// example entries. Example strings in this repo follow three conventions,
+// applied here in a single pass:
+//   - blank lines separate one example from the next
+//   - a line starting with "#" is a comment describing the example that
+//     follows it, and becomes that example's Description
+//   - a line ending in "\" continues onto the next line (shell-style),
+//     joined with a space, until a line without a trailing "\" is found
+func splitExamples(example string) []exampleNode {
+	var examples []exampleNode
+	var comment []string
+	var command string
+
+	flush := func() {
+		if command == "" {
+			return
+		}
+		examples = append(examples, exampleNode{
+			Description: strings.Join(comment, "\n"),
+			Command:     command,
+		})
+		comment = nil
+		command = ""
+	}
+
+	for _, line := range strings.Split(example, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") && command == "" {
+			comment = append(comment, trimmed)
+			continue
+		}
+
+		continued := strings.HasSuffix(trimmed, "\\")
+		content := strings.TrimSpace(strings.TrimSuffix(trimmed, "\\"))
+		if command == "" {
+			command = content
+		} else {
+			command = command + " " + content
+		}
+		if continued {
+			continue
+		}
+
+		flush()
+	}
+	flush()
+
+	return examples
+}
+
+// flagNode is the JSON structure for a single flag defined on a command.
+type flagNode struct {
+	Name       string `json:"name"`
+	Shorthand  string `json:"shorthand,omitempty"`
+	Usage      string `json:"usage,omitempty"`
+	Default    string `json:"default,omitempty"`
+	Deprecated string `json:"deprecated,omitempty"`
+}
+
+// buildFlagNodes returns the flags defined directly on cmd (excluding those
+// inherited from parent commands and those marked hidden).
+func buildFlagNodes(cmd *cobra.Command) []flagNode {
+	var flags []flagNode
+	cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
+		if f.Hidden {
+			return
+		}
+		flags = append(flags, flagNode{
+			Name:       f.Name,
+			Shorthand:  f.Shorthand,
+			Usage:      f.Usage,
+			Default:    f.DefValue,
+			Deprecated: f.Deprecated,
+		})
+	})
+	return flags
+}
+
 // buildCommandNode recursively builds a commandNode tree from a cobra command.
-func buildCommandNode(cmd *cobra.Command) commandNode {
+// When manual is true, Long, Example, and local Flags are also included, and
+// auto-generated (OpenAPI-derived) namespace/resource/operation commands are
+// skipped so only hand-authored commands remain.
+func buildCommandNode(cmd *cobra.Command, manual bool) commandNode {
 	node := commandNode{
 		Name: cmd.Name(),
 		Desc: cmd.Short,
 	}
-	children := getVisibleCommands(cmd)
-	if len(children) > 0 {
-		node.Commands = make([]commandNode, 0, len(children))
-		for _, child := range children {
-			node.Commands = append(node.Commands, buildCommandNode(child))
+	if manual {
+		node.Long = cmd.Long
+		node.Examples = splitExamples(cmd.Example)
+		node.Flags = buildFlagNodes(cmd)
+	}
+	for _, child := range getVisibleCommands(cmd) {
+		if manual && isGeneratedCommand(cmd, child) {
+			continue
 		}
+		node.Commands = append(node.Commands, buildCommandNode(child, manual))
 	}
 	return node
 }
 
-// printCommandJSON outputs the command tree as indented JSON.
-func printCommandJSON(w io.Writer, cmd *cobra.Command) {
-	node := buildCommandNode(cmd)
+// printCommandJSON outputs the command tree as indented JSON. When manual is
+// true, only hand-authored commands are included, each with its Long
+// description, Example, and local Flags.
+func printCommandJSON(w io.Writer, cmd *cobra.Command, manual bool) {
+	node := buildCommandNode(cmd, manual)
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(node) //nolint:errcheck
@@ -139,6 +260,8 @@ func parseMapMode(arg string) (mapMode, bool) {
 		return mapModePaths, true
 	case "json":
 		return mapModeJSON, true
+	case "json-manual":
+		return mapModeJSONManual, true
 	default:
 		return mapModeDefault, false
 	}
@@ -169,7 +292,7 @@ func getMapMode(args []string) mapMode {
 			}
 			if strings.HasPrefix(a, "--map=") {
 				val := a[len("--map="):]
-				fmt.Fprintf(mapStderr(), "Unknown --map mode %q. Valid modes: tree, compact, paths, json\n", val)
+				fmt.Fprintf(mapStderr(), "Unknown --map mode %q. Valid modes: tree, compact, paths, json, json-manual\n", val)
 			}
 			return mapModeDefault
 		}
