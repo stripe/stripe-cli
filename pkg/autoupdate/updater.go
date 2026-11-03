@@ -76,7 +76,7 @@ func ApplyIfPending() {
 
 	current := strings.TrimPrefix(version.Version, "v")
 	target := strings.TrimPrefix(marker.Version, "v")
-	if current == target {
+	if !isNewerVersion(current, target) || isMajorVersionChange(current, target) {
 		ClearMarker()
 		return
 	}
@@ -113,6 +113,14 @@ func ApplyIfPending() {
 // reason names the stage that failed, so that a dashboard can group failures
 // without matching on error text; it is empty on success.
 func downloadAndReplace(marker *UpdateMarker, exePath string) (string, error) {
+	checksum, err := verifiedReleaseChecksum(strings.TrimPrefix(marker.Version, "v"), marker.SignedChecksums, marker.ChecksumSignature)
+	if err != nil {
+		return reasonSignature, fmt.Errorf("release signature verification failed: %w", err)
+	}
+	if checksum != marker.Checksum {
+		return reasonChecksum, errorcategory.New(errorcategory.Network, "staged checksum does not match signed release")
+	}
+
 	// Canceled when this function returns, which is after the body has been read,
 	// so the deadline covers the transfer and not just the response headers.
 	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
@@ -146,7 +154,7 @@ func downloadAndReplace(marker *UpdateMarker, exePath string) (string, error) {
 	}
 	tmpArchive.Close()
 
-	if marker.Checksum != "" && !VerifyChecksum(tmpArchivePath, marker.Checksum) {
+	if !VerifyChecksum(tmpArchivePath, marker.Checksum) {
 		return reasonChecksum, errorcategory.Errorf(errorcategory.Network, "checksum verification failed")
 	}
 

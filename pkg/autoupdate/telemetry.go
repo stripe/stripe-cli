@@ -32,11 +32,12 @@ const (
 // Reasons attached to eventFailed, naming the stage that failed rather than
 // leaving an analyst to match on error text.
 const (
-	reasonDownload = "download"
-	reasonStatus   = "status"
-	reasonChecksum = "checksum"
-	reasonExtract  = "extract"
-	reasonReplace  = "replace"
+	reasonDownload  = "download"
+	reasonStatus    = "status"
+	reasonChecksum  = "checksum"
+	reasonSignature = "signature"
+	reasonExtract   = "extract"
+	reasonReplace   = "replace"
 )
 
 // Reasons attached to eventCheckFailed and eventSkipped.
