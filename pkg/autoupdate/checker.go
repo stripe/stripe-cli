@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v72/github"
+	"github.com/google/go-github/v93/github"
 	semver "github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 
@@ -168,7 +168,10 @@ func shouldCheck() bool {
 func fetchLatestRelease() (*UpdateMarker, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
 	defer cancel()
-	client := github.NewClient(nil)
+	client, err := github.NewClient()
+	if err != nil {
+		return nil, reasonReleaseFetch
+	}
 	release, _, err := client.Repositories.GetLatestRelease(ctx, "stripe", "stripe-cli")
 	if err != nil {
 		return nil, reasonReleaseFetch

@@ -15,7 +15,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -332,7 +332,7 @@ func (scc *sandboxCreateCmd) resolveEmail(cmd *cobra.Command) (string, error) {
 	return email, nil
 }
 
-func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.Aurora, email, name string) (*sandbox.ProvisionResponse, error) {
+func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color *aurora.Aurora, email, name string) (*sandbox.ProvisionResponse, error) {
 	client := sandbox.NewClient(scc.baseURL)
 
 	challengeResp, err := client.GetChallenge(cmd.Context(), email)
@@ -364,7 +364,7 @@ func (scc *sandboxCreateCmd) runProvisionFlow(cmd *cobra.Command, color aurora.A
 // runDashboardFlow is the browser-based fallback. Uses the standard
 // stripe login flow directly. Future enhancement: pass email to
 // login.Login() to pre-fill and open /register instead of /confirm_auth.
-func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.Aurora, email string) error {
+func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color *aurora.Aurora, email string) error {
 	if isSSHSession() && !scc.nonInteractive {
 		fmt.Println("SSH session detected. Cannot open browser.")
 		fmt.Println("Use `stripe login --interactive` or set STRIPE_API_KEY instead.")
@@ -377,7 +377,7 @@ func (scc *sandboxCreateCmd) runDashboardFlow(cmd *cobra.Command, color aurora.A
 	return login.Login(cmd.Context(), scc.dashboardURL, rootAccessBaseURL, scc.apiBaseURL, &Config)
 }
 
-func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color aurora.Aurora, result *sandbox.ProvisionResponse) error {
+func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color *aurora.Aurora, result *sandbox.ProvisionResponse) error {
 	if err := saveSandboxToConfig(result); err != nil {
 		return err
 	}

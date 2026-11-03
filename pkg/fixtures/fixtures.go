@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/imdario/mergo"
+	"dario.cat/mergo"
 	"github.com/joho/godotenv"
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/logrusorgru/aurora"
+	"github.com/logrusorgru/aurora/v4"
 	"github.com/tidwall/pretty"
 	"golang.org/x/term"
 )
@@ -62,10 +62,10 @@ func Purple(text string) string {
 	return color.Sprintf(color.Index(purpleIndex, text))
 }
 
-// Color returns an aurora.Aurora instance with colors enabled or disabled
+// Color returns an *aurora.Aurora instance with colors enabled or disabled
 // depending on whether the writer supports colors.
-func Color(w io.Writer) aurora.Aurora {
-	return aurora.NewAurora(shouldUseColors(w))
+func Color(w io.Writer) *aurora.Aurora {
+	return aurora.New(aurora.WithColors(shouldUseColors(w)))
 }
 
 // ColorsEnabled reports whether ANSI color output should be used for the
