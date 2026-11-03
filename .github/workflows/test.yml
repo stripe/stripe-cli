@@ -9,7 +9,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.26.5]
+        go-version: [1.27.3]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -47,7 +47,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
       with:
-        version: v2.10.1
+        version: v2.15.0
         args: --max-issues-per-linter=0 --max-same-issues=0
     - name: Error category lint
       run: go run ./internal/lint/errorcategory/cmd ./...

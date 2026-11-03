@@ -240,15 +240,12 @@ func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *
 
 	if unixSocket != "" {
 		unixSocket = expandUnixSocket(unixSocket)
-		dialFunc := func(network, addr string) (net.Conn, error) {
-			return net.Dial("unix", unixSocket)
-		}
 		dialContext := func(_ context.Context, _, _ string) (net.Conn, error) {
 			return net.Dial("unix", unixSocket)
 		}
 		httpTransport = &http.Transport{
 			DialContext:           dialContext,
-			DialTLS:               dialFunc,
+			DialTLSContext:        dialContext,
 			ResponseHeaderTimeout: 30 * time.Second,
 			ExpectContinueTimeout: 10 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,

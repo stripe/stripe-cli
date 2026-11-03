@@ -368,8 +368,10 @@ func TestSafeCreateError(t *testing.T) {
 			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
 		},
 		{
-			name:         "sandbox limit wrapped pointer",
-			err:          fmt.Errorf("wrapped: %w", &limitError),
+			name: "sandbox limit wrapped pointer",
+			// Passed as an error so vet accepts wrapping the pointer, which
+			// requestError must still recognize.
+			err:          fmt.Errorf("wrapped: %w", error(&limitError)),
 			wantCategory: errorcategory.API,
 			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
 		},
