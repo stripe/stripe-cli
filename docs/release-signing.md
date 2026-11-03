@@ -35,25 +35,24 @@ The private key is read from the environment and never passed as an argument.
 Each platform build enters the protected `release` environment to access it.
 The unpublished snapshot workflow skips signing and requires no release key.
 
-## Consumer rollout
+## Automatic update verification
 
-Publishing signatures does not change existing clients. Verification must also
-be enabled in the CLI and installation scripts. Validate both successful
-upgrades and rejection of invalid signatures on supported operating systems.
+The CLI verifies signed checksums before staging an automatic update and again
+before applying it. The downloaded archive must match the signed checksum for
+its exact version and platform. Unsigned updates and downgrades are rejected.
 
-Do not sign downloaded historical release assets. Produce signed artifacts
-through an approved build. Once consumers pin a public key, rotation requires a
-transition that preserves those clients' ability to verify subsequent releases.
+## Installer verification
 
-## Installer rollout
+The shell installer for macOS and Linux and the PowerShell installer for Windows
+embed the reviewed public key. They require a valid checksum signature before
+downloading and extracting a release archive. The shell installer requires
+OpenSSL; PowerShell uses the built-in .NET RSA API.
 
-The shell and PowerShell installers embed the reviewed public key and require a
-valid checksum signature before downloading and extracting a release archive.
-The shell installer requires OpenSSL; PowerShell uses the built-in .NET RSA API.
-There is no fallback for unsigned releases, including explicitly requested versions.
+Unsigned releases cannot be installed, including explicitly requested versions.
 
-Before merging or deploying these installer changes, publish and verify a signed
-release using the signing workflow. The curl install canary reads scripts directly
-from master. The auto-upgrade canary installs the previous release, so publish at
-least two signed releases before that canary uses the updated installers. Keep the
-CLI, shell installer, and PowerShell public keys in sync during key rotation.
+## Key rotation
+
+Keep the CLI, shell installer, and PowerShell public keys in sync. Rotation must
+preserve the ability of clients using the previous key to verify future updates.
+Do not sign downloaded historical release assets; produce signed artifacts
+through an approved build.
