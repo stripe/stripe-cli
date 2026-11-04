@@ -676,6 +676,7 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		// pluginEnv already includes the host environment. Skipping go-plugin's own copy keeps
 		// it from being appended after (and overriding) the CLI metadata variables.
 		SkipHostEnv: true,
+		AutoMTLS:    true,
 		AllowedProtocols: []hcplugin.Protocol{
 			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
 		},
