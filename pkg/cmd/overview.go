@@ -20,7 +20,7 @@ import (
 
 const (
 	integHlthAlertsPath       = "/v2/integ_hlth/alerts"
-	integHlthAPIVersion       = "2026-10-12-16.internal"
+	integHlthAPIVersion       = "2026-11-03-20.internal"
 	v2TestmodeUnsupportedCode = "v2_api_not_supported_in_testmode"
 )
 
