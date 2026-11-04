@@ -2336,11 +2336,17 @@ func (x *DataBlock) GetText() string {
 }
 
 type ProgressBlock struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // caller-generated, supports concurrent spinners
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	Type          ProgressType           `protobuf:"varint,3,opt,name=type,proto3,enum=proto.ProgressType" json:"type,omitempty"`
-	Success       bool                   `protobuf:"varint,4,opt,name=success,proto3" json:"success,omitempty"` // relevant on SPINNER_STOP only
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // caller-generated, supports concurrent spinners
+	Message string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Type    ProgressType           `protobuf:"varint,3,opt,name=type,proto3,enum=proto.ProgressType" json:"type,omitempty"`
+	Success bool                   `protobuf:"varint,4,opt,name=success,proto3" json:"success,omitempty"` // relevant on SPINNER_STOP only
+	// Transient spinners animate only on terminals; redirected output stays quiet.
+	// Relevant on SPINNER_START only. Updates inherit the initial setting.
+	Transient bool `protobuf:"varint,5,opt,name=transient,proto3" json:"transient,omitempty"`
+	// Stop without a final outcome line. Relevant on SPINNER_STOP only.
+	// Without this flag an empty message still reuses the current message.
+	Clear         bool `protobuf:"varint,6,opt,name=clear,proto3" json:"clear,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2399,6 +2405,20 @@ func (x *ProgressBlock) GetType() ProgressType {
 func (x *ProgressBlock) GetSuccess() bool {
 	if x != nil {
 		return x.Success
+	}
+	return false
+}
+
+func (x *ProgressBlock) GetTransient() bool {
+	if x != nil {
+		return x.Transient
+	}
+	return false
+}
+
+func (x *ProgressBlock) GetClear() bool {
+	if x != nil {
+		return x.Clear
 	}
 	return false
 }
@@ -2468,9 +2488,12 @@ func (x *SendCommandOutputRequest) GetFinal() bool {
 }
 
 type SendCommandOutputResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Probe with an empty, non-final request before using transient/clear flags.
+	// Older hosts return false, so the caller can safely render locally.
+	SupportsTransientSpinners bool `protobuf:"varint,1,opt,name=supports_transient_spinners,json=supportsTransientSpinners,proto3" json:"supports_transient_spinners,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *SendCommandOutputResponse) Reset() {
@@ -2501,6 +2524,13 @@ func (x *SendCommandOutputResponse) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SendCommandOutputResponse.ProtoReflect.Descriptor instead.
 func (*SendCommandOutputResponse) Descriptor() ([]byte, []int) {
 	return file_pkg_plugins_proto_main_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *SendCommandOutputResponse) GetSupportsTransientSpinners() bool {
+	if x != nil {
+		return x.SupportsTransientSpinners
+	}
+	return false
 }
 
 type PromptRequest struct {
@@ -2751,17 +2781,20 @@ const file_pkg_plugins_proto_main_proto_rawDesc = "" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x18\n" +
 	"\apayload\x18\x02 \x01(\tR\apayload\x12\x17\n" +
 	"\x04text\x18\x03 \x01(\tH\x00R\x04text\x88\x01\x01B\a\n" +
-	"\x05_text\"|\n" +
+	"\x05_text\"\xb0\x01\n" +
 	"\rProgressBlock\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12'\n" +
 	"\x04type\x18\x03 \x01(\x0e2\x13.proto.ProgressTypeR\x04type\x12\x18\n" +
-	"\asuccess\x18\x04 \x01(\bR\asuccess\"v\n" +
+	"\asuccess\x18\x04 \x01(\bR\asuccess\x12\x1c\n" +
+	"\ttransient\x18\x05 \x01(\bR\ttransient\x12\x14\n" +
+	"\x05clear\x18\x06 \x01(\bR\x05clear\"v\n" +
 	"\x18SendCommandOutputRequest\x12\x18\n" +
 	"\acommand\x18\x01 \x01(\tR\acommand\x12*\n" +
 	"\x06blocks\x18\x02 \x03(\v2\x12.proto.OutputBlockR\x06blocks\x12\x14\n" +
-	"\x05final\x18\x03 \x01(\bR\x05final\"\x1b\n" +
-	"\x19SendCommandOutputResponse\"\x8f\x01\n" +
+	"\x05final\x18\x03 \x01(\bR\x05final\"[\n" +
+	"\x19SendCommandOutputResponse\x12>\n" +
+	"\x1bsupports_transient_spinners\x18\x01 \x01(\bR\x19supportsTransientSpinners\"\x8f\x01\n" +
 	"\rPromptRequest\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12%\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x11.proto.PromptTypeR\x04type\x12\x18\n" +

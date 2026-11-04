@@ -587,3 +587,32 @@ func TestUnknownBlockVariantIsReportedNotDropped(t *testing.T) {
 	require.Equal(t, "  app_id: app_123\n", stdout.String(), "known blocks still render")
 	require.Contains(t, stderr.String(), "2 output block(s) require a newer Stripe CLI")
 }
+
+// A transient spinner must not leak its message or a completion line into
+// redirected output. Updates inherit the start option; clear is idempotent.
+func TestTransientSpinnerClearsWithoutOutput(t *testing.T) {
+	engine, stdout, stderr := newTestEngine(FormatText)
+	for _, p := range []*proto.ProgressBlock{
+		{Id: "s1", Message: "working", Type: proto.ProgressType_SPINNER_START, Transient: true},
+		{Id: "s1", Message: "still working", Type: proto.ProgressType_SPINNER_UPDATE},
+		{Id: "s1", Message: "ignored", Type: proto.ProgressType_SPINNER_STOP, Clear: true},
+		{Id: "s1", Message: "ignored", Type: proto.ProgressType_SPINNER_STOP, Clear: true},
+	} {
+		engine.HandleCommandOutput(chatter(progressBlock(p)))
+	}
+	require.Empty(t, stdout.String())
+	require.Empty(t, stderr.String())
+	require.Empty(t, engine.spinners)
+}
+
+func TestClearSpinnerPreservesPreviouslyPrintedProgress(t *testing.T) {
+	engine, _, stderr := newTestEngine(FormatText)
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
+		Id: "s1", Message: "working", Type: proto.ProgressType_SPINNER_START,
+	})))
+	engine.HandleCommandOutput(chatter(progressBlock(&proto.ProgressBlock{
+		Id: "s1", Type: proto.ProgressType_SPINNER_STOP, Clear: true,
+	})))
+	require.Equal(t, "working\n", stderr.String())
+	require.Empty(t, engine.spinners)
+}

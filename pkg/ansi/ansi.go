@@ -145,8 +145,20 @@ const duration = time.Duration(100) * time.Millisecond
 // StartNewSpinner starts a new spinner with the given message. If the writer is not
 // a terminal or doesn't support colors, it simply prints the message.
 func StartNewSpinner(msg string, w io.Writer) *spinner.Spinner {
+	return startNewSpinner(msg, w, false)
+}
+
+// StartNewTransientSpinner animates on terminals without leaving progress lines
+// in redirected output or when colors are disabled.
+func StartNewTransientSpinner(msg string, w io.Writer) *spinner.Spinner {
+	return startNewSpinner(msg, w, true)
+}
+
+func startNewSpinner(msg string, w io.Writer, transient bool) *spinner.Spinner {
 	if !isTerminal(w) || !shouldUseColors(w) {
-		fmt.Fprintln(w, msg)
+		if !transient {
+			fmt.Fprintln(w, msg)
+		}
 		return nil
 	}
 
