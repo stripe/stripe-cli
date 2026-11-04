@@ -131,11 +131,23 @@ type Spinner struct {
 // The returned handle is always non-nil, so callers can defer Stop without a nil
 // check even when the core CLI is unavailable.
 func (c *CLI) ProgressStart(msg string) (*Spinner, error) {
+	return c.progressStart(msg, false)
+}
+
+// ProgressStartTransient starts a spinner that stays quiet in redirected output.
+// Use Clear to stop it without leaving a final line. Requires a host advertising
+// supports_transient_spinners on the SendCommandOutput response.
+func (c *CLI) ProgressStartTransient(msg string) (*Spinner, error) {
+	return c.progressStart(msg, true)
+}
+
+func (c *CLI) progressStart(msg string, transient bool) (*Spinner, error) {
 	s := &Spinner{id: nextID("spinner"), cli: c}
 	err := c.sendProgress(&proto.ProgressBlock{
-		Id:      s.id,
-		Message: msg,
-		Type:    proto.ProgressType_SPINNER_START,
+		Id:        s.id,
+		Message:   msg,
+		Type:      proto.ProgressType_SPINNER_START,
+		Transient: transient,
 	})
 	return s, err
 }
@@ -158,6 +170,14 @@ func (s *Spinner) Stop(finalMsg string, success bool) error {
 		Message: finalMsg,
 		Type:    proto.ProgressType_SPINNER_STOP,
 		Success: success,
+	})
+}
+
+// Clear stops the spinner without leaving a success or failure line. Requires a
+// host advertising supports_transient_spinners on SendCommandOutput.
+func (s *Spinner) Clear() error {
+	return s.cli.sendProgress(&proto.ProgressBlock{
+		Id: s.id, Type: proto.ProgressType_SPINNER_STOP, Clear: true,
 	})
 }
 
