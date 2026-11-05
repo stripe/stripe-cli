@@ -202,7 +202,7 @@ func displayMode(m string) string {
 // compensates to keep the id and mode columns aligned across rows.
 const (
 	headerIndent = "  "
-	nestedIndent = "    └─ "
+	nestedIndent = "  └─ "
 )
 
 type accountRow struct {
@@ -408,7 +408,7 @@ func PrintGroupedAuthorizedAccounts(profile *config.Profile, accounts []config.A
 	}
 
 	// Indents vary in width (a plain "  " header indent vs. the wider
-	// "    └─ " tree connector), but the id and mode columns should still
+	// "  └─ " tree connector), but the id and mode columns should still
 	// line up regardless of indent. Widen the name field to make up the
 	// difference, so indent width + padded name width is constant.
 	maxIndentWidth := 0

@@ -1,9 +1,13 @@
 package login
 
 import (
+	"regexp"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -99,4 +103,50 @@ func TestBuildSwitchRows_MarksActiveRow(t *testing.T) {
 
 	assert.False(t, rows[0].active)
 	assert.True(t, rows[1].active)
+}
+
+var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// The whoami/login list and the switch selector should lay out account rows
+// identically: the same indent before each name, the same tree connector
+// position for nested rows, and the same id column.
+func TestSwitchView_MatchesPrintedAccountsListLayout(t *testing.T) {
+	cfg, cleanup := setupOAuthTestConfig(t)
+	defer cleanup()
+
+	accounts := []config.AuthorizedAccount{
+		{ID: "acct_legacy", Name: "Acme Inc", Modes: []string{"live", "test"}},
+		{ID: "acct_sandbox1", Name: "Acme Dev", Modes: []string{"test"}},
+		{ID: "acct_sandbox2", Name: "Acme Staging", Modes: []string{"test"}},
+		{ID: "acct_orphan", Name: "Mystery Sandbox", Modes: []string{"test"}},
+	}
+	parentAccountIDs := map[string]string{
+		"acct_sandbox1": "acct_legacy",
+		"acct_sandbox2": "acct_legacy",
+	}
+
+	printed := capturePrintedOutput(t, func() {
+		PrintGroupedAuthorizedAccounts(&cfg.Profile, accounts, parentAccountIDs)
+	})
+	m := newSwitchContextModel(accounts, &cfg.Profile, parentAccountIDs)
+	m.cursor = -1 // no "▶ " pointer, so every row starts with the plain "  " gutter
+	view := ansiEscape.ReplaceAllString(m.View().Content, "")
+
+	type layout struct{ prefix, idCol int }
+	layouts := func(output string) []layout {
+		var result []layout
+		for _, line := range strings.Split(output, "\n") {
+			idIdx := strings.Index(line, "acct_")
+			if idIdx == -1 {
+				continue
+			}
+			prefix := len(line) - len(strings.TrimLeft(line, " "))
+			result = append(result, layout{prefix: prefix, idCol: utf8.RuneCountInString(line[:idIdx])})
+		}
+		return result
+	}
+
+	printedLayouts := layouts(printed)
+	require.Len(t, printedLayouts, 5)
+	assert.Equal(t, printedLayouts, layouts(view), "whoami/login and switch should indent and align account rows the same way")
 }
