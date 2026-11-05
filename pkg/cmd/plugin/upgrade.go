@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -33,10 +34,10 @@ func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 	uc.cfg = config
 
 	uc.Cmd = &cobra.Command{
-		Use:   "upgrade <plugin>",
-		Args:  validators.ExactArgs(1),
-		Short: "Upgrade a Stripe CLI plugin",
-		Long:  "Upgrade a Stripe CLI plugin to the latest version available. To download a specific version, please see the `install` command",
+		Use:   "upgrade <plugin>...",
+		Args:  validators.MinimumNArgs(1),
+		Short: "Upgrade one or more Stripe CLI plugins",
+		Long:  "Upgrade one or more Stripe CLI plugins to the latest version available, stopping at the first one that fails. To download a specific version, please see the `install` command",
 		RunE:  uc.runUpgradeCmd,
 	}
 
@@ -58,34 +59,27 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if err := validatePluginNames(args); err != nil {
+		return err
+	}
+
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.upgradeCmd.runUpgradeCmd",
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	if m := stripe.GetEventMetadata(cmd.Context()); m != nil {
-		m.SetPluginName(args[0])
-	}
-
-	resolvedPlugin, err := plugins.ResolvePluginForUpgrade(ctx, uc.cfg, uc.fs, args[0], uc.apiBaseURL, dashboardBaseURL)
-	if err != nil {
-		return err
-	}
-	plugin := resolvedPlugin.Plugin
-	version := resolvedPlugin.Version
-
-	color := ansi.Color(os.Stdout)
-
-	if plugin.IsVersionInstalled(uc.cfg, uc.fs, version) {
-		if err := plugins.PersistInstalledPluginState(uc.cfg, uc.fs, *plugin); err != nil {
+	// Every plugin is resolved before any is upgraded, so a misspelled name fails
+	// the command without leaving it half done.
+	resolvedPlugins := make([]*plugins.ResolvedPluginVersion, len(args))
+	for i, pluginName := range args {
+		setPluginNameTelemetry(cmd, pluginName)
+		resolvedPlugin, err := plugins.ResolvePluginForUpgrade(ctx, uc.cfg, uc.fs, pluginName, uc.apiBaseURL, dashboardBaseURL)
+		if err != nil {
 			return err
 		}
-		fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
-		return nil
+		resolvedPlugins[i] = resolvedPlugin
 	}
-
-	prevVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
 
 	accessBaseURL, _ := cmd.Flags().GetString("access-base")
 	hookBaseURLs := plugins.HookBaseURLs{
@@ -93,6 +87,34 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		DashboardBaseURL: explicitFlagValue(cmd, "dashboard-base", uc.dashboardBaseURL),
 		AccessBaseURL:    explicitFlagValue(cmd, "access-base", accessBaseURL),
 	}
+
+	for _, resolvedPlugin := range resolvedPlugins {
+		if err := uc.upgradePlugin(ctx, cmd, resolvedPlugin, dashboardBaseURL, hookBaseURLs); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (uc *UpgradeCmd) upgradePlugin(ctx context.Context, cmd *cobra.Command, resolvedPlugin *plugins.ResolvedPluginVersion, dashboardBaseURL string, hookBaseURLs plugins.HookBaseURLs) error {
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
+	setPluginNameTelemetry(cmd, plugin.Shortname)
+
+	color := ansi.Color(os.Stdout)
+
+	// Checked here rather than at resolution: upgrading an earlier plugin in the
+	// same command may have upgraded this one as its dependency.
+	if plugin.IsVersionInstalled(uc.cfg, uc.fs, version) {
+		if err := plugins.PersistInstalledPluginState(uc.cfg, uc.fs, *plugin); err != nil {
+			return err
+		}
+		fmt.Println(color.Green(fmt.Sprintf("✔ %s v%s is already installed (latest).", plugin.Shortname, version)))
+		return nil
+	}
+
+	prevVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
 
 	if err := resolvedPlugin.Install(ctx, uc.cfg, uc.fs, uc.apiBaseURL, dashboardBaseURL, hookBaseURLs); err != nil {
 		return err
@@ -104,12 +126,12 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	plugins.SendPluginLifecycleEvent(cmd.Context(), plugins.PluginUpgradedEvent, version)
 
 	if prevVersion != "" {
-		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
+		fmt.Println(color.Green(fmt.Sprintf("✔ %s %s from v%s to v%s.", plugin.Shortname, versionChangeVerb(prevVersion, version), prevVersion, version)))
 		// Always eligible here: upgrade takes no version, so the user only ever asked
 		// for the latest.
 		printUnrequestedDowngradeNote(os.Stdout, plugin.Shortname, prevVersion, version)
 	} else {
-		fmt.Println(color.Green(fmt.Sprintf("✔ upgrade to v%s complete.", version)))
+		fmt.Println(color.Green(fmt.Sprintf("✔ upgrade of %s to v%s complete.", plugin.Shortname, version)))
 	}
 	postinstall.PrintTips(os.Stdout, plugin.Shortname)
 

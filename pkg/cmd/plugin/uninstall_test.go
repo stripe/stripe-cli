@@ -102,6 +102,27 @@ func TestRunUninstallCmdUninstallsOnlyTheNamedPlugin(t *testing.T) {
 	require.Equal(t, []string{"generate"}, cfg.GetInstalledPlugins())
 }
 
+func TestRunUninstallCmdUninstallsEveryNamedPlugin(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+
+	appsBinary := installTestPlugin(t, cfg, fs, "apps")
+	generateBinary := installTestPlugin(t, cfg, fs, "generate")
+	projectsBinary := installTestPlugin(t, cfg, fs, "projects")
+
+	output, err := executeUninstallCmd(t, cfg, fs, "apps", "projects")
+	require.NoError(t, err)
+
+	require.Contains(t, output, "✔ apps has been uninstalled.")
+	require.Contains(t, output, "✔ projects has been uninstalled.")
+	require.NotContains(t, output, "generate")
+
+	requirePluginUninstalled(t, cfg, fs, "apps", appsBinary)
+	requirePluginUninstalled(t, cfg, fs, "projects", projectsBinary)
+	requirePluginInstalled(t, cfg, fs, "generate", generateBinary)
+	require.Equal(t, []string{"generate"}, cfg.GetInstalledPlugins())
+}
+
 func TestUninstallCmdRejectsMissingAndConflictingArguments(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -111,12 +132,22 @@ func TestUninstallCmdRejectsMissingAndConflictingArguments(t *testing.T) {
 		{
 			name:          "without a plugin name",
 			args:          nil,
-			errorContains: "requires exactly 1 positional argument",
+			errorContains: "requires at least 1 positional argument",
 		},
 		{
-			name:          "with more than one plugin name",
-			args:          []string{"apps", "generate"},
-			errorContains: "requires exactly 1 positional argument",
+			name:          "with a repeated plugin name",
+			args:          []string{"apps", "apps"},
+			errorContains: `plugin "apps" was specified more than once`,
+		},
+		{
+			name:          "with an invalid plugin name after a valid one",
+			args:          []string{"apps", "../generate"},
+			errorContains: `invalid plugin name "../generate"`,
+		},
+		{
+			name:          "with both --all and several plugin names",
+			args:          []string{"--all", "apps", "generate"},
+			errorContains: "Remove `--all` to uninstall only `apps generate`",
 		},
 		{
 			name:          "with both --all and a plugin name",

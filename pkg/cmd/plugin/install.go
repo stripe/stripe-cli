@@ -54,11 +54,12 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	}
 
 	ic.Cmd = &cobra.Command{
-		Use:   "install <plugin>",
-		Args:  validators.ExactArgs(1),
-		Short: "Install a Stripe CLI plugin",
-		Long: `Install a Stripe CLI plugin. To download a specific version, run stripe install [plugin_name]@[version].
-			By default, the most recent version will be installed.`,
+		Use:   "install <plugin>...",
+		Args:  validators.MinimumNArgs(1),
+		Short: "Install one or more Stripe CLI plugins",
+		Long: `Install one or more Stripe CLI plugins. To download a specific version, run stripe install [plugin_name]@[version].
+By default, the most recent version will be installed. Pass several plugins to install them in order,
+stopping at the first one that fails.`,
 		RunE: ic.runInstallCmd,
 	}
 
@@ -118,41 +119,26 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	color := ansi.Color(os.Stdout)
-	pluginName, version := parseInstallArg(args[0])
-	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
-	isLatest := len(version) == 0
-	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
-	if err != nil {
-		if !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
-			return err
-		}
-		if loginErr := pluginlogin.Offer(pluginName, err, cmd.InOrStdin(), cmd.ErrOrStderr(),
-			pluginlogin.CanPrompt(ic.lookupEnvFn, ic.stdinIsTerminal()),
-			func() error { return ic.loginFn(cmd.Context()) }); loginErr != nil {
-			return loginErr
-		}
-		resolvedPlugin, err = plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
+	pluginNames := make([]string, len(args))
+	versions := make([]string, len(args))
+	for i, arg := range args {
+		pluginNames[i], versions[i] = parseInstallArg(arg)
+	}
+	if err := validatePluginNames(pluginNames); err != nil {
+		return err
+	}
+
+	// Every plugin is resolved before any is installed, so a misspelled name or
+	// unknown version fails the command without leaving it half done, and a login
+	// prompt can only come up before the Ctrl+C handler below is installed.
+	resolvedPlugins := make([]*plugins.ResolvedPluginVersion, len(args))
+	for i, pluginName := range pluginNames {
+		resolvedPlugin, err := ic.resolvePlugin(cmd, pluginName, versions[i], dashboardBaseURL)
 		if err != nil {
 			return err
 		}
+		resolvedPlugins[i] = resolvedPlugin
 	}
-	plugin := resolvedPlugin.Plugin
-	version = resolvedPlugin.Version
-
-	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
-		if err := plugins.PersistInstalledPluginState(ic.cfg, ic.fs, *plugin); err != nil {
-			return err
-		}
-		if isLatest {
-			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
-		} else {
-			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed.", version)))
-		}
-		return nil
-	}
-
-	prevVersion := plugin.InstalledVersion(ic.cfg, ic.fs)
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
@@ -166,6 +152,59 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		AccessBaseURL:    explicitFlagValue(cmd, "access-base", ic.accessBaseURL),
 	}
 
+	for i, resolvedPlugin := range resolvedPlugins {
+		isLatest := len(versions[i]) == 0
+		if err := ic.installPlugin(ctx, cmd, resolvedPlugin, isLatest, dashboardBaseURL, hookBaseURLs); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// resolvePlugin resolves the release of pluginName to install, offering to log
+// in when the lookup needs an API key and none is configured.
+func (ic *InstallCmd) resolvePlugin(cmd *cobra.Command, pluginName, version, dashboardBaseURL string) (*plugins.ResolvedPluginVersion, error) {
+	ic.setInstallTelemetryMetadata(cmd.Context(), pluginName)
+
+	resolvedPlugin, err := plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
+	if err == nil {
+		return resolvedPlugin, nil
+	}
+	if !errors.Is(err, validators.ErrAPIKeyNotConfigured) {
+		return nil, err
+	}
+	if loginErr := pluginlogin.Offer(pluginName, err, cmd.InOrStdin(), cmd.ErrOrStderr(),
+		pluginlogin.CanPrompt(ic.lookupEnvFn, ic.stdinIsTerminal()),
+		func() error { return ic.loginFn(cmd.Context()) }); loginErr != nil {
+		return nil, loginErr
+	}
+
+	return plugins.ResolvePluginForInstall(cmd.Context(), ic.cfg, ic.fs, pluginName, version, ic.apiBaseURL, dashboardBaseURL)
+}
+
+func (ic *InstallCmd) installPlugin(ctx context.Context, cmd *cobra.Command, resolvedPlugin *plugins.ResolvedPluginVersion, isLatest bool, dashboardBaseURL string, hookBaseURLs plugins.HookBaseURLs) error {
+	color := ansi.Color(os.Stdout)
+	plugin := resolvedPlugin.Plugin
+	version := resolvedPlugin.Version
+	ic.setInstallTelemetryMetadata(cmd.Context(), plugin.Shortname)
+
+	// Checked here rather than at resolution: installing an earlier plugin in the
+	// same command may have installed this one as its dependency.
+	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
+		if err := plugins.PersistInstalledPluginState(ic.cfg, ic.fs, *plugin); err != nil {
+			return err
+		}
+		if isLatest {
+			fmt.Println(color.Green(fmt.Sprintf("✔ %s v%s is already installed (latest).", plugin.Shortname, version)))
+		} else {
+			fmt.Println(color.Green(fmt.Sprintf("✔ %s v%s is already installed.", plugin.Shortname, version)))
+		}
+		return nil
+	}
+
+	prevVersion := plugin.InstalledVersion(ic.cfg, ic.fs)
+
 	if err := resolvedPlugin.Install(ctx, ic.cfg, ic.fs, ic.apiBaseURL, dashboardBaseURL, hookBaseURLs); err != nil {
 		return err
 	}
@@ -175,13 +214,13 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 
 	if prevVersion != "" {
 		plugins.SendPluginLifecycleEvent(cmd.Context(), plugins.PluginUpgradedEvent, version)
-		fmt.Println(color.Green(fmt.Sprintf("✔ %s from v%s to v%s.", versionChangeVerb(prevVersion, version), prevVersion, version)))
+		fmt.Println(color.Green(fmt.Sprintf("✔ %s %s from v%s to v%s.", plugin.Shortname, versionChangeVerb(prevVersion, version), prevVersion, version)))
 		if isLatest {
 			printUnrequestedDowngradeNote(os.Stdout, plugin.Shortname, prevVersion, version)
 		}
 	} else {
 		plugins.SendPluginLifecycleEvent(cmd.Context(), plugins.PluginInstalledEvent, version)
-		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
+		fmt.Println(color.Green(fmt.Sprintf("✔ installation of %s v%s complete.", plugin.Shortname, version)))
 	}
 	postinstall.PrintTips(os.Stdout, plugin.Shortname)
 

@@ -60,6 +60,21 @@ func TestMaximumNArgsTooMany(t *testing.T) {
 	requireErrorCategory(t, err, errorcategory.UserInput)
 }
 
+func TestMinimumNArgs(t *testing.T) {
+	c := &cobra.Command{Use: "c"}
+
+	require.NoError(t, MinimumNArgs(1)(c, []string{"foo"}))
+	require.NoError(t, MinimumNArgs(1)(c, []string{"foo", "bar"}))
+}
+
+func TestMinimumNArgsTooFew(t *testing.T) {
+	c := &cobra.Command{Use: "c"}
+	err := MinimumNArgs(1)(c, []string{})
+
+	require.EqualError(t, err, "`c` requires at least 1 positional argument. See `c --help` for supported flags and usage")
+	requireErrorCategory(t, err, errorcategory.UserInput)
+}
+
 func requireErrorCategory(t *testing.T, err error, expected errorcategory.Category) {
 	t.Helper()
 	category, ok := errorcategory.Get(err)

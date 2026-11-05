@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -41,10 +42,11 @@ func NewUninstallCmd(config *config.Config) *UninstallCmd {
 	uc.cfg = config
 
 	uc.Cmd = &cobra.Command{
-		Use:   "uninstall [name]",
+		Use:   "uninstall [name...]",
 		Args:  uc.validateArgs,
-		Short: "Uninstall a Stripe CLI plugin",
-		Long: `Uninstall a Stripe CLI plugin.
+		Short: "Uninstall one or more Stripe CLI plugins",
+		Long: `Uninstall one or more Stripe CLI plugins. Plugins are uninstalled in the
+order given, stopping at the first one that cannot be removed.
 
 Pass --all to uninstall every installed plugin, which is useful before removing
 the Stripe CLI itself: package managers leave plugins in place when they
@@ -57,18 +59,18 @@ uninstall the stripe binary.`,
 	return uc
 }
 
-// validateArgs requires exactly one plugin name, unless --all is set, in which
+// validateArgs requires at least one plugin name, unless --all is set, in which
 // case a plugin name must not be provided.
 func (uc *UninstallCmd) validateArgs(cmd *cobra.Command, args []string) error {
 	if !uc.all {
-		return validators.ExactArgs(1)(cmd, args)
+		return validators.MinimumNArgs(1)(cmd, args)
 	}
 
 	if len(args) > 0 {
 		return errorcategory.UserInputErrorf(
 			"`%s --all` does not take a plugin name. Remove `--all` to uninstall only `%s`, or remove the plugin name to uninstall every plugin",
 			cmd.CommandPath(),
-			args[0],
+			strings.Join(args, " "),
 		)
 	}
 
@@ -110,11 +112,17 @@ func (uc *UninstallCmd) runUninstallCmd(cmd *cobra.Command, args []string) error
 		return uc.uninstallAllPlugins(ctx, cmd, baseURLs)
 	}
 
-	if err := plugins.ValidatePluginShortname(args[0]); err != nil {
+	if err := validatePluginNames(args); err != nil {
 		return err
 	}
 
-	return uc.uninstallPlugin(ctx, cmd, args[0], baseURLs)
+	for _, pluginName := range args {
+		if err := uc.uninstallPlugin(ctx, cmd, pluginName, baseURLs); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // uninstallAllPlugins uninstalls every plugin recorded in the config's installed
@@ -143,9 +151,7 @@ func (uc *UninstallCmd) uninstallAllPlugins(ctx context.Context, cmd *cobra.Comm
 func (uc *UninstallCmd) uninstallPlugin(ctx context.Context, cmd *cobra.Command, pluginName string, baseURLs hookBaseURLs) error {
 	plugin := plugins.Plugin{Shortname: pluginName}
 
-	if m := stripe.GetEventMetadata(cmd.Context()); m != nil {
-		m.SetPluginName(plugin.Shortname)
-	}
+	setPluginNameTelemetry(cmd, plugin.Shortname)
 
 	installedVersion := plugin.InstalledVersion(uc.cfg, uc.fs)
 

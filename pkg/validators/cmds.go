@@ -89,3 +89,28 @@ func MaximumNArgs(num int) cobra.PositionalArgs {
 		return nil
 	}
 }
+
+// MinimumNArgs is a validator for commands to print an error when fewer than
+// the minimum amount of args are provided
+func MinimumNArgs(num int) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		commandPath := getCommandPath(cmd)
+		argument := "positional argument"
+		if num > 1 {
+			argument = "positional arguments"
+		}
+
+		errorMessage := fmt.Sprintf(
+			"`%s` requires at least %d %s. See `%s --help` for supported flags and usage",
+			commandPath,
+			num,
+			argument,
+			commandPath,
+		)
+
+		if len(args) < num {
+			return userInputError(errorMessage)
+		}
+		return nil
+	}
+}
