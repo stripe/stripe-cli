@@ -16,6 +16,9 @@ const bufSize = 1024 * 1024
 
 var lis *bufconn.Listener
 
+// testToken is the token of the server that tests connect to through lis
+var testToken string
+
 func init() {
 	lis = bufconn.Listen(bufSize)
 	srv := New(&Config{
@@ -26,6 +29,7 @@ func init() {
 			},
 		},
 	}, nil)
+	testToken = srv.token
 
 	rpc.RegisterStripeCLIServer(srv.grpcServer, srv)
 
@@ -41,6 +45,6 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 }
 
 func withAuth(ctx context.Context) context.Context {
-	md := metadata.New(map[string]string{requiredHeader: "1"})
+	md := metadata.New(map[string]string{requiredHeader: testToken})
 	return metadata.NewOutgoingContext(ctx, md)
 }

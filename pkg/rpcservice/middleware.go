@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"strings"
 
@@ -34,16 +35,23 @@ func newWrappedStream(stream grpc.ServerStream, methodName string, server *RPCSe
 	return &WrappedServerStream{stream, newCtx}
 }
 
-// Only allow requests from clients that have the required header. This helps prevent malicious
-// websites from making requests. See https://fetch.spec.whatwg.org/#forbidden-header-name
-func authorize(ctx context.Context) error {
+// Only allow requests that send this daemon's token in the required header. Any local process can
+// connect to the port, so the token is what keeps other users on the machine from making requests
+// with this user's credentials. Browsers can't set the header at all, which also prevents
+// malicious websites from making requests. See https://fetch.spec.whatwg.org/#forbidden-header-name
+func (srv *RPCService) authorize(ctx context.Context) error {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return status.Errorf(codes.InvalidArgument, "Retrieving metadata failed")
 	}
 
-	if _, ok := md[requiredHeader]; !ok {
+	values, ok := md[requiredHeader]
+	if !ok {
 		return status.Errorf(codes.Unauthenticated, "%s", fmt.Sprintf("%s header is not supplied", requiredHeader))
+	}
+
+	if srv.token == "" || len(values) != 1 || subtle.ConstantTimeCompare([]byte(values[0]), []byte(srv.token)) != 1 {
+		return status.Errorf(codes.Unauthenticated, "Invalid %s token. If you're using the Stripe VS Code extension, update it to the latest version.", requiredHeader)
 	}
 
 	return nil
@@ -94,13 +102,14 @@ func serverStreamInterceptor(
 	info *grpc.StreamServerInfo,
 	handler grpc.StreamHandler,
 ) error {
+	server := srv.(*RPCService)
+	if err := server.authorize(stream.Context()); err != nil {
+		return err
+	}
 	log.WithFields(log.Fields{
 		"prefix": "gRPC",
 	}).Debugf("Streaming method invoked: %v", info.FullMethod)
-	wrappedStream := newWrappedStream(stream, info.FullMethod, srv.(*RPCService))
-	if err := authorize(wrappedStream.Context()); err != nil {
-		return err
-	}
+	wrappedStream := newWrappedStream(stream, info.FullMethod, server)
 	sendCommandInvocationEvent(wrappedStream.Context())
 	return handler(srv, wrappedStream)
 }
@@ -112,13 +121,14 @@ func serverUnaryInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
+	server := info.Server.(*RPCService)
+	if err := server.authorize(ctx); err != nil {
+		return nil, err
+	}
 	log.WithFields(log.Fields{
 		"prefix": "gRPC",
 	}).Debugf("Unary method invoked: %v, req: %v", info.FullMethod, req)
-	newCtx := updateContextWithTelemetry(ctx, info.FullMethod, info.Server.(*RPCService))
-	if err := authorize(newCtx); err != nil {
-		return nil, err
-	}
+	newCtx := updateContextWithTelemetry(ctx, info.FullMethod, server)
 	go sendCommandInvocationEvent(newCtx)
 	return handler(newCtx, req)
 }

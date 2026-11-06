@@ -2,10 +2,12 @@ package rpcservice
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -183,4 +185,30 @@ func TestTriggerSucceedsWithFixtureFlags(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected.Requests, resp.Requests)
+}
+
+func TestTriggerRejectsRawFixtureWithAPIBaseOutsideStripe(t *testing.T) {
+	ctx := withAuth(context.Background())
+
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	var serverCalled atomic.Bool
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		serverCalled.Store(true)
+	}))
+	defer ts.Close()
+
+	raw := fmt.Sprintf(`{
+		"_meta": {"template_version": 0},
+		"fixtures": [{"name": "customer", "path": "/v1/customers", "method": "post", "api_base": %q}]
+	}`, ts.URL)
+
+	_, err = client.Trigger(ctx, &rpc.TriggerRequest{Raw: raw})
+	assert.ErrorContains(t, err, "not an allowed Stripe API URL")
+	assert.False(t, serverCalled.Load(), "the fixture's credentials should not have been sent to its api_base")
 }

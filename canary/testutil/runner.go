@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -247,6 +248,19 @@ type BackgroundProcess struct {
 	mu     sync.Mutex
 }
 
+// lockedWriter takes a BackgroundProcess's lock for each write, because the command copies its
+// output from another goroutine while tests read it.
+type lockedWriter struct {
+	mu *sync.Mutex
+	w  io.Writer
+}
+
+func (lw *lockedWriter) Write(p []byte) (int, error) {
+	lw.mu.Lock()
+	defer lw.mu.Unlock()
+	return lw.w.Write(p)
+}
+
 // RunBackground starts the CLI in background and returns immediately.
 // The returned BackgroundProcess can be used to wait for output, get current output,
 // or stop the process.
@@ -255,9 +269,15 @@ func (r *Runner) RunBackground(args ...string) (*BackgroundProcess, error) {
 
 	cmd := exec.CommandContext(ctx, r.BinaryPath, args...)
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	bp := &BackgroundProcess{
+		cmd:    cmd,
+		cancel: cancel,
+		stdout: &bytes.Buffer{},
+		stderr: &bytes.Buffer{},
+		done:   make(chan error, 1),
+	}
+	cmd.Stdout = &lockedWriter{mu: &bp.mu, w: bp.stdout}
+	cmd.Stderr = &lockedWriter{mu: &bp.mu, w: bp.stderr}
 
 	// Build environment
 	cmd.Env = os.Environ()
@@ -279,14 +299,6 @@ func (r *Runner) RunBackground(args ...string) (*BackgroundProcess, error) {
 	if err := cmd.Start(); err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to start command: %w", err)
-	}
-
-	bp := &BackgroundProcess{
-		cmd:    cmd,
-		cancel: cancel,
-		stdout: &stdout,
-		stderr: &stderr,
-		done:   make(chan error, 1),
 	}
 
 	// Wait for command completion in background

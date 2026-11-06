@@ -82,6 +82,27 @@ func ValidateAPIBaseURL(apiBaseURL string) error {
 	return errInvalidAPIBaseURL
 }
 
+// ValidateFixtureAPIBaseURL returns an error if a fixture's api_base isn't a Stripe API host over
+// HTTPS. Fixtures can come from files the user didn't write, so unlike ValidateAPIBaseURL, this
+// doesn't allow local servers.
+func ValidateFixtureAPIBaseURL(apiBaseURL string) error {
+	u, ok := parseBaseURL(apiBaseURL)
+	if !ok || u.Scheme != "https" {
+		return errInvalidAPIBaseURL
+	}
+
+	host := strings.ToLower(u.Hostname())
+	if isDevHost(host) {
+		return nil
+	}
+	switch host {
+	case "api.stripe.com", "files.stripe.com", "meter-events.stripe.com", "qa-api.stripe.com":
+		return nil
+	}
+
+	return errInvalidAPIBaseURL
+}
+
 // ValidateDashboardBaseURL returns an error if dashboardBaseURL isn't allowed
 func ValidateDashboardBaseURL(dashboardBaseURL string) error {
 	if dashboardBaseURL == DefaultDashboardBaseURL || dashboardBaseURL == qaDashboardBaseURL {
