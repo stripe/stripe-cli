@@ -1,0 +1,11 @@
+query APIVersion {
+  inlineAPIVersion {
+    version
+  }
+}
+
+query Greeting($name: String!) {
+  inlineGreeting(name: $name) {
+    greeting
+  }
+}

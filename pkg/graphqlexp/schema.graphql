@@ -1,0 +1,16 @@
+# Minimal subset of the graphql.stripe.com schema used by the experimental
+# `stripe graphql` command. Only the types queried in operations.graphql are
+# declared here.
+
+type Query {
+  inlineAPIVersion: InlineAPIVersionOutput!
+  inlineGreeting(name: String!): InlineGreetingOutput!
+}
+
+type InlineAPIVersionOutput {
+  version: String!
+}
+
+type InlineGreetingOutput {
+  greeting: String!
+}
