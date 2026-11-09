@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -11,26 +12,46 @@ import (
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
 
-func TestConfigWriteConfigFieldRefusesSymlink(t *testing.T) {
-	profilesFile, victimFile := setupSymlinkedProfilesFile(t)
-
-	c := &Config{
-		Color:        "auto",
-		LogLevel:     "info",
-		ProfilesFile: profilesFile,
-		Profile: Profile{
-			ProfileName: "default",
-		},
+func TestInitConfigDoesNotChmodThroughSymlink(t *testing.T) {
+	for _, parent := range []bool{false, true} {
+		name := "file"
+		if parent {
+			name = "parent"
+		}
+		t.Run(name, func(t *testing.T) {
+			var path, target string
+			if parent {
+				var dir string
+				path, dir = setupProfilesFileWithSymlinkedParent(t)
+				target = filepath.Join(dir, "config.toml")
+			} else {
+				path, target = setupSymlinkedProfilesFile(t)
+			}
+			original := []byte("original = true\n")
+			require.NoError(t, os.WriteFile(target, original, 0600))
+			require.NoError(t, os.Chmod(target, 0644))
+			originalChmod := configFileChmod
+			t.Cleanup(func() { configFileChmod = originalChmod })
+			configFileChmod = func(string, os.FileMode) error {
+				t.Error("must not chmod through a symlink")
+				return os.ErrPermission
+			}
+			oldKeyRing := KeyRing
+			KeyRing = keyring.NewMemoryStore(nil)
+			t.Cleanup(func() { KeyRing = oldKeyRing })
+			c := &Config{LogLevel: "info", ProfilesFile: path}
+			c.InitConfig()
+			require.ErrorContains(t, c.WriteConfigField("color", "off"), "symlink")
+			contents, err := os.ReadFile(target)
+			require.NoError(t, err)
+			require.Equal(t, original, contents)
+			info, err := os.Stat(target)
+			require.NoError(t, err)
+			if runtime.GOOS != "windows" {
+				require.Equal(t, os.FileMode(0644), info.Mode().Perm())
+			}
+		})
 	}
-	c.InitConfig()
-	KeyRing = keyring.NewMemoryStore(nil)
-
-	err := c.WriteConfigField("default.color", "on")
-	require.ErrorContains(t, err, "symlink")
-
-	victimContents, err := os.ReadFile(victimFile)
-	require.NoError(t, err)
-	require.Equal(t, "original = true\n", string(victimContents))
 }
 
 func TestProfileWriteConfigFieldRefusesSymlink(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -82,6 +83,10 @@ type Config struct {
 	// register plugins before cobra parses flags, cobra.OnInitialize runs it again,
 	// and SwitchProfile reloads through it.
 	warnedConfigVersion bool
+
+	// Track paths separately because flag parsing can select a different file
+	// after the eager initialization.
+	warnedConfigPermissions map[string]bool
 }
 
 // GetProfile returns the Profile of the config
@@ -159,7 +164,15 @@ func (c *Config) InitConfig() {
 		c.ProfilesFile = configFile
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(configFile)
-		viper.SetConfigPermissions(os.FileMode(0600))
+	}
+	viper.SetConfigPermissions(os.FileMode(0600))
+
+	if err := secureConfigPermissions(c.ProfilesFile); err != nil && !c.warnedConfigPermissions[c.ProfilesFile] {
+		if c.warnedConfigPermissions == nil {
+			c.warnedConfigPermissions = make(map[string]bool)
+		}
+		c.warnedConfigPermissions[c.ProfilesFile] = true
+		log.Warnf("Could not secure config file %q: %s. Check ownership and symlinks, then set permissions to 0600 with chmod 600 before storing credentials.", c.ProfilesFile, err)
 	}
 
 	// If a profiles file is found, read it in.
@@ -808,6 +821,43 @@ func (c *Config) DeleteConfigField(field string) error {
 	return writeConfig(runtimeViper)
 }
 
+// Keep filesystem operations replaceable for deterministic permission failures
+// in tests, including when tests run as root.
+var configFileStat = os.Stat
+var configFileChmod = os.Chmod
+
+// secureConfigPermissions repairs existing POSIX config files. Creation modes
+// are set separately on every writing Viper instance. These path checks reuse
+// the write safeguards; they do not prevent concurrent path replacement.
+func secureConfigPermissions(path string) error {
+	if runtime.GOOS == "windows" {
+		// POSIX mode bits do not describe Windows ACLs.
+		return nil
+	}
+
+	info, err := configFileStat(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("checking config permissions: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return errorcategory.New(errorcategory.Filesystem, "config is not a regular file")
+	}
+	if info.Mode().Perm()&0077 == 0 {
+		return nil
+	}
+
+	if err := fsutil.RefuseWriteThroughSymlinkOS(path, filepath.Dir(filepath.Dir(path)), filepath.Base(path)); err != nil {
+		return err
+	}
+	if err := configFileChmod(path, os.FileMode(0600)); err != nil {
+		return fmt.Errorf("setting config permissions to 0600: %w", err)
+	}
+	return nil
+}
+
 // writeConfig writes a viper instance to the config file and syncs the global viper.
 func writeConfig(runtimeViper *viper.Viper) error {
 	// Refuse to write a file whose layout version this binary does not know. Both
@@ -828,6 +878,15 @@ func writeConfig(runtimeViper *viper.Viper) error {
 	if err := fsutil.RefuseWriteThroughSymlinkOS(profilesFile, filepath.Dir(filepath.Dir(profilesFile)), filepath.Base(profilesFile)); err != nil {
 		return err
 	}
+
+	// WriteConfig truncates existing files without changing their mode. Refuse
+	// the write before truncation if the destination cannot be secured.
+	if err := secureConfigPermissions(profilesFile); err != nil {
+		return fmt.Errorf("refusing to write config file %q; check ownership and symlinks and set permissions to 0600 with chmod 600: %w", profilesFile, err)
+	}
+	// Scratch instances (for profile writes and key removal) do not inherit the
+	// global Viper's creation mode.
+	runtimeViper.SetConfigPermissions(os.FileMode(0600))
 
 	if err := runtimeViper.WriteConfig(); err != nil {
 		return err
