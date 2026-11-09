@@ -29,6 +29,11 @@ const (
 	StripeCLIClientIDProd = "oacli_V18aOD6v0hs9CU"
 	// StripeCLIClientIDQA is the registered OAuth client ID for the QA environment.
 	StripeCLIClientIDQA = "oacli_UjA5npk5UKXd9u"
+
+	// deviceTokenPollInterval is how often the token endpoint is polled while
+	// waiting for the user to approve the device login. A slow_down response
+	// still backs polling off (see PollDeviceToken).
+	deviceTokenPollInterval = 2 * time.Second
 )
 
 // OAuthError is a structured OAuth error returned by the access-srv token or
@@ -170,16 +175,15 @@ func PollDeviceToken(ctx context.Context, accessBaseURL, clientID, deviceCode st
 			return nil, err
 		}
 
-		var wait time.Duration
 		switch oauthErr.Code {
 		case "authorization_pending":
-			wait = interval
 		case "slow_down":
-			wait = interval * 2
+			// Keep the longer interval for all later polls, per RFC 8628 section 3.5.
+			interval *= 2
 		default:
 			return nil, oauthErr
 		}
-		t := time.NewTimer(wait)
+		t := time.NewTimer(interval)
 		select {
 		case <-ctx.Done():
 			t.Stop()
@@ -297,7 +301,7 @@ func LoginWithDeviceCode(ctx context.Context, accessBaseURL, apiBaseURL string, 
 		}()
 	}
 
-	interval := max(time.Duration(authResp.Interval)*time.Second, 5*time.Second)
+	interval := deviceTokenPollInterval
 	expiresIn := max(time.Duration(authResp.ExpiresIn)*time.Second, 10*time.Minute)
 
 	pollCtx, cancel := context.WithTimeout(ctx, expiresIn)

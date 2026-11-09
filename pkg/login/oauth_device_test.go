@@ -141,6 +141,43 @@ func TestPollDeviceToken_SlowDown(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&callCount))
 }
 
+func TestPollDeviceToken_SlowDownPersists(t *testing.T) {
+	var callCount int32
+	var last time.Time
+	var gaps []time.Duration
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&callCount, 1)
+		now := time.Now()
+		if n > 1 {
+			gaps = append(gaps, now.Sub(last))
+		}
+		last = now
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case n == 1:
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(tokenErrorResponse{Error: "slow_down"}) //nolint:errcheck
+		case n < 4:
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(tokenErrorResponse{Error: "authorization_pending"}) //nolint:errcheck
+		default:
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(OAuthTokenResponse{AccessToken: "oaac_final"}) //nolint:errcheck
+		}
+	}))
+	defer ts.Close()
+
+	interval := 20 * time.Millisecond
+	resp, err := PollDeviceToken(context.Background(), ts.URL, "client-id", "device-code", interval)
+	require.NoError(t, err)
+	assert.Equal(t, "oaac_final", resp.AccessToken)
+	require.Len(t, gaps, 3)
+	for _, gap := range gaps {
+		assert.GreaterOrEqual(t, gap, 2*interval)
+	}
+}
+
 func TestPollDeviceToken_ExpiredToken(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

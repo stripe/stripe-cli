@@ -254,7 +254,7 @@ func PollPendingOAuthLogin(ctx context.Context, cfg *config.Config) (*DeviceCode
 	}
 
 	clientID := clientIDForAccessBaseURL(cont.AccessBaseURL)
-	interval := max(time.Duration(cont.Interval)*time.Second, 5*time.Second)
+	interval := deviceTokenPollInterval
 	deadline := cont.deadline()
 
 	pollCtx, cancel := context.WithDeadline(ctx, deadline)
