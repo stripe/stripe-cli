@@ -338,7 +338,7 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 	codex := codexMissingProvider(record)
-	openclaw := openclawMissingProvider(record)
+	openclaw := openclawMissingProvider(t, record)
 	grok := grokMissingProvider(record)
 
 	setup := testAgentSetupCmd()
@@ -359,7 +359,7 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 }
 
 func TestAgentSetupOpenclawJSONDescribesTemporaryClone(t *testing.T) {
-	provider := openclawMissingProvider(func(context.Context, string, ...string) ([]byte, error) {
+	provider := openclawMissingProvider(t, func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("JSON planning must not run installation commands")
 		return nil, nil
 	})
@@ -379,6 +379,9 @@ func TestAgentSetupOpenclawJSONDescribesTemporaryClone(t *testing.T) {
 	require.Contains(t, output, "temporary-directory")
 	require.NotContains(t, output, `"mkdir"`)
 	require.NotContains(t, output, `"rm"`)
+	home, err := provider.Scanner.HomeDir()
+	require.NoError(t, err)
+	require.NoDirExists(t, filepath.Join(home, ".openclaw"))
 }
 
 // cleanupWarningProvider models a provider whose installation succeeds but cleanup warns.
@@ -400,7 +403,7 @@ func (p cleanupWarningProvider) Apply(ctx context.Context, out io.Writer, plan a
 
 func TestAgentSetupCleanupWarningStillReportsInstallSuccess(t *testing.T) {
 	var paths []string
-	provider := openclawMissingProvider(func(_ context.Context, _ string, args ...string) ([]byte, error) {
+	provider := openclawMissingProvider(t, func(_ context.Context, _ string, args ...string) ([]byte, error) {
 		path := args[len(args)-1]
 		require.True(t, filepath.IsAbs(path))
 		require.DirExists(t, filepath.Dir(path))
@@ -506,7 +509,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 			name:         "openclaw",
 			displayName:  "OpenClaw",
 			agent:        "openclaw",
-			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return openclawMissingProvider(record) },
+			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return openclawMissingProvider(t, record) },
 		},
 	}
 
@@ -626,10 +629,15 @@ func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvid
 	}
 }
 
-func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
+func openclawMissingProvider(t *testing.T, record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
+	t.Helper()
+	home := t.TempDir()
 	return agentsetup.OpenclawProvider{
 		ProviderConfig: agentsetup.ProviderConfig{
-			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil }},
+			Scanner: agentsetup.Scanner{
+				LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil },
+				HomeDir:  func() (string, error) { return home, nil },
+			},
 			Client:      agentsetup.ClientOpenclaw,
 			BinaryName:  agentsetup.OpenclawBinaryName,
 			DisplayName: agentsetup.OpenclawDisplayName,

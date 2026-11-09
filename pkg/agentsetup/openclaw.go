@@ -164,7 +164,15 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 	if p.removeAll == nil {
 		p.removeAll = os.RemoveAll
 	}
-	workspace, err := p.mkdirTemp("", "stripe-openclaw-*")
+	home, err := p.Scanner.withDefaults().HomeDir()
+	if err != nil {
+		return errorcategory.Errorf(errorcategory.Internal, "resolving home directory for OpenClaw plugin workspace: %w", err)
+	}
+	workspaceRoot := filepath.Join(home, ".openclaw")
+	if err := os.MkdirAll(workspaceRoot, 0700); err != nil {
+		return errorcategory.Errorf(errorcategory.Internal, "creating OpenClaw directory: %w", err)
+	}
+	workspace, err := p.mkdirTemp(workspaceRoot, "stripe-openclaw-*")
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "creating OpenClaw plugin workspace: %w", err)
 	}

@@ -144,7 +144,8 @@ func TestOpenclawApply_WithoutUnixUtilities(t *testing.T) {
 	t.Setenv("PATH", binDir)
 	t.Setenv("STRIPE_OPENCLAW_TEST_HELPER", "1")
 	var repoPath string
-	provider := NewOpenclawProvider(Scanner{}, func(ctx context.Context, name string, args ...string) ([]byte, error) {
+	home := t.TempDir()
+	provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) { return home, nil }}, func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		repoPath = args[len(args)-1]
 		return RunCommand(ctx, name, append([]string{"-test.run=^TestOpenclawSubprocessHelper$", "--"}, args...)...)
 	})
@@ -153,7 +154,9 @@ func TestOpenclawApply_WithoutUnixUtilities(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotEmpty(t, repoPath)
+	require.Equal(t, filepath.Join(home, ".openclaw"), filepath.Dir(filepath.Dir(repoPath)))
 	require.NoDirExists(t, filepath.Dir(repoPath))
+	require.DirExists(t, filepath.Join(home, ".openclaw"))
 }
 
 // TestOpenclawSubprocessHelper runs as a mock Git or OpenClaw executable.
@@ -202,7 +205,8 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 				primaryErr := errors.New("subprocess failed")
 				var commands [][]string
 				var repoPath string
-				provider := NewOpenclawProvider(Scanner{}, func(_ context.Context, name string, args ...string) ([]byte, error) {
+				home := t.TempDir()
+				provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) { return home, nil }}, func(_ context.Context, name string, args ...string) ([]byte, error) {
 					commands = append(commands, append([]string{name}, args...))
 					path := args[len(args)-1]
 					require.NotEqual(t, openclawRepoPlaceholder, path)
@@ -258,6 +262,8 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 				require.Equal(t, provider.Plan(status, true), plan, "Apply must not mutate the plan")
 				require.Equal(t, 1, cleanupCalls)
 				workspace := filepath.Dir(repoPath)
+				require.Equal(t, filepath.Join(home, ".openclaw"), filepath.Dir(workspace))
+				require.DirExists(t, filepath.Join(home, ".openclaw"))
 				if cleanupFails {
 					require.DirExists(t, workspace)
 					require.Contains(t, out.String(), "Warning: OpenClaw plugin cleanup failed")
@@ -279,21 +285,46 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 }
 
 func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
-	provider := NewOpenclawProvider(Scanner{}, func(context.Context, string, ...string) ([]byte, error) {
-		t.Fatal("no subprocess should run without a workspace")
-		return nil, nil
-	}).(OpenclawProvider)
-	allocationErr := errors.New("allocation failed")
-	provider.mkdirTemp = func(string, string) (string, error) { return "", allocationErr }
-	provider.removeAll = func(string) error {
-		t.Fatal("no workspace to clean up")
-		return nil
+	for _, stage := range []string{"home", "parent", "workspace"} {
+		t.Run(stage, func(t *testing.T) {
+			home := t.TempDir()
+			allocationErr := errors.New("allocation failed")
+			provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) {
+				if stage == "home" {
+					return "", allocationErr
+				}
+				return home, nil
+			}}, func(context.Context, string, ...string) ([]byte, error) {
+				t.Fatal("no subprocess should run without a workspace")
+				return nil, nil
+			}).(OpenclawProvider)
+			if stage == "parent" {
+				require.NoError(t, os.WriteFile(filepath.Join(home, ".openclaw"), nil, 0600))
+			}
+			provider.mkdirTemp = func(dir, _ string) (string, error) {
+				require.Equal(t, "workspace", stage, "must not allocate a workspace after a prerequisite fails")
+				require.Equal(t, filepath.Join(home, ".openclaw"), dir)
+				return "", allocationErr
+			}
+			provider.removeAll = func(string) error {
+				t.Fatal("no workspace to clean up")
+				return nil
+			}
+
+			err := provider.Apply(context.Background(), nil, provider.Plan(Status{Detected: true, Status: StatusMissing}, false))
+
+			switch stage {
+			case "home":
+				require.ErrorIs(t, err, allocationErr)
+				require.ErrorContains(t, err, "resolving home directory")
+			case "parent":
+				require.ErrorContains(t, err, "creating OpenClaw directory")
+			case "workspace":
+				require.ErrorIs(t, err, allocationErr)
+				require.ErrorContains(t, err, "creating OpenClaw plugin workspace")
+			}
+		})
 	}
-
-	err := provider.Apply(context.Background(), nil, provider.Plan(Status{Detected: true, Status: StatusMissing}, false))
-
-	require.ErrorIs(t, err, allocationErr)
-	require.ErrorContains(t, err, "creating OpenClaw plugin workspace")
 }
 
 func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
@@ -337,6 +368,9 @@ func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
 
 			require.Len(t, paths, 2)
 			require.NotEqual(t, paths[0], paths[1])
+			for _, path := range paths {
+				require.Equal(t, filepath.Join(home, ".openclaw"), filepath.Dir(filepath.Dir(path)))
+			}
 			require.Equal(t, 2, cleanupCalls)
 			require.NoDirExists(t, filepath.Dir(paths[1]))
 			contents, err := os.ReadFile(marker)
