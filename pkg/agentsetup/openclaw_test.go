@@ -137,7 +137,7 @@ func TestOpenclawApply_NoneIsNoop(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
+func TestOpenclawApply_CleansUpEvenIfInstallFails(t *testing.T) {
 	for _, tc := range []struct{ action, failStage string }{
 		{ActionInstall, ""},
 		{ActionUpdate, ""},
