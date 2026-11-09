@@ -183,14 +183,14 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 
 	repoPath := filepath.Join(workspace, "repo")
 	for _, command := range plan.Commands {
-		resolved := append([]string(nil), command...)
-		for i, arg := range resolved {
+		command = append([]string(nil), command...)
+		for i, arg := range command {
 			if arg == openclawRepoPlaceholder {
-				resolved[i] = repoPath
+				command[i] = repoPath
 			}
 		}
-		if _, err := p.RunCommand(ctx, resolved[0], resolved[1:]...); err != nil {
-			fmt.Fprintf(out, "OpenClaw plugin %s step failed: %v\n", resolved[0], err)
+		if _, err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
+			fmt.Fprintf(out, "OpenClaw plugin %s step failed: %v\n", command[0], err)
 			return err
 		}
 	}
