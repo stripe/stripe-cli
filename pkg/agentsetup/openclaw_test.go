@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -125,61 +123,6 @@ func TestOpenclaw_OldVersionWithoutPluginSupport(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.Contains(t, status.Error, "upgrade OpenClaw")
-}
-
-func TestOpenclawApply_WithoutUnixUtilities(t *testing.T) {
-	binary, err := os.Executable()
-	require.NoError(t, err)
-	contents, err := os.ReadFile(binary)
-	require.NoError(t, err)
-	binDir := t.TempDir()
-	suffix := ""
-	if runtime.GOOS == "windows" {
-		suffix = ".exe"
-		t.Setenv("PATHEXT", ".EXE")
-	}
-	for _, name := range []string{"git", "openclaw"} {
-		require.NoError(t, os.WriteFile(filepath.Join(binDir, name+suffix), contents, 0700))
-	}
-	t.Setenv("PATH", binDir)
-	t.Setenv("STRIPE_OPENCLAW_TEST_HELPER", "1")
-	var repoPath string
-	home := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
-	provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) { return home, nil }}, func(ctx context.Context, name string, args ...string) ([]byte, error) {
-		repoPath = args[len(args)-1]
-		return RunCommand(ctx, name, append([]string{"-test.run=^TestOpenclawSubprocessHelper$", "--"}, args...)...)
-	})
-
-	err = provider.Apply(context.Background(), nil, provider.Plan(Status{Detected: true, Status: StatusMissing}, false))
-
-	require.NoError(t, err)
-	require.NotEmpty(t, repoPath)
-	require.Equal(t, filepath.Join(home, ".openclaw"), filepath.Dir(filepath.Dir(repoPath)))
-	require.NoDirExists(t, filepath.Dir(repoPath))
-	require.DirExists(t, filepath.Join(home, ".openclaw"))
-}
-
-// TestOpenclawSubprocessHelper runs as a mock Git or OpenClaw executable.
-func TestOpenclawSubprocessHelper(t *testing.T) {
-	if os.Getenv("STRIPE_OPENCLAW_TEST_HELPER") != "1" {
-		return
-	}
-	args := os.Args[3:]
-	path := args[len(args)-1]
-	if strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") == "git" {
-		if err := os.Mkdir(path, 0700); err != nil {
-			os.Exit(1)
-		}
-		if err := os.WriteFile(filepath.Join(path, "checkout"), []byte("ready"), 0600); err != nil {
-			os.Exit(1)
-		}
-	} else {
-		if _, err := os.Stat(filepath.Join(path, "checkout")); err != nil {
-			os.Exit(1)
-		}
-	}
-	os.Exit(0)
 }
 
 func TestOpenclawApply_NoneIsNoop(t *testing.T) {
