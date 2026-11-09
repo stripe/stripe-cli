@@ -145,6 +145,7 @@ func TestOpenclawApply_WithoutUnixUtilities(t *testing.T) {
 	t.Setenv("STRIPE_OPENCLAW_TEST_HELPER", "1")
 	var repoPath string
 	home := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
 	provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) { return home, nil }}, func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		repoPath = args[len(args)-1]
 		return RunCommand(ctx, name, append([]string{"-test.run=^TestOpenclawSubprocessHelper$", "--"}, args...)...)
@@ -206,6 +207,7 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 				var commands [][]string
 				var repoPath string
 				home := t.TempDir()
+				require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
 				provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) { return home, nil }}, func(_ context.Context, name string, args ...string) ([]byte, error) {
 					commands = append(commands, append([]string{name}, args...))
 					path := args[len(args)-1]
@@ -297,13 +299,15 @@ func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
 				t.Fatal("no subprocess should run without a workspace")
 				return nil, nil
 			}).(OpenclawProvider)
-			if stage == "parent" {
-				require.NoError(t, os.WriteFile(filepath.Join(home, ".openclaw"), nil, 0600))
+			if stage == "workspace" {
+				require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
 			}
-			provider.mkdirTemp = func(dir, _ string) (string, error) {
-				require.Equal(t, "workspace", stage, "must not allocate a workspace after a prerequisite fails")
-				require.Equal(t, filepath.Join(home, ".openclaw"), dir)
-				return "", allocationErr
+			if stage != "parent" {
+				provider.mkdirTemp = func(dir, _ string) (string, error) {
+					require.Equal(t, "workspace", stage, "must not allocate a workspace after a prerequisite fails")
+					require.Equal(t, filepath.Join(home, ".openclaw"), dir)
+					return "", allocationErr
+				}
 			}
 			provider.removeAll = func(string) error {
 				t.Fatal("no workspace to clean up")
@@ -317,7 +321,9 @@ func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
 				require.ErrorIs(t, err, allocationErr)
 				require.ErrorContains(t, err, "resolving home directory")
 			case "parent":
-				require.ErrorContains(t, err, "creating OpenClaw directory")
+				require.ErrorIs(t, err, os.ErrNotExist)
+				require.ErrorContains(t, err, "creating OpenClaw plugin workspace")
+				require.NoDirExists(t, filepath.Join(home, ".openclaw"))
 			case "workspace":
 				require.ErrorIs(t, err, allocationErr)
 				require.ErrorContains(t, err, "creating OpenClaw plugin workspace")

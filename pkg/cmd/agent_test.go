@@ -381,7 +381,9 @@ func TestAgentSetupOpenclawJSONDescribesTemporaryClone(t *testing.T) {
 	require.NotContains(t, output, `"rm"`)
 	home, err := provider.Scanner.HomeDir()
 	require.NoError(t, err)
-	require.NoDirExists(t, filepath.Join(home, ".openclaw"))
+	entries, err := os.ReadDir(filepath.Join(home, ".openclaw"))
+	require.NoError(t, err)
+	require.Empty(t, entries)
 }
 
 // cleanupWarningProvider models a provider whose installation succeeds but cleanup warns.
@@ -632,6 +634,7 @@ func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvid
 func openclawMissingProvider(t *testing.T, record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
 	t.Helper()
 	home := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
 	return agentsetup.OpenclawProvider{
 		ProviderConfig: agentsetup.ProviderConfig{
 			Scanner: agentsetup.Scanner{
