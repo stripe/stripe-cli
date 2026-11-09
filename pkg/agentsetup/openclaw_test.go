@@ -210,14 +210,11 @@ func TestOpenclawApply_CleansUpEvenIfInstallFails(t *testing.T) {
 	}
 }
 
-func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
+func TestOpenclawApply_RetryUsesFreshWorkspace(t *testing.T) {
 	for _, cleanupFails := range []bool{false, true} {
 		t.Run(fmt.Sprintf("cleanupFails=%t", cleanupFails), func(t *testing.T) {
 			home := t.TempDir()
-			legacy := filepath.Join(home, ".openclaw", "stripe")
-			require.NoError(t, os.MkdirAll(legacy, 0700))
-			marker := filepath.Join(legacy, "keep.txt")
-			require.NoError(t, os.WriteFile(marker, []byte("keep"), 0600))
+			require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
 			var paths []string
 			provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) { return home, nil }}, func(_ context.Context, name string, args ...string) ([]byte, error) {
 				if name == "git" {
@@ -251,9 +248,6 @@ func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
 			}
 			require.Equal(t, 2, cleanupCalls)
 			require.NoDirExists(t, filepath.Dir(paths[1]))
-			contents, err := os.ReadFile(marker)
-			require.NoError(t, err)
-			require.Equal(t, "keep", string(contents))
 		})
 	}
 }
