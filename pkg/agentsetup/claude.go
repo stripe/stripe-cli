@@ -15,8 +15,8 @@ import (
 const (
 	ClientClaudeCode   = "claude-code"
 	ClaudeBinaryName   = "claude"
-	TargetClaudePlugin = "stripe@claude-plugins-official"
-	ClaudeMarketplace  = "claude-plugins-official"
+	TargetClaudePlugin = "stripe@anthropic-plugin-directory"
+	ClaudeMarketplace  = "anthropic-plugin-directory"
 	ClaudeDisplayName  = "Claude Code"
 
 	claudeListTimeout = 5 * time.Second

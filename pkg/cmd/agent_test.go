@@ -297,16 +297,16 @@ func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
 func TestAgentSetupSurfacesCleanErrorWhenInstallFails(t *testing.T) {
 	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		if len(args) > 1 && args[1] == "marketplace" {
-			return nil, errors.New(`Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.`)
+			return nil, errors.New(`Failed to update marketplace(s): Marketplace 'anthropic-plugin-directory' not found.`)
 		}
-		return nil, errors.New(`Failed to install plugin "stripe@claude-plugins-official"`)
+		return nil, errors.New(`Failed to install plugin "stripe@anthropic-plugin-directory"`)
 	})
 
 	output, err := executeCommand(setup.cmd, "--yes")
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "1 item(s) failed to set up")
-	require.Contains(t, output, "Failed to update marketplace(s): Marketplace 'claude-plugins-official' not found.")
+	require.Contains(t, output, "Failed to update marketplace(s): Marketplace 'anthropic-plugin-directory' not found.")
 	require.Contains(t, output, "0 installed, 0 updated, 0 skipped, 1 errors")
 }
 
@@ -1069,5 +1069,5 @@ func claudeListEmpty(_ context.Context, _ string, _ ...string) ([]byte, error) {
 }
 
 func claudeListInstalled(_ context.Context, _ string, _ ...string) ([]byte, error) {
-	return []byte(`[{"id":"stripe@claude-plugins-official","version":"2.4.1","scope":"user","enabled":true}]`), nil
+	return []byte(`[{"id":"stripe@anthropic-plugin-directory","version":"2.4.1","scope":"user","enabled":true}]`), nil
 }

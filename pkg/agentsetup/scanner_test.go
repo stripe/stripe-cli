@@ -15,8 +15,8 @@ func TestErrorFromOutput(t *testing.T) {
 		{name: "empty", raw: "", want: ""},
 		{
 			name: "prefers failed line",
-			raw:  `✘ Failed to install plugin "stripe@claude-plugins-official"`,
-			want: `Failed to install plugin "stripe@claude-plugins-official"`,
+			raw:  `✘ Failed to install plugin "stripe@anthropic-plugin-directory"`,
+			want: `Failed to install plugin "stripe@anthropic-plugin-directory"`,
 		},
 		{
 			name: "collapses carriage returns",
