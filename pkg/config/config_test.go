@@ -2,16 +2,229 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/keyring"
 )
+
+func TestSecureConfigPermissionsSkipsChmodForOwnerOnlyFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	originalChmod := configFileChmod
+	t.Cleanup(func() { configFileChmod = originalChmod })
+	configFileChmod = func(string, os.FileMode) error {
+		t.Error("owner-only files must not require chmod")
+		return os.ErrPermission
+	}
+
+	for _, mode := range []os.FileMode{0600, 0400, 0200, 0} {
+		path := filepath.Join(t.TempDir(), "config.toml")
+		require.NoError(t, os.WriteFile(path, nil, 0600))
+		require.NoError(t, os.Chmod(path, mode))
+		require.NoError(t, secureConfigPermissions(path))
+	}
+}
+
+func TestInitConfigPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	for _, explicit := range []bool{false, true} {
+		for _, scenario := range []string{"safe", "repair", "denied", "inspection denied", "missing"} {
+			name := fmt.Sprintf("explicit=%t/%s", explicit, scenario)
+			t.Run(name, func(t *testing.T) {
+				viper.Reset()
+				t.Cleanup(viper.Reset)
+				t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+				path := filepath.Join(getConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "config.toml")
+				if explicit {
+					path = filepath.Join(t.TempDir(), "selected.toml")
+				}
+				require.NoError(t, os.MkdirAll(filepath.Dir(path), 0700))
+				original := []byte("[default]\ncolor = 'off'\ntest_mode_api_key = 'test-only-placeholder'\n")
+				if scenario != "missing" {
+					require.NoError(t, os.WriteFile(path, original, 0600))
+					if scenario != "safe" {
+						require.NoError(t, os.Chmod(path, 0644))
+					}
+				}
+
+				originalChmod, originalStat := configFileChmod, configFileStat
+				t.Cleanup(func() { configFileChmod, configFileStat = originalChmod, originalStat })
+				chmodCalls := 0
+				configFileChmod = func(path string, mode os.FileMode) error {
+					chmodCalls++
+					if scenario != "repair" {
+						return os.ErrPermission
+					}
+					return originalChmod(path, mode)
+				}
+				if scenario == "inspection denied" {
+					configFileStat = func(string) (os.FileInfo, error) { return nil, os.ErrPermission }
+				}
+
+				var logs bytes.Buffer
+				logger := log.StandardLogger()
+				oldOutput, oldLevel, oldFormatter := logger.Out, logger.GetLevel(), logger.Formatter
+				log.SetOutput(&logs)
+				t.Cleanup(func() {
+					log.SetOutput(oldOutput)
+					log.SetLevel(oldLevel)
+					log.SetFormatter(oldFormatter)
+				})
+				oldKeyRing := KeyRing
+				KeyRing = keyring.NewMemoryStore(nil)
+				t.Cleanup(func() { KeyRing = oldKeyRing })
+				c := &Config{LogLevel: "info", Profile: Profile{ProfileName: "default"}}
+				if explicit {
+					c.ProfilesFile = path
+				}
+				c.InitConfig()
+				c.InitConfig()
+				require.Equal(t, path, c.ProfilesFile)
+				if scenario != "missing" {
+					require.Equal(t, "test-only-placeholder", c.Profile.ReadProfileString(TestModeAPIKeyName))
+				}
+
+				failed := scenario == "denied" || scenario == "inspection denied"
+				if failed {
+					require.Equal(t, 1, strings.Count(logs.String(), "Could not secure config file"))
+					require.Contains(t, logs.String(), path)
+					require.Contains(t, logs.String(), "chmod 600")
+					require.NotContains(t, logs.String(), "test-only-placeholder")
+					// The startup telemetry write is best effort and must not
+					// turn a permission warning into a read-only command failure.
+					require.NotEmpty(t, c.GetMachineUUID())
+					contents, err := os.ReadFile(path)
+					require.NoError(t, err)
+					require.Equal(t, original, contents)
+				} else {
+					require.Empty(t, logs.String())
+				}
+				switch scenario {
+				case "repair":
+					require.Equal(t, 1, chmodCalls)
+					info, err := os.Stat(path)
+					require.NoError(t, err)
+					require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+				case "denied":
+					require.Positive(t, chmodCalls)
+				case "safe":
+					require.NotEmpty(t, c.GetMachineUUID())
+					require.Zero(t, chmodCalls)
+				default:
+					require.Zero(t, chmodCalls)
+				}
+				if scenario == "missing" {
+					_, err := os.Stat(path)
+					require.ErrorIs(t, err, os.ErrNotExist)
+				}
+				if !explicit && scenario == "denied" {
+					// Flag parsing can change the path after eager loading.
+					selected := filepath.Join(t.TempDir(), "selected.toml")
+					require.NoError(t, os.WriteFile(selected, original, 0600))
+					require.NoError(t, os.Chmod(selected, 0644))
+					c.ProfilesFile = selected
+					c.InitConfig()
+					c.InitConfig()
+					require.Equal(t, 2, strings.Count(logs.String(), "Could not secure config file"))
+					require.Contains(t, logs.String(), selected)
+					c.ProfilesFile = path
+					c.InitConfig()
+					require.Equal(t, 2, strings.Count(logs.String(), "Could not secure config file"))
+				}
+			})
+		}
+	}
+}
+
+func TestConfigCredentialWritesRequireSecurePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	for _, writer := range []string{"profile", "profile field", "config field"} {
+		for _, denied := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/denied=%t", writer, denied), func(t *testing.T) {
+				c, path, cleanup := setupTestConfig(t)
+				defer cleanup()
+				original := []byte("[default]\ntest_mode_api_key = 'old-test-placeholder'\n")
+				require.NoError(t, os.WriteFile(path, original, 0600))
+				require.NoError(t, os.Chmod(path, 0644))
+				require.NoError(t, viper.ReadInConfig())
+				originalChmod := configFileChmod
+				t.Cleanup(func() { configFileChmod = originalChmod })
+				configFileChmod = func(path string, mode os.FileMode) error {
+					if denied {
+						return os.ErrPermission
+					}
+					return originalChmod(path, mode)
+				}
+
+				var err error
+				switch writer {
+				case "profile":
+					p := Profile{ProfileName: "default", TestModeAPIKey: "new-test-placeholder"}
+					err = p.CreateProfile()
+				case "profile field":
+					err = c.Profile.WriteConfigField(TestModeAPIKeyName, "new-test-placeholder")
+				case "config field":
+					err = c.WriteConfigField("default."+TestModeAPIKeyName, "new-test-placeholder")
+				}
+				if denied {
+					require.ErrorIs(t, err, os.ErrPermission)
+					contents, readErr := os.ReadFile(path)
+					require.NoError(t, readErr)
+					require.Equal(t, original, contents)
+				} else {
+					require.NoError(t, err)
+					info, statErr := os.Stat(path)
+					require.NoError(t, statErr)
+					require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+					require.Equal(t, "new-test-placeholder", c.Profile.ReadProfileString(TestModeAPIKeyName))
+				}
+			})
+		}
+	}
+}
+
+func TestConfigCreationPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permissions")
+	}
+	for _, writer := range []string{"profile", "scratch", "global"} {
+		t.Run(writer, func(t *testing.T) {
+			c, path, cleanup := setupTestConfig(t)
+			defer cleanup()
+			var err error
+			switch writer {
+			case "profile":
+				p := Profile{ProfileName: "default", TestModeAPIKey: "test-only-placeholder"}
+				err = p.CreateProfile()
+			case "scratch":
+				v := viper.New()
+				v.Set("default.test_mode_api_key", "test-only-placeholder")
+				err = writeConfig(v)
+			case "global":
+				err = c.WriteConfigField("default.test_mode_api_key", "test-only-placeholder")
+			}
+			require.NoError(t, err)
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+			require.Equal(t, os.FileMode(0600), info.Mode().Perm())
+		})
+	}
+}
 
 func TestRemoveKey(t *testing.T) {
 	v := viper.New()

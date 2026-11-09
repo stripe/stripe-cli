@@ -6,9 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +22,7 @@ import (
 	cmd "github.com/stripe/stripe-cli/pkg/cmd/docs"
 	"github.com/stripe/stripe-cli/pkg/docs"
 	"github.com/stripe/stripe-cli/pkg/docs/markdown"
+	"github.com/stripe/stripe-cli/pkg/keyring"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -358,6 +364,64 @@ func TestFetchPage_Authenticated(t *testing.T) {
 	assert.Equal(t, "/payments", gotPath)
 	assert.Equal(t, "Bearer sk_test_123", gotAuth)
 	assert.Equal(t, requests.StripeVersionHeaderValue, gotVersion)
+}
+
+func TestFetchPageContinuesWhenConfigCannotBeSecured(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	oldKeyRing := cliconfig.KeyRing
+	cliconfig.KeyRing = keyring.NewMemoryStore(nil)
+	t.Cleanup(func() { cliconfig.KeyRing = oldKeyRing })
+
+	var logs bytes.Buffer
+	logger := log.StandardLogger()
+	oldOutput, oldLevel, oldFormatter := logger.Out, logger.GetLevel(), logger.Formatter
+	log.SetOutput(&logs)
+	t.Cleanup(func() {
+		log.SetOutput(oldOutput)
+		log.SetLevel(oldLevel)
+		log.SetFormatter(oldFormatter)
+	})
+
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.toml")
+	original := []byte("[default]\ncolor = 'off'\n")
+	require.NoError(t, os.WriteFile(target, original, 0600))
+	require.NoError(t, os.Chmod(target, 0644))
+	path := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.Symlink(target, path))
+	cfg := &cliconfig.Config{
+		LogLevel: "info", Color: "off", ProfilesFile: path,
+		Profile: cliconfig.Profile{ProfileName: "default"},
+	}
+	// A symlink deterministically refuses repair without relying on the UID
+	// running the test. Initialization and incidental startup writes still
+	// must not prevent reading documentation.
+	cfg.InitConfig()
+	cfg.InitConfig()
+	require.NotEmpty(t, cfg.GetMachineUUID())
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, "# Test documentation")
+	}))
+	defer server.Close()
+	var out bytes.Buffer
+	root := cmd.New().WithOptions(
+		cmd.WithConfig(cfg),
+		cmd.WithClient(docs.NewClient("test").WithOptions(docs.WithBaseURL(server.URL))),
+	).Root()
+	root.SetOut(&out)
+	root.SetArgs([]string{"--non-interactive", "/test"})
+	require.NoError(t, root.ExecuteContext(context.Background()))
+	assert.Contains(t, out.String(), "Test documentation")
+	contents, err := os.ReadFile(target)
+	require.NoError(t, err)
+	require.Equal(t, original, contents)
+	if runtime.GOOS != "windows" {
+		require.Equal(t, 1, strings.Count(logs.String(), "Could not secure config file"))
+		require.Contains(t, logs.String(), path)
+		require.Contains(t, logs.String(), "chmod 600")
+	}
 }
 
 func TestRootCommand_NoTUI_RendersOutput(t *testing.T) {
