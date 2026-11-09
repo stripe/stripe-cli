@@ -28,6 +28,7 @@ const (
 	playgroundIDPrefix                    = "play_"
 	maxSandboxNameLength                  = 100
 	maxSandboxesCreatedCode               = "max_sandboxes_created"
+	compartmentsMaxTreeSizeReachedCode    = "compartments_max_tree_size_reached"
 	maxSandboxesCreatedCopy               = "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one."
 	maxSandboxesCreatedMessageWithoutCode = "Sandbox could not be created: An account can only have up to 5 sandboxes."
 )
@@ -486,12 +487,19 @@ func isMaxSandboxesCreatedError(requestErr requests.RequestError) bool {
 	if requestErr.ErrorCode == maxSandboxesCreatedCode {
 		return true
 	}
+	if requestErr.StatusCode != http.StatusBadRequest {
+		return false
+	}
+	// Sandbox creation can propagate the downstream Compartments size limit
+	// instead of the declared sandbox error. Other operations also use this code.
+	if requestErr.ErrorCode == compartmentsMaxTreeSizeReachedCode {
+		return true
+	}
 
 	// The current API bridge omits the declared V2 error code for this downstream
 	// limit response. Keep the compatibility match exact and status-scoped so no
 	// other server message is trusted or surfaced.
-	return requestErr.StatusCode == http.StatusBadRequest &&
-		requestErr.ErrorCode == "" &&
+	return requestErr.ErrorCode == "" &&
 		requestErr.Message == maxSandboxesCreatedMessageWithoutCode
 }
 
