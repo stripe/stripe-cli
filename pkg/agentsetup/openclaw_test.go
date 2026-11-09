@@ -215,7 +215,6 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 						repoPath = path
 						require.NoDirExists(t, path)
 						require.NoError(t, os.Mkdir(path, 0700))
-						t.Cleanup(func() { require.NoError(t, os.RemoveAll(filepath.Dir(path))) })
 					} else {
 						require.Equal(t, repoPath, path)
 						require.DirExists(t, path)
@@ -356,11 +355,6 @@ func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
 				}
 				return os.RemoveAll(path)
 			}
-			t.Cleanup(func() {
-				for _, path := range paths {
-					require.NoError(t, os.RemoveAll(filepath.Dir(path)))
-				}
-			})
 			plan := provider.Plan(Status{Detected: true, Status: StatusMissing}, false)
 
 			require.Error(t, provider.Apply(context.Background(), nil, plan))
