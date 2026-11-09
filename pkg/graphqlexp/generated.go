@@ -4,6 +4,7 @@ package graphqlexp
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Khan/genqlient/graphql"
 )
@@ -26,6 +27,726 @@ func (v *APIVersionResponse) GetInlineAPIVersion() APIVersionInlineAPIVersionInl
 	return v.InlineAPIVersion
 }
 
+// DoctorChapterFields includes the GraphQL fields of V2IntegrationHealthDoctorChapter requested by the fragment DoctorChapterFields.
+type DoctorChapterFields struct {
+	Id              string `json:"id"`
+	Name            string `json:"name"`
+	Order           int    `json:"order"`
+	Timeout_in_days int    `json:"timeout_in_days"`
+}
+
+// GetId returns DoctorChapterFields.Id, and is useful for accessing the field via an interface.
+func (v *DoctorChapterFields) GetId() string { return v.Id }
+
+// GetName returns DoctorChapterFields.Name, and is useful for accessing the field via an interface.
+func (v *DoctorChapterFields) GetName() string { return v.Name }
+
+// GetOrder returns DoctorChapterFields.Order, and is useful for accessing the field via an interface.
+func (v *DoctorChapterFields) GetOrder() int { return v.Order }
+
+// GetTimeout_in_days returns DoctorChapterFields.Timeout_in_days, and is useful for accessing the field via an interface.
+func (v *DoctorChapterFields) GetTimeout_in_days() int { return v.Timeout_in_days }
+
+// DoctorEntryItemFields includes the GraphQL fields of V2IntegrationHealthDoctorEntryItem requested by the fragment DoctorEntryItemFields.
+type DoctorEntryItemFields struct {
+	Compare_versions bool                                                                       `json:"compare_versions"`
+	Data_type        string                                                                     `json:"data_type"`
+	Fuzzy_match_key  bool                                                                       `json:"fuzzy_match_key"`
+	Key              string                                                                     `json:"key"`
+	Matcher          DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule             `json:"matcher"`
+	Method           string                                                                     `json:"method"`
+	Path             DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule                `json:"path"`
+	Pattern_matcher  string                                                                     `json:"pattern_matcher"`
+	Post_params      []DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem     `json:"post_params"`
+	Request_headers  []DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem `json:"request_headers"`
+}
+
+// GetCompare_versions returns DoctorEntryItemFields.Compare_versions, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetCompare_versions() bool { return v.Compare_versions }
+
+// GetData_type returns DoctorEntryItemFields.Data_type, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetData_type() string { return v.Data_type }
+
+// GetFuzzy_match_key returns DoctorEntryItemFields.Fuzzy_match_key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetFuzzy_match_key() bool { return v.Fuzzy_match_key }
+
+// GetKey returns DoctorEntryItemFields.Key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetKey() string { return v.Key }
+
+// GetMatcher returns DoctorEntryItemFields.Matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetMatcher() DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule {
+	return v.Matcher
+}
+
+// GetMethod returns DoctorEntryItemFields.Method, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetMethod() string { return v.Method }
+
+// GetPath returns DoctorEntryItemFields.Path, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetPath() DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule {
+	return v.Path
+}
+
+// GetPattern_matcher returns DoctorEntryItemFields.Pattern_matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetPattern_matcher() string { return v.Pattern_matcher }
+
+// GetPost_params returns DoctorEntryItemFields.Post_params, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetPost_params() []DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem {
+	return v.Post_params
+}
+
+// GetRequest_headers returns DoctorEntryItemFields.Request_headers, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFields) GetRequest_headers() []DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem {
+	return v.Request_headers
+}
+
+// DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule includes the requested fields of the GraphQL type V2IntegrationHealthDoctorValueRule.
+type DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule struct {
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}
+
+// GetOperator returns DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule.Operator, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule) GetOperator() string {
+	return v.Operator
+}
+
+// GetValue returns DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule.Value, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule) GetValue() string {
+	return v.Value
+}
+
+// DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule includes the requested fields of the GraphQL type V2IntegrationHealthDoctorValueRule.
+type DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule struct {
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}
+
+// GetOperator returns DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule.Operator, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule) GetOperator() string {
+	return v.Operator
+}
+
+// GetValue returns DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule.Value, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule) GetValue() string {
+	return v.Value
+}
+
+// DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorMatcherItem.
+type DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem struct {
+	DoctorMatcherItemFields `json:"-"`
+	Items                   []DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem `json:"items"`
+}
+
+// GetItems returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Items, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetItems() []DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem {
+	return v.Items
+}
+
+// GetCompare_versions returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Compare_versions, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetCompare_versions() bool {
+	return v.DoctorMatcherItemFields.Compare_versions
+}
+
+// GetFuzzy_match_key returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Fuzzy_match_key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetFuzzy_match_key() bool {
+	return v.DoctorMatcherItemFields.Fuzzy_match_key
+}
+
+// GetKey returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetKey() string {
+	return v.DoctorMatcherItemFields.Key
+}
+
+// GetLogical_operator returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Logical_operator, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetLogical_operator() string {
+	return v.DoctorMatcherItemFields.Logical_operator
+}
+
+// GetMatcher returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetMatcher() DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule {
+	return v.DoctorMatcherItemFields.Matcher
+}
+
+// GetMatcher_type returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetMatcher_type() string {
+	return v.DoctorMatcherItemFields.Matcher_type
+}
+
+// GetPattern_matcher returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem.Pattern_matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) GetPattern_matcher() string {
+	return v.DoctorMatcherItemFields.Pattern_matcher
+}
+
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorMatcherItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem struct {
+	Items []DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem `json:"items"`
+
+	Compare_versions bool `json:"compare_versions"`
+
+	Fuzzy_match_key bool `json:"fuzzy_match_key"`
+
+	Key string `json:"key"`
+
+	Logical_operator string `json:"logical_operator"`
+
+	Matcher DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule `json:"matcher"`
+
+	Matcher_type string `json:"matcher_type"`
+
+	Pattern_matcher string `json:"pattern_matcher"`
+}
+
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem) __premarshalJSON() (*__premarshalDoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem, error) {
+	var retval __premarshalDoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem
+
+	retval.Items = v.Items
+	retval.Compare_versions = v.DoctorMatcherItemFields.Compare_versions
+	retval.Fuzzy_match_key = v.DoctorMatcherItemFields.Fuzzy_match_key
+	retval.Key = v.DoctorMatcherItemFields.Key
+	retval.Logical_operator = v.DoctorMatcherItemFields.Logical_operator
+	retval.Matcher = v.DoctorMatcherItemFields.Matcher
+	retval.Matcher_type = v.DoctorMatcherItemFields.Matcher_type
+	retval.Pattern_matcher = v.DoctorMatcherItemFields.Pattern_matcher
+	return &retval, nil
+}
+
+// DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorMatcherItem.
+type DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem struct {
+	DoctorMatcherItemFields `json:"-"`
+}
+
+// GetCompare_versions returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Compare_versions, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetCompare_versions() bool {
+	return v.DoctorMatcherItemFields.Compare_versions
+}
+
+// GetFuzzy_match_key returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Fuzzy_match_key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetFuzzy_match_key() bool {
+	return v.DoctorMatcherItemFields.Fuzzy_match_key
+}
+
+// GetKey returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetKey() string {
+	return v.DoctorMatcherItemFields.Key
+}
+
+// GetLogical_operator returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Logical_operator, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetLogical_operator() string {
+	return v.DoctorMatcherItemFields.Logical_operator
+}
+
+// GetMatcher returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetMatcher() DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule {
+	return v.DoctorMatcherItemFields.Matcher
+}
+
+// GetMatcher_type returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetMatcher_type() string {
+	return v.DoctorMatcherItemFields.Matcher_type
+}
+
+// GetPattern_matcher returns DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Pattern_matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetPattern_matcher() string {
+	return v.DoctorMatcherItemFields.Pattern_matcher
+}
+
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorMatcherItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem struct {
+	Compare_versions bool `json:"compare_versions"`
+
+	Fuzzy_match_key bool `json:"fuzzy_match_key"`
+
+	Key string `json:"key"`
+
+	Logical_operator string `json:"logical_operator"`
+
+	Matcher DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule `json:"matcher"`
+
+	Matcher_type string `json:"matcher_type"`
+
+	Pattern_matcher string `json:"pattern_matcher"`
+}
+
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) __premarshalJSON() (*__premarshalDoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem, error) {
+	var retval __premarshalDoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem
+
+	retval.Compare_versions = v.DoctorMatcherItemFields.Compare_versions
+	retval.Fuzzy_match_key = v.DoctorMatcherItemFields.Fuzzy_match_key
+	retval.Key = v.DoctorMatcherItemFields.Key
+	retval.Logical_operator = v.DoctorMatcherItemFields.Logical_operator
+	retval.Matcher = v.DoctorMatcherItemFields.Matcher
+	retval.Matcher_type = v.DoctorMatcherItemFields.Matcher_type
+	retval.Pattern_matcher = v.DoctorMatcherItemFields.Pattern_matcher
+	return &retval, nil
+}
+
+// DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorMatcherItem.
+type DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem struct {
+	DoctorMatcherItemFields `json:"-"`
+	Items                   []DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem `json:"items"`
+}
+
+// GetItems returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Items, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetItems() []DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem {
+	return v.Items
+}
+
+// GetCompare_versions returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Compare_versions, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetCompare_versions() bool {
+	return v.DoctorMatcherItemFields.Compare_versions
+}
+
+// GetFuzzy_match_key returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Fuzzy_match_key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetFuzzy_match_key() bool {
+	return v.DoctorMatcherItemFields.Fuzzy_match_key
+}
+
+// GetKey returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetKey() string {
+	return v.DoctorMatcherItemFields.Key
+}
+
+// GetLogical_operator returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Logical_operator, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetLogical_operator() string {
+	return v.DoctorMatcherItemFields.Logical_operator
+}
+
+// GetMatcher returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetMatcher() DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule {
+	return v.DoctorMatcherItemFields.Matcher
+}
+
+// GetMatcher_type returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetMatcher_type() string {
+	return v.DoctorMatcherItemFields.Matcher_type
+}
+
+// GetPattern_matcher returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem.Pattern_matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) GetPattern_matcher() string {
+	return v.DoctorMatcherItemFields.Pattern_matcher
+}
+
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorMatcherItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem struct {
+	Items []DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem `json:"items"`
+
+	Compare_versions bool `json:"compare_versions"`
+
+	Fuzzy_match_key bool `json:"fuzzy_match_key"`
+
+	Key string `json:"key"`
+
+	Logical_operator string `json:"logical_operator"`
+
+	Matcher DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule `json:"matcher"`
+
+	Matcher_type string `json:"matcher_type"`
+
+	Pattern_matcher string `json:"pattern_matcher"`
+}
+
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem) __premarshalJSON() (*__premarshalDoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem, error) {
+	var retval __premarshalDoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem
+
+	retval.Items = v.Items
+	retval.Compare_versions = v.DoctorMatcherItemFields.Compare_versions
+	retval.Fuzzy_match_key = v.DoctorMatcherItemFields.Fuzzy_match_key
+	retval.Key = v.DoctorMatcherItemFields.Key
+	retval.Logical_operator = v.DoctorMatcherItemFields.Logical_operator
+	retval.Matcher = v.DoctorMatcherItemFields.Matcher
+	retval.Matcher_type = v.DoctorMatcherItemFields.Matcher_type
+	retval.Pattern_matcher = v.DoctorMatcherItemFields.Pattern_matcher
+	return &retval, nil
+}
+
+// DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorMatcherItem.
+type DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem struct {
+	DoctorMatcherItemFields `json:"-"`
+}
+
+// GetCompare_versions returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Compare_versions, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetCompare_versions() bool {
+	return v.DoctorMatcherItemFields.Compare_versions
+}
+
+// GetFuzzy_match_key returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Fuzzy_match_key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetFuzzy_match_key() bool {
+	return v.DoctorMatcherItemFields.Fuzzy_match_key
+}
+
+// GetKey returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Key, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetKey() string {
+	return v.DoctorMatcherItemFields.Key
+}
+
+// GetLogical_operator returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Logical_operator, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetLogical_operator() string {
+	return v.DoctorMatcherItemFields.Logical_operator
+}
+
+// GetMatcher returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetMatcher() DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule {
+	return v.DoctorMatcherItemFields.Matcher
+}
+
+// GetMatcher_type returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetMatcher_type() string {
+	return v.DoctorMatcherItemFields.Matcher_type
+}
+
+// GetPattern_matcher returns DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem.Pattern_matcher, and is useful for accessing the field via an interface.
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) GetPattern_matcher() string {
+	return v.DoctorMatcherItemFields.Pattern_matcher
+}
+
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorMatcherItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem struct {
+	Compare_versions bool `json:"compare_versions"`
+
+	Fuzzy_match_key bool `json:"fuzzy_match_key"`
+
+	Key string `json:"key"`
+
+	Logical_operator string `json:"logical_operator"`
+
+	Matcher DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule `json:"matcher"`
+
+	Matcher_type string `json:"matcher_type"`
+
+	Pattern_matcher string `json:"pattern_matcher"`
+}
+
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem) __premarshalJSON() (*__premarshalDoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem, error) {
+	var retval __premarshalDoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItemItemsV2IntegrationHealthDoctorMatcherItem
+
+	retval.Compare_versions = v.DoctorMatcherItemFields.Compare_versions
+	retval.Fuzzy_match_key = v.DoctorMatcherItemFields.Fuzzy_match_key
+	retval.Key = v.DoctorMatcherItemFields.Key
+	retval.Logical_operator = v.DoctorMatcherItemFields.Logical_operator
+	retval.Matcher = v.DoctorMatcherItemFields.Matcher
+	retval.Matcher_type = v.DoctorMatcherItemFields.Matcher_type
+	retval.Pattern_matcher = v.DoctorMatcherItemFields.Pattern_matcher
+	return &retval, nil
+}
+
+// DoctorLogicItemFields includes the GraphQL fields of V2IntegrationHealthDoctorLogicItem requested by the fragment DoctorLogicItemFields.
+type DoctorLogicItemFields struct {
+	Matcher_type string                                                       `json:"matcher_type"`
+	Entry        DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+// GetMatcher_type returns DoctorLogicItemFields.Matcher_type, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFields) GetMatcher_type() string { return v.Matcher_type }
+
+// GetEntry returns DoctorLogicItemFields.Entry, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFields) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.Entry
+}
+
+// DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorEntryItem.
+type DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem struct {
+	DoctorEntryItemFields `json:"-"`
+}
+
+// GetCompare_versions returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Compare_versions, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetCompare_versions() bool {
+	return v.DoctorEntryItemFields.Compare_versions
+}
+
+// GetData_type returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Data_type, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetData_type() string {
+	return v.DoctorEntryItemFields.Data_type
+}
+
+// GetFuzzy_match_key returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Fuzzy_match_key, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetFuzzy_match_key() bool {
+	return v.DoctorEntryItemFields.Fuzzy_match_key
+}
+
+// GetKey returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Key, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetKey() string {
+	return v.DoctorEntryItemFields.Key
+}
+
+// GetMatcher returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Matcher, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetMatcher() DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule {
+	return v.DoctorEntryItemFields.Matcher
+}
+
+// GetMethod returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Method, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetMethod() string {
+	return v.DoctorEntryItemFields.Method
+}
+
+// GetPath returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Path, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetPath() DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule {
+	return v.DoctorEntryItemFields.Path
+}
+
+// GetPattern_matcher returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Pattern_matcher, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetPattern_matcher() string {
+	return v.DoctorEntryItemFields.Pattern_matcher
+}
+
+// GetPost_params returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Post_params, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetPost_params() []DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem {
+	return v.DoctorEntryItemFields.Post_params
+}
+
+// GetRequest_headers returns DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem.Request_headers, and is useful for accessing the field via an interface.
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) GetRequest_headers() []DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem {
+	return v.DoctorEntryItemFields.Request_headers
+}
+
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorEntryItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem struct {
+	Compare_versions bool `json:"compare_versions"`
+
+	Data_type string `json:"data_type"`
+
+	Fuzzy_match_key bool `json:"fuzzy_match_key"`
+
+	Key string `json:"key"`
+
+	Matcher DoctorEntryItemFieldsMatcherV2IntegrationHealthDoctorValueRule `json:"matcher"`
+
+	Method string `json:"method"`
+
+	Path DoctorEntryItemFieldsPathV2IntegrationHealthDoctorValueRule `json:"path"`
+
+	Pattern_matcher string `json:"pattern_matcher"`
+
+	Post_params []DoctorEntryItemFieldsPost_paramsV2IntegrationHealthDoctorMatcherItem `json:"post_params"`
+
+	Request_headers []DoctorEntryItemFieldsRequest_headersV2IntegrationHealthDoctorMatcherItem `json:"request_headers"`
+}
+
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem) __premarshalJSON() (*__premarshalDoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem, error) {
+	var retval __premarshalDoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem
+
+	retval.Compare_versions = v.DoctorEntryItemFields.Compare_versions
+	retval.Data_type = v.DoctorEntryItemFields.Data_type
+	retval.Fuzzy_match_key = v.DoctorEntryItemFields.Fuzzy_match_key
+	retval.Key = v.DoctorEntryItemFields.Key
+	retval.Matcher = v.DoctorEntryItemFields.Matcher
+	retval.Method = v.DoctorEntryItemFields.Method
+	retval.Path = v.DoctorEntryItemFields.Path
+	retval.Pattern_matcher = v.DoctorEntryItemFields.Pattern_matcher
+	retval.Post_params = v.DoctorEntryItemFields.Post_params
+	retval.Request_headers = v.DoctorEntryItemFields.Request_headers
+	return &retval, nil
+}
+
+// DoctorMatcherItemFields includes the GraphQL fields of V2IntegrationHealthDoctorMatcherItem requested by the fragment DoctorMatcherItemFields.
+type DoctorMatcherItemFields struct {
+	Compare_versions bool                                                             `json:"compare_versions"`
+	Fuzzy_match_key  bool                                                             `json:"fuzzy_match_key"`
+	Key              string                                                           `json:"key"`
+	Logical_operator string                                                           `json:"logical_operator"`
+	Matcher          DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule `json:"matcher"`
+	Matcher_type     string                                                           `json:"matcher_type"`
+	Pattern_matcher  string                                                           `json:"pattern_matcher"`
+}
+
+// GetCompare_versions returns DoctorMatcherItemFields.Compare_versions, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFields) GetCompare_versions() bool { return v.Compare_versions }
+
+// GetFuzzy_match_key returns DoctorMatcherItemFields.Fuzzy_match_key, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFields) GetFuzzy_match_key() bool { return v.Fuzzy_match_key }
+
+// GetKey returns DoctorMatcherItemFields.Key, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFields) GetKey() string { return v.Key }
+
+// GetLogical_operator returns DoctorMatcherItemFields.Logical_operator, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFields) GetLogical_operator() string { return v.Logical_operator }
+
+// GetMatcher returns DoctorMatcherItemFields.Matcher, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFields) GetMatcher() DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule {
+	return v.Matcher
+}
+
+// GetMatcher_type returns DoctorMatcherItemFields.Matcher_type, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFields) GetMatcher_type() string { return v.Matcher_type }
+
+// GetPattern_matcher returns DoctorMatcherItemFields.Pattern_matcher, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFields) GetPattern_matcher() string { return v.Pattern_matcher }
+
+// DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule includes the requested fields of the GraphQL type V2IntegrationHealthDoctorValueRule.
+type DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule struct {
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}
+
+// GetOperator returns DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule.Operator, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule) GetOperator() string {
+	return v.Operator
+}
+
+// GetValue returns DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule.Value, and is useful for accessing the field via an interface.
+func (v *DoctorMatcherItemFieldsMatcherV2IntegrationHealthDoctorValueRule) GetValue() string {
+	return v.Value
+}
+
 // GreetingInlineGreetingInlineGreetingOutput includes the requested fields of the GraphQL type InlineGreetingOutput.
 type GreetingInlineGreetingInlineGreetingOutput struct {
 	Greeting string `json:"greeting"`
@@ -44,6 +765,991 @@ func (v *GreetingResponse) GetInlineGreeting() GreetingInlineGreetingInlineGreet
 	return v.InlineGreeting
 }
 
+// ListDoctorRulesResponse is returned by ListDoctorRules on success.
+type ListDoctorRulesResponse struct {
+	V2ListDoctorRules ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponse `json:"v2ListDoctorRules"`
+}
+
+// GetV2ListDoctorRules returns ListDoctorRulesResponse.V2ListDoctorRules, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesResponse) GetV2ListDoctorRules() ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponse {
+	return v.V2ListDoctorRules
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponse includes the requested fields of the GraphQL type V2IntegrationHealthListDoctorRulesResponse.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponse struct {
+	Doctor_rules []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule `json:"doctor_rules"`
+}
+
+// GetDoctor_rules returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponse.Doctor_rules, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponse) GetDoctor_rules() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule {
+	return v.Doctor_rules
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule includes the requested fields of the GraphQL type V2IntegrationHealthDoctorRule.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule struct {
+	Action   string                                                                                                                                                       `json:"action"`
+	Docs     []string                                                                                                                                                     `json:"docs"`
+	Message  string                                                                                                                                                       `json:"message"`
+	Severity string                                                                                                                                                       `json:"severity"`
+	Topic    string                                                                                                                                                       `json:"topic"`
+	Logic    []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem `json:"logic"`
+}
+
+// GetAction returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule.Action, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule) GetAction() string {
+	return v.Action
+}
+
+// GetDocs returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule.Docs, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule) GetDocs() []string {
+	return v.Docs
+}
+
+// GetMessage returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule.Message, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule) GetMessage() string {
+	return v.Message
+}
+
+// GetSeverity returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule.Severity, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule) GetSeverity() string {
+	return v.Severity
+}
+
+// GetTopic returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule.Topic, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule) GetTopic() string {
+	return v.Topic
+}
+
+// GetLogic returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule.Logic, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRule) GetLogic() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem {
+	return v.Logic
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorLogicItem.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem struct {
+	DoctorLogicItemFields `json:"-"`
+	Chapter               ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter                `json:"chapter"`
+	Condition_group       ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup `json:"condition_group"`
+}
+
+// GetChapter returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem.Chapter, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem) GetChapter() ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter {
+	return v.Chapter
+}
+
+// GetCondition_group returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem.Condition_group, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem) GetCondition_group() ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup {
+	return v.Condition_group
+}
+
+// GetMatcher_type returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem) GetMatcher_type() string {
+	return v.DoctorLogicItemFields.Matcher_type
+}
+
+// GetEntry returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem.Entry, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.DoctorLogicItemFields.Entry
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorLogicItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem struct {
+	Chapter ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter `json:"chapter"`
+
+	Condition_group ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup `json:"condition_group"`
+
+	Matcher_type string `json:"matcher_type"`
+
+	Entry DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItem
+
+	retval.Chapter = v.Chapter
+	retval.Condition_group = v.Condition_group
+	retval.Matcher_type = v.DoctorLogicItemFields.Matcher_type
+	retval.Entry = v.DoctorLogicItemFields.Entry
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter includes the requested fields of the GraphQL type V2IntegrationHealthDoctorChapter.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter struct {
+	DoctorChapterFields `json:"-"`
+	Items               []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+}
+
+// GetItems returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Items, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetItems() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem {
+	return v.Items
+}
+
+// GetId returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Id, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetId() string {
+	return v.DoctorChapterFields.Id
+}
+
+// GetName returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Name, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetName() string {
+	return v.DoctorChapterFields.Name
+}
+
+// GetOrder returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Order, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetOrder() int {
+	return v.DoctorChapterFields.Order
+}
+
+// GetTimeout_in_days returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Timeout_in_days, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetTimeout_in_days() int {
+	return v.DoctorChapterFields.Timeout_in_days
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorChapterFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter struct {
+	Items []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Order int `json:"order"`
+
+	Timeout_in_days int `json:"timeout_in_days"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter
+
+	retval.Items = v.Items
+	retval.Id = v.DoctorChapterFields.Id
+	retval.Name = v.DoctorChapterFields.Name
+	retval.Order = v.DoctorChapterFields.Order
+	retval.Timeout_in_days = v.DoctorChapterFields.Timeout_in_days
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorLogicItem.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem struct {
+	DoctorLogicItemFields `json:"-"`
+	Chapter               ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter                `json:"chapter"`
+	Condition_group       ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup `json:"condition_group"`
+}
+
+// GetChapter returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Chapter, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetChapter() ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter {
+	return v.Chapter
+}
+
+// GetCondition_group returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Condition_group, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetCondition_group() ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup {
+	return v.Condition_group
+}
+
+// GetMatcher_type returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetMatcher_type() string {
+	return v.DoctorLogicItemFields.Matcher_type
+}
+
+// GetEntry returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Entry, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.DoctorLogicItemFields.Entry
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorLogicItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem struct {
+	Chapter ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter `json:"chapter"`
+
+	Condition_group ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup `json:"condition_group"`
+
+	Matcher_type string `json:"matcher_type"`
+
+	Entry DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem
+
+	retval.Chapter = v.Chapter
+	retval.Condition_group = v.Condition_group
+	retval.Matcher_type = v.DoctorLogicItemFields.Matcher_type
+	retval.Entry = v.DoctorLogicItemFields.Entry
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter includes the requested fields of the GraphQL type V2IntegrationHealthDoctorChapter.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter struct {
+	DoctorChapterFields `json:"-"`
+	Items               []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+}
+
+// GetItems returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Items, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetItems() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem {
+	return v.Items
+}
+
+// GetId returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Id, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetId() string {
+	return v.DoctorChapterFields.Id
+}
+
+// GetName returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Name, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetName() string {
+	return v.DoctorChapterFields.Name
+}
+
+// GetOrder returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Order, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetOrder() int {
+	return v.DoctorChapterFields.Order
+}
+
+// GetTimeout_in_days returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Timeout_in_days, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetTimeout_in_days() int {
+	return v.DoctorChapterFields.Timeout_in_days
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorChapterFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter struct {
+	Items []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Order int `json:"order"`
+
+	Timeout_in_days int `json:"timeout_in_days"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter
+
+	retval.Items = v.Items
+	retval.Id = v.DoctorChapterFields.Id
+	retval.Name = v.DoctorChapterFields.Name
+	retval.Order = v.DoctorChapterFields.Order
+	retval.Timeout_in_days = v.DoctorChapterFields.Timeout_in_days
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorLogicItem.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem struct {
+	DoctorLogicItemFields `json:"-"`
+}
+
+// GetMatcher_type returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetMatcher_type() string {
+	return v.DoctorLogicItemFields.Matcher_type
+}
+
+// GetEntry returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Entry, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.DoctorLogicItemFields.Entry
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorLogicItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem struct {
+	Matcher_type string `json:"matcher_type"`
+
+	Entry DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem
+
+	retval.Matcher_type = v.DoctorLogicItemFields.Matcher_type
+	retval.Entry = v.DoctorLogicItemFields.Entry
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup includes the requested fields of the GraphQL type V2IntegrationHealthDoctorConditionGroup.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup struct {
+	Logical_operator string                                                                                                                                                                                                                                                                                                                                  `json:"logical_operator"`
+	Items            []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+}
+
+// GetLogical_operator returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup.Logical_operator, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup) GetLogical_operator() string {
+	return v.Logical_operator
+}
+
+// GetItems returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup.Items, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup) GetItems() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem {
+	return v.Items
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorLogicItem.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem struct {
+	DoctorLogicItemFields `json:"-"`
+}
+
+// GetMatcher_type returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetMatcher_type() string {
+	return v.DoctorLogicItemFields.Matcher_type
+}
+
+// GetEntry returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Entry, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.DoctorLogicItemFields.Entry
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorLogicItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem struct {
+	Matcher_type string `json:"matcher_type"`
+
+	Entry DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem
+
+	retval.Matcher_type = v.DoctorLogicItemFields.Matcher_type
+	retval.Entry = v.DoctorLogicItemFields.Entry
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup includes the requested fields of the GraphQL type V2IntegrationHealthDoctorConditionGroup.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup struct {
+	Logical_operator string                                                                                                                                                                                                                                                    `json:"logical_operator"`
+	Items            []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+}
+
+// GetLogical_operator returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup.Logical_operator, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup) GetLogical_operator() string {
+	return v.Logical_operator
+}
+
+// GetItems returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup.Items, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup) GetItems() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem {
+	return v.Items
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorLogicItem.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem struct {
+	DoctorLogicItemFields `json:"-"`
+	Chapter               ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter                `json:"chapter"`
+	Condition_group       ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup `json:"condition_group"`
+}
+
+// GetChapter returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Chapter, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetChapter() ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter {
+	return v.Chapter
+}
+
+// GetCondition_group returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Condition_group, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetCondition_group() ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup {
+	return v.Condition_group
+}
+
+// GetMatcher_type returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetMatcher_type() string {
+	return v.DoctorLogicItemFields.Matcher_type
+}
+
+// GetEntry returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Entry, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.DoctorLogicItemFields.Entry
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorLogicItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem struct {
+	Chapter ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter `json:"chapter"`
+
+	Condition_group ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup `json:"condition_group"`
+
+	Matcher_type string `json:"matcher_type"`
+
+	Entry DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem
+
+	retval.Chapter = v.Chapter
+	retval.Condition_group = v.Condition_group
+	retval.Matcher_type = v.DoctorLogicItemFields.Matcher_type
+	retval.Entry = v.DoctorLogicItemFields.Entry
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter includes the requested fields of the GraphQL type V2IntegrationHealthDoctorChapter.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter struct {
+	DoctorChapterFields `json:"-"`
+	Items               []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+}
+
+// GetItems returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Items, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetItems() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem {
+	return v.Items
+}
+
+// GetId returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Id, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetId() string {
+	return v.DoctorChapterFields.Id
+}
+
+// GetName returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Name, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetName() string {
+	return v.DoctorChapterFields.Name
+}
+
+// GetOrder returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Order, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetOrder() int {
+	return v.DoctorChapterFields.Order
+}
+
+// GetTimeout_in_days returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter.Timeout_in_days, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) GetTimeout_in_days() int {
+	return v.DoctorChapterFields.Timeout_in_days
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorChapterFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter struct {
+	Items []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Order int `json:"order"`
+
+	Timeout_in_days int `json:"timeout_in_days"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapter
+
+	retval.Items = v.Items
+	retval.Id = v.DoctorChapterFields.Id
+	retval.Name = v.DoctorChapterFields.Name
+	retval.Order = v.DoctorChapterFields.Order
+	retval.Timeout_in_days = v.DoctorChapterFields.Timeout_in_days
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorLogicItem.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem struct {
+	DoctorLogicItemFields `json:"-"`
+}
+
+// GetMatcher_type returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetMatcher_type() string {
+	return v.DoctorLogicItemFields.Matcher_type
+}
+
+// GetEntry returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem.Entry, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.DoctorLogicItemFields.Entry
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorLogicItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem struct {
+	Matcher_type string `json:"matcher_type"`
+
+	Entry DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemChapterV2IntegrationHealthDoctorChapterItemsV2IntegrationHealthDoctorLogicItem
+
+	retval.Matcher_type = v.DoctorLogicItemFields.Matcher_type
+	retval.Entry = v.DoctorLogicItemFields.Entry
+	return &retval, nil
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup includes the requested fields of the GraphQL type V2IntegrationHealthDoctorConditionGroup.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup struct {
+	Logical_operator string                                                                                                                                                                                                                                                                                                                                                 `json:"logical_operator"`
+	Items            []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem `json:"items"`
+}
+
+// GetLogical_operator returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup.Logical_operator, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup) GetLogical_operator() string {
+	return v.Logical_operator
+}
+
+// GetItems returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup.Items, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroup) GetItems() []ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem {
+	return v.Items
+}
+
+// ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem includes the requested fields of the GraphQL type V2IntegrationHealthDoctorLogicItem.
+type ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem struct {
+	DoctorLogicItemFields `json:"-"`
+}
+
+// GetMatcher_type returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Matcher_type, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetMatcher_type() string {
+	return v.DoctorLogicItemFields.Matcher_type
+}
+
+// GetEntry returns ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem.Entry, and is useful for accessing the field via an interface.
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) GetEntry() DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem {
+	return v.DoctorLogicItemFields.Entry
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.DoctorLogicItemFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem struct {
+	Matcher_type string `json:"matcher_type"`
+
+	Entry DoctorLogicItemFieldsEntryV2IntegrationHealthDoctorEntryItem `json:"entry"`
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem) __premarshalJSON() (*__premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem, error) {
+	var retval __premarshalListDoctorRulesV2ListDoctorRulesV2IntegrationHealthListDoctorRulesResponseDoctor_rulesV2IntegrationHealthDoctorRuleLogicV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItemCondition_groupV2IntegrationHealthDoctorConditionGroupItemsV2IntegrationHealthDoctorLogicItem
+
+	retval.Matcher_type = v.DoctorLogicItemFields.Matcher_type
+	retval.Entry = v.DoctorLogicItemFields.Entry
+	return &retval, nil
+}
+
+// ListIntegHlthAlertsResponse is returned by ListIntegHlthAlerts on success.
+type ListIntegHlthAlertsResponse struct {
+	V2ListIntegHlthAlerts ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse `json:"v2ListIntegHlthAlerts"`
+}
+
+// GetV2ListIntegHlthAlerts returns ListIntegHlthAlertsResponse.V2ListIntegHlthAlerts, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsResponse) GetV2ListIntegHlthAlerts() ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse {
+	return v.V2ListIntegHlthAlerts
+}
+
+// ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse includes the requested fields of the GraphQL type V2IntegrationHealthListIntegHlthAlertsResponse.
+type ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse struct {
+	Alerts    []ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail `json:"alerts"`
+	Next_page string                                                                                                                       `json:"next_page"`
+}
+
+// GetAlerts returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse.Alerts, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse) GetAlerts() []ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail {
+	return v.Alerts
+}
+
+// GetNext_page returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse.Next_page, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponse) GetNext_page() string {
+	return v.Next_page
+}
+
+// ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail includes the requested fields of the GraphQL type V2IntegrationHealthAlertDetail.
+type ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail struct {
+	Compartment_id          string                                                                                                                                                                        `json:"compartment_id"`
+	Created_at              string                                                                                                                                                                        `json:"created_at"`
+	Doctor_topic            string                                                                                                                                                                        `json:"doctor_topic"`
+	Health_insight          ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight `json:"health_insight"`
+	Health_insight_id       string                                                                                                                                                                        `json:"health_insight_id"`
+	Last_updated            string                                                                                                                                                                        `json:"last_updated"`
+	Predicate_name          string                                                                                                                                                                        `json:"predicate_name"`
+	Recent_integration_data []string                                                                                                                                                                      `json:"recent_integration_data"`
+	Status                  string                                                                                                                                                                        `json:"status"`
+}
+
+// GetCompartment_id returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Compartment_id, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetCompartment_id() string {
+	return v.Compartment_id
+}
+
+// GetCreated_at returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Created_at, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetCreated_at() string {
+	return v.Created_at
+}
+
+// GetDoctor_topic returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Doctor_topic, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetDoctor_topic() string {
+	return v.Doctor_topic
+}
+
+// GetHealth_insight returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Health_insight, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetHealth_insight() ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight {
+	return v.Health_insight
+}
+
+// GetHealth_insight_id returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Health_insight_id, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetHealth_insight_id() string {
+	return v.Health_insight_id
+}
+
+// GetLast_updated returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Last_updated, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetLast_updated() string {
+	return v.Last_updated
+}
+
+// GetPredicate_name returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Predicate_name, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetPredicate_name() string {
+	return v.Predicate_name
+}
+
+// GetRecent_integration_data returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Recent_integration_data, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetRecent_integration_data() []string {
+	return v.Recent_integration_data
+}
+
+// GetStatus returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail.Status, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) GetStatus() string {
+	return v.Status
+}
+
+// ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight includes the requested fields of the GraphQL type V2IntegrationHealthAlertHealthInsight.
+type ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight struct {
+	Recommended_action  ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction `json:"recommended_action"`
+	Severity            string                                                                                                                                                                                                                              `json:"severity"`
+	Summary             string                                                                                                                                                                                                                              `json:"summary"`
+	Why_is_it_important string                                                                                                                                                                                                                              `json:"why_is_it_important"`
+}
+
+// GetRecommended_action returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight.Recommended_action, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight) GetRecommended_action() ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction {
+	return v.Recommended_action
+}
+
+// GetSeverity returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight.Severity, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight) GetSeverity() string {
+	return v.Severity
+}
+
+// GetSummary returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight.Summary, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight) GetSummary() string {
+	return v.Summary
+}
+
+// GetWhy_is_it_important returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight.Why_is_it_important, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsight) GetWhy_is_it_important() string {
+	return v.Why_is_it_important
+}
+
+// ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction includes the requested fields of the GraphQL type V2IntegrationHealthRecommendedAction.
+type ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction struct {
+	Description string `json:"description"`
+	Title       string `json:"title"`
+}
+
+// GetDescription returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction.Description, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction) GetDescription() string {
+	return v.Description
+}
+
+// GetTitle returns ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction.Title, and is useful for accessing the field via an interface.
+func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetailHealth_insightV2IntegrationHealthAlertHealthInsightRecommended_actionV2IntegrationHealthRecommendedAction) GetTitle() string {
+	return v.Title
+}
+
 // __GreetingInput is used internally by genqlient
 type __GreetingInput struct {
 	Name string `json:"name"`
@@ -51,6 +1757,38 @@ type __GreetingInput struct {
 
 // GetName returns __GreetingInput.Name, and is useful for accessing the field via an interface.
 func (v *__GreetingInput) GetName() string { return v.Name }
+
+// __ListDoctorRulesInput is used internally by genqlient
+type __ListDoctorRulesInput struct {
+	Active bool `json:"active"`
+}
+
+// GetActive returns __ListDoctorRulesInput.Active, and is useful for accessing the field via an interface.
+func (v *__ListDoctorRulesInput) GetActive() bool { return v.Active }
+
+// __ListIntegHlthAlertsInput is used internally by genqlient
+type __ListIntegHlthAlertsInput struct {
+	Statuses          []string `json:"statuses"`
+	Limit             int      `json:"limit,omitempty"`
+	Page              string   `json:"page,omitempty"`
+	LastUpdatedAfter  string   `json:"lastUpdatedAfter,omitempty"`
+	LastUpdatedBefore string   `json:"lastUpdatedBefore,omitempty"`
+}
+
+// GetStatuses returns __ListIntegHlthAlertsInput.Statuses, and is useful for accessing the field via an interface.
+func (v *__ListIntegHlthAlertsInput) GetStatuses() []string { return v.Statuses }
+
+// GetLimit returns __ListIntegHlthAlertsInput.Limit, and is useful for accessing the field via an interface.
+func (v *__ListIntegHlthAlertsInput) GetLimit() int { return v.Limit }
+
+// GetPage returns __ListIntegHlthAlertsInput.Page, and is useful for accessing the field via an interface.
+func (v *__ListIntegHlthAlertsInput) GetPage() string { return v.Page }
+
+// GetLastUpdatedAfter returns __ListIntegHlthAlertsInput.LastUpdatedAfter, and is useful for accessing the field via an interface.
+func (v *__ListIntegHlthAlertsInput) GetLastUpdatedAfter() string { return v.LastUpdatedAfter }
+
+// GetLastUpdatedBefore returns __ListIntegHlthAlertsInput.LastUpdatedBefore, and is useful for accessing the field via an interface.
+func (v *__ListIntegHlthAlertsInput) GetLastUpdatedBefore() string { return v.LastUpdatedBefore }
 
 // The query executed by APIVersion.
 const APIVersion_Operation = `
@@ -105,6 +1843,200 @@ func Greeting(
 	}
 
 	data_ = &GreetingResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListDoctorRules.
+const ListDoctorRules_Operation = `
+query ListDoctorRules ($active: Boolean!) {
+	v2ListDoctorRules(active: $active) {
+		doctor_rules {
+			action
+			docs
+			message
+			severity
+			topic
+			logic {
+				... DoctorLogicItemFields
+				chapter {
+					... DoctorChapterFields
+					items {
+						... DoctorLogicItemFields
+						chapter {
+							... DoctorChapterFields
+							items {
+								... DoctorLogicItemFields
+							}
+						}
+						condition_group {
+							logical_operator
+							items {
+								... DoctorLogicItemFields
+							}
+						}
+					}
+				}
+				condition_group {
+					logical_operator
+					items {
+						... DoctorLogicItemFields
+						chapter {
+							... DoctorChapterFields
+							items {
+								... DoctorLogicItemFields
+							}
+						}
+						condition_group {
+							logical_operator
+							items {
+								... DoctorLogicItemFields
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+fragment DoctorLogicItemFields on V2IntegrationHealthDoctorLogicItem {
+	matcher_type
+	entry {
+		... DoctorEntryItemFields
+	}
+}
+fragment DoctorChapterFields on V2IntegrationHealthDoctorChapter {
+	id
+	name
+	order
+	timeout_in_days
+}
+fragment DoctorEntryItemFields on V2IntegrationHealthDoctorEntryItem {
+	compare_versions
+	data_type
+	fuzzy_match_key
+	key
+	matcher {
+		operator
+		value
+	}
+	method
+	path {
+		operator
+		value
+	}
+	pattern_matcher
+	post_params {
+		... DoctorMatcherItemFields
+		items {
+			... DoctorMatcherItemFields
+		}
+	}
+	request_headers {
+		... DoctorMatcherItemFields
+		items {
+			... DoctorMatcherItemFields
+		}
+	}
+}
+fragment DoctorMatcherItemFields on V2IntegrationHealthDoctorMatcherItem {
+	compare_versions
+	fuzzy_match_key
+	key
+	logical_operator
+	matcher {
+		operator
+		value
+	}
+	matcher_type
+	pattern_matcher
+}
+`
+
+// Doctor rule logic is recursive (chapters and condition groups contain more
+// logic items), so the query expands it to a fixed depth of three levels.
+func ListDoctorRules(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	active bool,
+) (data_ *ListDoctorRulesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListDoctorRules",
+		Query:  ListDoctorRules_Operation,
+		Variables: &__ListDoctorRulesInput{
+			Active: active,
+		},
+	}
+
+	data_ = &ListDoctorRulesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListIntegHlthAlerts.
+const ListIntegHlthAlerts_Operation = `
+query ListIntegHlthAlerts ($statuses: [V2IntegrationHealthOpenEnumAlertStatus!]!, $limit: Int, $page: String, $lastUpdatedAfter: String, $lastUpdatedBefore: String) {
+	v2ListIntegHlthAlerts(statuses: $statuses, limit: $limit, page: $page, last_updated_after: $lastUpdatedAfter, last_updated_before: $lastUpdatedBefore) {
+		alerts {
+			compartment_id
+			created_at
+			doctor_topic
+			health_insight {
+				recommended_action {
+					description
+					title
+				}
+				severity
+				summary
+				why_is_it_important
+			}
+			health_insight_id
+			last_updated
+			predicate_name
+			recent_integration_data
+			status
+		}
+		next_page
+	}
+}
+`
+
+func ListIntegHlthAlerts(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	statuses []string,
+	limit int,
+	page string,
+	lastUpdatedAfter string,
+	lastUpdatedBefore string,
+) (data_ *ListIntegHlthAlertsResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListIntegHlthAlerts",
+		Query:  ListIntegHlthAlerts_Operation,
+		Variables: &__ListIntegHlthAlertsInput{
+			Statuses:          statuses,
+			Limit:             limit,
+			Page:              page,
+			LastUpdatedAfter:  lastUpdatedAfter,
+			LastUpdatedBefore: lastUpdatedBefore,
+		},
+	}
+
+	data_ = &ListIntegHlthAlertsResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

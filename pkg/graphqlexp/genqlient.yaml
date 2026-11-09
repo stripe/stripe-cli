@@ -3,3 +3,6 @@ operations:
   - operations.graphql
 generated: generated.go
 package: graphqlexp
+bindings:
+  V2IntegrationHealthOpenEnumAlertStatus:
+    type: string

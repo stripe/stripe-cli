@@ -9,3 +9,153 @@ query Greeting($name: String!) {
     greeting
   }
 }
+
+query ListIntegHlthAlerts(
+  $statuses: [V2IntegrationHealthOpenEnumAlertStatus!]!
+  # @genqlient(omitempty: true)
+  $limit: Int
+  # @genqlient(omitempty: true)
+  $page: String
+  # @genqlient(omitempty: true)
+  $lastUpdatedAfter: String
+  # @genqlient(omitempty: true)
+  $lastUpdatedBefore: String
+) {
+  v2ListIntegHlthAlerts(
+    statuses: $statuses
+    limit: $limit
+    page: $page
+    last_updated_after: $lastUpdatedAfter
+    last_updated_before: $lastUpdatedBefore
+  ) {
+    alerts {
+      compartment_id
+      created_at
+      doctor_topic
+      health_insight {
+        recommended_action {
+          description
+          title
+        }
+        severity
+        summary
+        why_is_it_important
+      }
+      health_insight_id
+      last_updated
+      predicate_name
+      recent_integration_data
+      status
+    }
+    next_page
+  }
+}
+
+# Doctor rule logic is recursive (chapters and condition groups contain more
+# logic items), so the query expands it to a fixed depth of three levels.
+query ListDoctorRules($active: Boolean!) {
+  v2ListDoctorRules(active: $active) {
+    doctor_rules {
+      action
+      docs
+      message
+      severity
+      topic
+      logic {
+        ...DoctorLogicItemFields
+        chapter {
+          ...DoctorChapterFields
+          items {
+            ...DoctorLogicItemFields
+            chapter {
+              ...DoctorChapterFields
+              items {
+                ...DoctorLogicItemFields
+              }
+            }
+            condition_group {
+              logical_operator
+              items {
+                ...DoctorLogicItemFields
+              }
+            }
+          }
+        }
+        condition_group {
+          logical_operator
+          items {
+            ...DoctorLogicItemFields
+            chapter {
+              ...DoctorChapterFields
+              items {
+                ...DoctorLogicItemFields
+              }
+            }
+            condition_group {
+              logical_operator
+              items {
+                ...DoctorLogicItemFields
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+fragment DoctorLogicItemFields on V2IntegrationHealthDoctorLogicItem {
+  matcher_type
+  entry {
+    ...DoctorEntryItemFields
+  }
+}
+
+fragment DoctorChapterFields on V2IntegrationHealthDoctorChapter {
+  id
+  name
+  order
+  timeout_in_days
+}
+
+fragment DoctorEntryItemFields on V2IntegrationHealthDoctorEntryItem {
+  compare_versions
+  data_type
+  fuzzy_match_key
+  key
+  matcher {
+    operator
+    value
+  }
+  method
+  path {
+    operator
+    value
+  }
+  pattern_matcher
+  post_params {
+    ...DoctorMatcherItemFields
+    items {
+      ...DoctorMatcherItemFields
+    }
+  }
+  request_headers {
+    ...DoctorMatcherItemFields
+    items {
+      ...DoctorMatcherItemFields
+    }
+  }
+}
+
+fragment DoctorMatcherItemFields on V2IntegrationHealthDoctorMatcherItem {
+  compare_versions
+  fuzzy_match_key
+  key
+  logical_operator
+  matcher {
+    operator
+    value
+  }
+  matcher_type
+  pattern_matcher
+}

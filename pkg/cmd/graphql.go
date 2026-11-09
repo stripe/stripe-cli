@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,34 +17,34 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/graphqlexp"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // EXPERIMENT: throwaway command for probing graphql.stripe.com with a genqlient client.
 
-// graphqlStripeVersion is hard-coded for now.
-const graphqlStripeVersion = "unsafe-development"
-
 type graphqlCmd struct {
-	cmd  *cobra.Command
-	cfg  *config.Config
-	host string
-	path string
-	live bool
-	dump bool
+	cmd           *cobra.Command
+	cfg           *config.Config
+	host          string
+	path          string
+	stripeVersion string
+	live          bool
+	dump          bool
 }
 
 type authTransport struct {
-	creds stripe.Credentials
-	base  http.RoundTripper
-	dump  io.Writer // when set, the request (as curl) and raw response are written here
+	creds         stripe.Credentials
+	stripeVersion string
+	base          http.RoundTripper
+	dump          io.Writer // when set, the request (as curl) and raw response are written here
 }
 
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
 	t.creds.SetRequestHeaders(req)
-	req.Header.Set("Stripe-Version", graphqlStripeVersion)
+	req.Header.Set("Stripe-Version", t.stripeVersion)
 
 	var body []byte
 	if t.dump != nil && req.Body != nil {
@@ -103,15 +104,83 @@ func newGraphqlCmd(cfg *config.Config) *graphqlCmd {
 		RunE:   gc.run,
 		Hidden: true,
 	}
-	gc.cmd.Flags().StringVar(&gc.host, "host", "graphql.stripe.com", "GraphQL gateway host")
-	gc.cmd.Flags().StringVar(&gc.path, "path", "/graphql", "GraphQL endpoint path (e.g. /graphql/multiregion)")
-	gc.cmd.Flags().BoolVar(&gc.live, "live", false, "Use the live mode API key")
-	gc.cmd.Flags().BoolVar(&gc.dump, "dump", false, "Print the request as a curl command (includes your token) and the raw response to stderr")
+	gc.cmd.PersistentFlags().StringVar(&gc.host, "host", "graphql.stripe.com", "GraphQL gateway host")
+	gc.cmd.PersistentFlags().StringVar(&gc.path, "path", "/graphql", "GraphQL endpoint path (e.g. /graphql/multiregion)")
+	gc.cmd.PersistentFlags().StringVar(&gc.stripeVersion, "stripe-version", requests.StripePreviewVersionHeaderValue, "Stripe-Version header to send (e.g. unsafe-development)")
+	gc.cmd.PersistentFlags().BoolVar(&gc.live, "live", false, "Use the live mode API key")
+	gc.cmd.PersistentFlags().BoolVar(&gc.dump, "dump", false, "Print the request as a curl command (includes your token) and the raw response to stderr")
+
+	gc.cmd.AddCommand(gc.newIntegHlthAlertsCmd())
+	gc.cmd.AddCommand(gc.newDoctorRulesCmd())
 
 	return gc
 }
 
-func (gc *graphqlCmd) run(cmd *cobra.Command, args []string) error {
+func (gc *graphqlCmd) newIntegHlthAlertsCmd() *cobra.Command {
+	var (
+		statuses          []string
+		limit             int
+		page              string
+		lastUpdatedAfter  string
+		lastUpdatedBefore string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "integ-hlth-alerts",
+		Args:  validators.NoArgs,
+		Short: "List integration health alerts (v2ListIntegHlthAlerts)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := gc.newClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			resp, err := graphqlexp.ListIntegHlthAlerts(cmd.Context(), client, statuses, limit, page, lastUpdatedAfter, lastUpdatedBefore)
+			if err != nil {
+				return err
+			}
+
+			return printGraphqlJSON(cmd, resp.V2ListIntegHlthAlerts)
+		},
+	}
+	cmd.Flags().StringSliceVar(&statuses, "status", []string{"open"}, "Alert statuses to include (open, resolved)")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum number of alerts to return")
+	cmd.Flags().StringVar(&page, "page", "", "Page token from a previous response's next_page")
+	cmd.Flags().StringVar(&lastUpdatedAfter, "last-updated-after", "", "Only include alerts last updated after this time")
+	cmd.Flags().StringVar(&lastUpdatedBefore, "last-updated-before", "", "Only include alerts last updated before this time")
+
+	return cmd
+}
+
+func (gc *graphqlCmd) newDoctorRulesCmd() *cobra.Command {
+	var active bool
+
+	cmd := &cobra.Command{
+		Use:   "doctor-rules",
+		Args:  validators.NoArgs,
+		Short: "List integration health doctor rules (v2ListDoctorRules)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, err := gc.newClient(cmd)
+			if err != nil {
+				return err
+			}
+
+			resp, err := graphqlexp.ListDoctorRules(cmd.Context(), client, active)
+			if err != nil {
+				return err
+			}
+
+			return printGraphqlJSON(cmd, resp.V2ListDoctorRules)
+		},
+	}
+	cmd.Flags().BoolVar(&active, "active", true, "List active rules (--active=false lists inactive rules)")
+
+	return cmd
+}
+
+// newClient builds a genqlient client for the gateway that authenticates with
+// the CLI's credentials.
+func (gc *graphqlCmd) newClient(cmd *cobra.Command) (graphql.Client, error) {
 	// Keep QA credentials pointed at the QA gateway unless --host says otherwise.
 	if !cmd.Flags().Changed("host") && rootAccessBaseURL == login.QAAccessBaseURL {
 		gc.host = "qa-graphql.stripe.com"
@@ -119,10 +188,10 @@ func (gc *graphqlCmd) run(cmd *cobra.Command, args []string) error {
 
 	creds, err := gc.cfg.Profile.ResolveCredentials(gc.live)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	transport := &authTransport{creds: creds, base: http.DefaultTransport}
+	transport := &authTransport{creds: creds, stripeVersion: gc.stripeVersion, base: http.DefaultTransport}
 	if gc.dump {
 		transport.dump = cmd.ErrOrStderr()
 	}
@@ -130,7 +199,26 @@ func (gc *graphqlCmd) run(cmd *cobra.Command, args []string) error {
 		Timeout:   30 * time.Second,
 		Transport: transport,
 	}
-	client := graphql.NewClient("https://"+gc.host+gc.path, httpClient)
+
+	return graphql.NewClient("https://"+gc.host+gc.path, httpClient), nil
+}
+
+func printGraphqlJSON(cmd *cobra.Command, v interface{}) error {
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintln(cmd.OutOrStdout(), string(out))
+
+	return nil
+}
+
+func (gc *graphqlCmd) run(cmd *cobra.Command, args []string) error {
+	client, err := gc.newClient(cmd)
+	if err != nil {
+		return err
+	}
 
 	if len(args) == 1 {
 		resp, err := graphqlexp.Greeting(cmd.Context(), client, args[0])
