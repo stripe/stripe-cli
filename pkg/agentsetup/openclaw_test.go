@@ -236,7 +236,7 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 					return os.RemoveAll(path)
 				}
 				out := new(bytes.Buffer)
-				telemetry := newOpenclawTelemetryClient()
+				telemetry := &openclawTelemetryClient{events: make(chan [2]string, 10)}
 				ctx := stripe.WithTelemetryClient(context.Background(), telemetry)
 				status := Status{Detected: true, Plugin: PluginStatus{Installed: tc.action == ActionUpdate}}
 				plan := provider.Plan(status, true)
@@ -286,12 +286,19 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 }
 
 func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
-	for _, stage := range []string{"home", "parent", "workspace"} {
-		t.Run(stage, func(t *testing.T) {
+	allocationErr := errors.New("allocation failed")
+	for _, tc := range []struct {
+		stage, message string
+		cause          error
+	}{
+		{"home", "resolving home directory", allocationErr},
+		{"parent", "creating OpenClaw plugin workspace", os.ErrNotExist},
+		{"workspace", "creating OpenClaw plugin workspace", allocationErr},
+	} {
+		t.Run(tc.stage, func(t *testing.T) {
 			home := t.TempDir()
-			allocationErr := errors.New("allocation failed")
 			provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) {
-				if stage == "home" {
+				if tc.stage == "home" {
 					return "", allocationErr
 				}
 				return home, nil
@@ -299,12 +306,9 @@ func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
 				t.Fatal("no subprocess should run without a workspace")
 				return nil, nil
 			}).(OpenclawProvider)
-			if stage == "workspace" {
-				require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
-			}
-			if stage != "parent" {
+			if tc.stage != "parent" {
 				provider.mkdirTemp = func(dir, _ string) (string, error) {
-					require.Equal(t, "workspace", stage, "must not allocate a workspace after a prerequisite fails")
+					require.Equal(t, "workspace", tc.stage, "must not allocate a workspace after a prerequisite fails")
 					require.Equal(t, filepath.Join(home, ".openclaw"), dir)
 					return "", allocationErr
 				}
@@ -316,17 +320,10 @@ func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
 
 			err := provider.Apply(context.Background(), nil, provider.Plan(Status{Detected: true, Status: StatusMissing}, false))
 
-			switch stage {
-			case "home":
-				require.ErrorIs(t, err, allocationErr)
-				require.ErrorContains(t, err, "resolving home directory")
-			case "parent":
-				require.ErrorIs(t, err, os.ErrNotExist)
-				require.ErrorContains(t, err, "creating OpenClaw plugin workspace")
+			require.ErrorIs(t, err, tc.cause)
+			require.ErrorContains(t, err, tc.message)
+			if tc.stage == "parent" {
 				require.NoDirExists(t, filepath.Join(home, ".openclaw"))
-			case "workspace":
-				require.ErrorIs(t, err, allocationErr)
-				require.ErrorContains(t, err, "creating OpenClaw plugin workspace")
 			}
 		})
 	}
@@ -382,10 +379,6 @@ func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
 
 type openclawTelemetryClient struct {
 	events chan [2]string
-}
-
-func newOpenclawTelemetryClient() *openclawTelemetryClient {
-	return &openclawTelemetryClient{events: make(chan [2]string, 10)}
 }
 
 func (c *openclawTelemetryClient) SendAPIRequestEvent(context.Context, string, bool) (*http.Response, error) {
