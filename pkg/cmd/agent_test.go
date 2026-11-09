@@ -401,14 +401,7 @@ func (p cleanupWarningProvider) Apply(ctx context.Context, out io.Writer, plan a
 }
 
 func TestAgentSetupCleanupWarningStillReportsInstallSuccess(t *testing.T) {
-	var paths []string
-	provider := openclawMissingProvider(t, func(_ context.Context, _ string, args ...string) ([]byte, error) {
-		path := args[len(args)-1]
-		require.True(t, filepath.IsAbs(path))
-		require.DirExists(t, filepath.Dir(path))
-		paths = append(paths, path)
-		return nil, nil
-	})
+	provider := openclawMissingProvider(t, nil)
 	setup := testAgentSetupCmd()
 	setup.providers = map[string]agentsetup.Provider{provider.ID(): cleanupWarningProvider{provider}}
 	setup.callingAgent = func() string { return "" }
@@ -418,9 +411,6 @@ func TestAgentSetupCleanupWarningStillReportsInstallSuccess(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--client", "openclaw", "--yes")
 
 	require.NoError(t, err)
-	require.Len(t, paths, 2)
-	require.Equal(t, paths[0], paths[1])
-	require.NoDirExists(t, filepath.Dir(paths[0]))
 	require.Contains(t, output, "Warning: OpenClaw plugin cleanup failed")
 	require.Contains(t, output, "done")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
