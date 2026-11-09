@@ -17,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
 	"github.com/stripe/stripe-cli/pkg/agentskills"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestCheckSkillsScopesChecksBothScopesConcurrently(t *testing.T) {
@@ -357,6 +358,83 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 	require.Contains(t, output, "4 installed, 0 updated, 0 skipped, 0 errors")
 }
 
+func TestAgentSetupOpenclawJSONDescribesTemporaryClone(t *testing.T) {
+	provider := openclawMissingProvider(func(context.Context, string, ...string) ([]byte, error) {
+		t.Fatal("JSON planning must not run installation commands")
+		return nil, nil
+	})
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{provider.ID(): provider}
+	setup.callingAgent = func() string { return "" }
+	setup.cmd.SetContext(context.Background())
+
+	output, err := executeCommand(setup.cmd, "--client", "openclaw", "--json")
+
+	require.NoError(t, err)
+	var result agentSetupJSON
+	require.NoError(t, json.Unmarshal([]byte(output), &result))
+	require.Len(t, result.Actions, 1)
+	require.Equal(t, provider.Plan(agentsetup.Status{Detected: true, Status: agentsetup.StatusMissing}, false).Commands, result.Actions[0].Commands)
+	require.Len(t, result.Actions[0].Commands, 2)
+	require.Contains(t, output, "temporary-directory")
+	require.NotContains(t, output, `"mkdir"`)
+	require.NotContains(t, output, `"rm"`)
+}
+
+// cleanupWarningProvider models a provider whose installation succeeds but cleanup warns.
+// The OpenClaw provider tests exercise the filesystem failure itself.
+type cleanupWarningProvider struct {
+	agentsetup.Provider
+}
+
+func (p cleanupWarningProvider) Apply(ctx context.Context, out io.Writer, plan agentsetup.Plan) error {
+	if err := p.Provider.Apply(ctx, out, plan); err != nil {
+		return err
+	}
+	fmt.Fprintln(out, "Warning: OpenClaw plugin cleanup failed; remove the temporary workspace manually")
+	if tc := stripe.GetTelemetryClient(ctx); tc != nil {
+		tc.SendEvent(ctx, "Agent Setup: Plugin Cleanup", "openclaw:error")
+	}
+	return nil
+}
+
+func TestAgentSetupCleanupWarningStillReportsInstallSuccess(t *testing.T) {
+	var paths []string
+	provider := openclawMissingProvider(func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		path := args[len(args)-1]
+		require.True(t, filepath.IsAbs(path))
+		require.DirExists(t, filepath.Dir(path))
+		paths = append(paths, path)
+		return nil, nil
+	})
+	setup := testAgentSetupCmd()
+	setup.providers = map[string]agentsetup.Provider{provider.ID(): cleanupWarningProvider{provider}}
+	setup.callingAgent = func() string { return "" }
+	client := &agentReportUsageTelemetryClient{events: make(chan agentReportUsageTelemetryEvent, 10)}
+	setup.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), client))
+
+	output, err := executeCommand(setup.cmd, "--client", "openclaw", "--yes")
+
+	require.NoError(t, err)
+	require.Len(t, paths, 2)
+	require.Equal(t, paths[0], paths[1])
+	require.NoDirExists(t, filepath.Dir(paths[0]))
+	require.Contains(t, output, "Warning: OpenClaw plugin cleanup failed")
+	require.Contains(t, output, "done")
+	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
+	events := make([]agentReportUsageTelemetryEvent, 0, 4)
+	for len(events) < 4 {
+		events = append(events, waitForAgentReportUsageEvent(t, client))
+	}
+	require.ElementsMatch(t, []agentReportUsageTelemetryEvent{
+		{name: "Agent Setup: Client Detected", value: "openclaw"},
+		{name: "Agent Setup: Plugin Detected", value: "openclaw:not_installed"},
+		{name: "Agent Setup: Plugin Cleanup", value: "openclaw:error"},
+		{name: "Agent Setup: Plugin Install", value: "openclaw:success"},
+	}, events)
+	assertNoAgentReportUsageEvent(t, client)
+}
+
 func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 	var installed []string
 	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
@@ -556,13 +634,13 @@ func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.Opencl
 			BinaryName:  agentsetup.OpenclawBinaryName,
 			DisplayName: agentsetup.OpenclawDisplayName,
 			RunCommand: func(ctx context.Context, name string, args ...string) ([]byte, error) {
-				if args[1] == "install" || args[1] == "update" {
+				if name == "git" || args[1] == "install" {
 					if record != nil {
 						return record(ctx, name, args...)
 					}
 					return nil, nil
 				}
-				return []byte(`[]`), nil
+				return []byte(`{"plugins":[]}`), nil
 			},
 		},
 	}
