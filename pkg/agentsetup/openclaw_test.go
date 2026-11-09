@@ -3,7 +3,6 @@ package agentsetup
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -70,6 +69,18 @@ func TestOpenclaw_PluginMissing(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
+	provider.Scanner.HomeDir = func() (string, error) {
+		t.Fatal("planning should not resolve the home directory")
+		return "", nil
+	}
+	provider.mkdirTemp = func(string, string) (string, error) {
+		t.Fatal("planning should not allocate a workspace")
+		return "", nil
+	}
+	provider.removeAll = func(string) error {
+		t.Fatal("planning should not remove files")
+		return nil
+	}
 	require.Equal(t,
 		Plan{Action: ActionInstall, Commands: [][]string{
 			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
@@ -114,49 +125,6 @@ func TestOpenclaw_OldVersionWithoutPluginSupport(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.Contains(t, status.Error, "upgrade OpenClaw")
-}
-
-func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
-	for _, action := range []string{ActionInstall, ActionUpdate} {
-		t.Run(action, func(t *testing.T) {
-			var commands [][]string
-			var repoPath string
-			provider := NewOpenclawProvider(Scanner{}, func(_ context.Context, name string, args ...string) ([]byte, error) {
-				commands = append(commands, append([]string{name}, args...))
-				path := args[len(args)-1]
-				require.NotEqual(t, openclawRepoPlaceholder, path)
-				require.DirExists(t, filepath.Dir(path))
-				if name == "git" {
-					repoPath = path
-					require.NoDirExists(t, path)
-					require.NoError(t, os.Mkdir(path, 0700))
-					return nil, nil
-				}
-				require.Equal(t, repoPath, path)
-				require.DirExists(t, path)
-				return nil, nil
-			}).(OpenclawProvider)
-			plan := provider.Plan(Status{Detected: true, Status: StatusMissing}, false)
-			plan.Action = action
-			original, err := json.Marshal(plan)
-			require.NoError(t, err)
-			out := new(bytes.Buffer)
-			telemetry := newOpenclawTelemetryClient()
-
-			require.NoError(t, provider.Apply(stripe.WithTelemetryClient(context.Background(), telemetry), out, plan))
-
-			require.Equal(t, [][]string{
-				{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath},
-				{"openclaw", "plugins", "install", "--force", "--accept-capabilities", repoPath},
-			}, commands)
-			require.NoDirExists(t, filepath.Dir(repoPath))
-			unchanged, err := json.Marshal(plan)
-			require.NoError(t, err)
-			require.Equal(t, original, unchanged)
-			require.Empty(t, out.String())
-			assertNoOpenclawCleanupEvent(t, telemetry)
-		})
-	}
 }
 
 func TestOpenclawApply_WithoutUnixUtilities(t *testing.T) {
@@ -223,17 +191,32 @@ func TestOpenclawApply_NoneIsNoop(t *testing.T) {
 }
 
 func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
-	for _, failStage := range []string{"", "git", "openclaw"} {
+	for _, tc := range []struct{ action, failStage string }{
+		{ActionInstall, ""},
+		{ActionUpdate, ""},
+		{ActionInstall, "git"},
+		{ActionInstall, "openclaw"},
+	} {
 		for _, cleanupFails := range []bool{false, true} {
-			t.Run(fmt.Sprintf("stage=%s/cleanupFails=%t", failStage, cleanupFails), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%s/stage=%s/cleanupFails=%t", tc.action, tc.failStage, cleanupFails), func(t *testing.T) {
 				primaryErr := errors.New("subprocess failed")
-				cleanupErr := errors.New("removal failed")
-				var commands []string
-				var workspace string
+				var commands [][]string
+				var repoPath string
 				provider := NewOpenclawProvider(Scanner{}, func(_ context.Context, name string, args ...string) ([]byte, error) {
-					commands = append(commands, name)
-					workspace = filepath.Dir(args[len(args)-1])
-					if name == failStage {
+					commands = append(commands, append([]string{name}, args...))
+					path := args[len(args)-1]
+					require.NotEqual(t, openclawRepoPlaceholder, path)
+					require.DirExists(t, filepath.Dir(path))
+					if name == "git" {
+						repoPath = path
+						require.NoDirExists(t, path)
+						require.NoError(t, os.Mkdir(path, 0700))
+						t.Cleanup(func() { require.NoError(t, os.RemoveAll(filepath.Dir(path))) })
+					} else {
+						require.Equal(t, repoPath, path)
+						require.DirExists(t, path)
+					}
+					if name == tc.failStage {
 						return nil, primaryErr
 					}
 					return nil, nil
@@ -241,31 +224,40 @@ func TestOpenclawApply_CleansUpAfterEveryOutcome(t *testing.T) {
 				cleanupCalls := 0
 				provider.removeAll = func(path string) error {
 					cleanupCalls++
-					require.Equal(t, workspace, path)
+					require.Equal(t, filepath.Dir(repoPath), path)
 					if cleanupFails {
-						return cleanupErr
+						return errors.New("removal failed")
 					}
 					return os.RemoveAll(path)
 				}
-				t.Cleanup(func() { require.NoError(t, os.RemoveAll(workspace)) })
 				out := new(bytes.Buffer)
 				telemetry := newOpenclawTelemetryClient()
 				ctx := stripe.WithTelemetryClient(context.Background(), telemetry)
+				status := Status{Detected: true, Plugin: PluginStatus{Installed: tc.action == ActionUpdate}}
+				plan := provider.Plan(status, true)
 
-				err := provider.Apply(ctx, out, provider.Plan(Status{Detected: true, Status: StatusMissing}, false))
+				err := provider.Apply(ctx, out, plan)
 
-				if failStage == "" {
+				if tc.failStage == "" {
 					require.NoError(t, err)
+					if !cleanupFails {
+						require.Empty(t, out.String())
+					}
 				} else {
 					require.Same(t, primaryErr, err)
-					require.Contains(t, out.String(), failStage+" step failed")
+					require.Contains(t, out.String(), tc.failStage+" step failed")
 				}
-				if failStage == "git" {
-					require.Equal(t, []string{"git"}, commands)
-				} else {
-					require.Equal(t, []string{"git", "openclaw"}, commands)
+				expected := [][]string{
+					{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath},
+					{"openclaw", "plugins", "install", "--force", "--accept-capabilities", repoPath},
 				}
+				if tc.failStage == "git" {
+					expected = expected[:1]
+				}
+				require.Equal(t, expected, commands)
+				require.Equal(t, provider.Plan(status, true), plan, "Apply must not mutate the plan")
 				require.Equal(t, 1, cleanupCalls)
+				workspace := filepath.Dir(repoPath)
 				if cleanupFails {
 					require.DirExists(t, workspace)
 					require.Contains(t, out.String(), "Warning: OpenClaw plugin cleanup failed")
@@ -351,30 +343,6 @@ func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "keep", string(contents))
 		})
-	}
-}
-
-func TestOpenclawPlan_DoesNotTouchFilesystem(t *testing.T) {
-	provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) {
-		t.Fatal("planning should not resolve the home directory")
-		return "", nil
-	}}, nil).(OpenclawProvider)
-	provider.mkdirTemp = func(string, string) (string, error) {
-		t.Fatal("planning should not allocate a workspace")
-		return "", nil
-	}
-	provider.removeAll = func(string) error {
-		t.Fatal("planning should not remove files")
-		return nil
-	}
-
-	plan := provider.Plan(Status{Detected: true, Status: StatusMissing}, false)
-
-	require.Len(t, plan.Commands, 2)
-	require.Equal(t, "git", plan.Commands[0][0])
-	require.Equal(t, "openclaw", plan.Commands[1][0])
-	for _, command := range plan.Commands {
-		require.Equal(t, openclawRepoPlaceholder, command[len(command)-1])
 	}
 }
 

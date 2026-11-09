@@ -158,20 +158,18 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 	if out == nil {
 		out = io.Discard
 	}
-	mkdirTemp := p.mkdirTemp
-	if mkdirTemp == nil {
-		mkdirTemp = os.MkdirTemp
+	if p.mkdirTemp == nil {
+		p.mkdirTemp = os.MkdirTemp
 	}
-	removeAll := p.removeAll
-	if removeAll == nil {
-		removeAll = os.RemoveAll
+	if p.removeAll == nil {
+		p.removeAll = os.RemoveAll
 	}
-	workspace, err := mkdirTemp("", "stripe-openclaw-*")
+	workspace, err := p.mkdirTemp("", "stripe-openclaw-*")
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "creating OpenClaw plugin workspace: %w", err)
 	}
 	defer func() {
-		if err := removeAll(workspace); err != nil {
+		if err := p.removeAll(workspace); err != nil {
 			fmt.Fprintf(out, "Warning: OpenClaw plugin cleanup failed; remove %q manually: %v\n", workspace, err)
 			if tc := stripe.GetTelemetryClient(ctx); tc != nil {
 				go tc.SendEvent(ctx, "Agent Setup: Plugin Cleanup", "openclaw:error")
