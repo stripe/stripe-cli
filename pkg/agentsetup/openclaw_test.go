@@ -5,15 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const testOpenclawHomeDir = "/home/test-user"
@@ -162,10 +158,8 @@ func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 			status := Status{Detected: true, Plugin: PluginStatus{Installed: action == ActionUpdate}}
 			plan := provider.Plan(status, true)
 			out := new(bytes.Buffer)
-			telemetry := &openclawTelemetryClient{events: make(chan [2]string, 10)}
-			ctx := stripe.WithTelemetryClient(context.Background(), telemetry)
 
-			require.NoError(t, provider.Apply(ctx, out, plan))
+			require.NoError(t, provider.Apply(context.Background(), out, plan))
 
 			require.Equal(t, [][]string{
 				{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath},
@@ -176,7 +170,6 @@ func TestOpenclawApply_ClonesThenInstalls(t *testing.T) {
 			require.DirExists(t, filepath.Join(home, ".openclaw"))
 			require.NoDirExists(t, filepath.Dir(repoPath))
 			require.Empty(t, out.String())
-			assertNoOpenclawCleanupEvent(t, telemetry)
 		})
 	}
 }
@@ -237,10 +230,8 @@ func TestOpenclawApply_CleanupFailureIsOnlyAWarning(t *testing.T) {
 				return errors.New("removal failed")
 			}
 			out := new(bytes.Buffer)
-			telemetry := &openclawTelemetryClient{events: make(chan [2]string, 10)}
-			ctx := stripe.WithTelemetryClient(context.Background(), telemetry)
 
-			err := provider.Apply(ctx, out, provider.Plan(Status{Detected: true}, false))
+			err := provider.Apply(context.Background(), out, provider.Plan(Status{Detected: true}, false))
 
 			if failStage == "" {
 				require.NoError(t, err)
@@ -251,13 +242,6 @@ func TestOpenclawApply_CleanupFailureIsOnlyAWarning(t *testing.T) {
 			require.DirExists(t, workspace)
 			require.Contains(t, out.String(), "Warning: OpenClaw plugin cleanup failed")
 			require.Contains(t, out.String(), fmt.Sprintf("%q", workspace))
-			select {
-			case event := <-telemetry.events:
-				require.Equal(t, [2]string{"Agent Setup: Plugin Cleanup", "openclaw:error"}, event)
-			case <-time.After(time.Second):
-				t.Fatal("missing cleanup event")
-			}
-			assertNoOpenclawCleanupEvent(t, telemetry)
 		})
 	}
 }
@@ -351,27 +335,6 @@ func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "keep", string(contents))
 		})
-	}
-}
-
-type openclawTelemetryClient struct {
-	events chan [2]string
-}
-
-func (c *openclawTelemetryClient) SendAPIRequestEvent(context.Context, string, bool) (*http.Response, error) {
-	return nil, nil
-}
-
-func (c *openclawTelemetryClient) SendEvent(_ context.Context, name, value string) {
-	c.events <- [2]string{name, value}
-}
-
-func assertNoOpenclawCleanupEvent(t *testing.T, client *openclawTelemetryClient) {
-	t.Helper()
-	select {
-	case event := <-client.events:
-		t.Fatalf("unexpected cleanup event: %v", event)
-	case <-time.After(25 * time.Millisecond):
 	}
 }
 

@@ -397,9 +397,6 @@ func (p cleanupWarningProvider) Apply(ctx context.Context, out io.Writer, plan a
 		return err
 	}
 	fmt.Fprintln(out, "Warning: OpenClaw plugin cleanup failed; remove the temporary workspace manually")
-	if tc := stripe.GetTelemetryClient(ctx); tc != nil {
-		tc.SendEvent(ctx, "Agent Setup: Plugin Cleanup", "openclaw:error")
-	}
 	return nil
 }
 
@@ -427,14 +424,13 @@ func TestAgentSetupCleanupWarningStillReportsInstallSuccess(t *testing.T) {
 	require.Contains(t, output, "Warning: OpenClaw plugin cleanup failed")
 	require.Contains(t, output, "done")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
-	events := make([]agentReportUsageTelemetryEvent, 0, 4)
-	for len(events) < 4 {
+	events := make([]agentReportUsageTelemetryEvent, 0, 3)
+	for len(events) < 3 {
 		events = append(events, waitForAgentReportUsageEvent(t, client))
 	}
 	require.ElementsMatch(t, []agentReportUsageTelemetryEvent{
 		{name: "Agent Setup: Client Detected", value: "openclaw"},
 		{name: "Agent Setup: Plugin Detected", value: "openclaw:not_installed"},
-		{name: "Agent Setup: Plugin Cleanup", value: "openclaw:error"},
 		{name: "Agent Setup: Plugin Install", value: "openclaw:success"},
 	}, events)
 	assertNoAgentReportUsageEvent(t, client)

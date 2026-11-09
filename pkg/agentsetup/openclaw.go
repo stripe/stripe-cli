@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const (
@@ -179,23 +178,20 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 		}
 		if _, err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
 			fmt.Fprintf(out, "OpenClaw plugin %s step failed: %v\n", command[0], err)
-			p.cleanup(ctx, out, workspace)
+			p.cleanup(out, workspace)
 			return err
 		}
 	}
 
-	p.cleanup(ctx, out, workspace)
+	p.cleanup(out, workspace)
 	return nil
 }
 
-func (p OpenclawProvider) cleanup(ctx context.Context, out io.Writer, workspace string) {
+func (p OpenclawProvider) cleanup(out io.Writer, workspace string) {
 	if p.removeAll == nil {
 		p.removeAll = os.RemoveAll
 	}
 	if err := p.removeAll(workspace); err != nil {
 		fmt.Fprintf(out, "Warning: OpenClaw plugin cleanup failed; remove %q manually: %v\n", workspace, err)
-		if tc := stripe.GetTelemetryClient(ctx); tc != nil {
-			go tc.SendEvent(ctx, "Agent Setup: Plugin Cleanup", "openclaw:error")
-		}
 	}
 }
