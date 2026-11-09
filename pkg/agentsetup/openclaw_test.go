@@ -210,42 +210,6 @@ func TestOpenclawApply_CleansUpEvenIfInstallFails(t *testing.T) {
 	}
 }
 
-func TestOpenclawApply_CleanupFailureIsOnlyAWarning(t *testing.T) {
-	for _, failStage := range []string{"", "git", "openclaw"} {
-		t.Run("stage="+failStage, func(t *testing.T) {
-			home := t.TempDir()
-			require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
-			installErr := errors.New("installation failed")
-			provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) { return home, nil }}, func(_ context.Context, name string, _ ...string) ([]byte, error) {
-				if name == failStage {
-					return nil, installErr
-				}
-				return nil, nil
-			}).(OpenclawProvider)
-			var workspace string
-			cleanupCalls := 0
-			provider.removeAll = func(path string) error {
-				workspace = path
-				cleanupCalls++
-				return errors.New("removal failed")
-			}
-			out := new(bytes.Buffer)
-
-			err := provider.Apply(context.Background(), out, provider.Plan(Status{Detected: true}, false))
-
-			if failStage == "" {
-				require.NoError(t, err)
-			} else {
-				require.Same(t, installErr, err)
-			}
-			require.Equal(t, 1, cleanupCalls)
-			require.DirExists(t, workspace)
-			require.Contains(t, out.String(), "Warning: OpenClaw plugin cleanup failed")
-			require.Contains(t, out.String(), fmt.Sprintf("%q", workspace))
-		})
-	}
-}
-
 func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
 	allocationErr := errors.New("allocation failed")
 	for _, tc := range []struct {

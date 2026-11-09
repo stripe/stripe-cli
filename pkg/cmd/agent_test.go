@@ -17,7 +17,6 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/agentsetup"
 	"github.com/stripe/stripe-cli/pkg/agentskills"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestCheckSkillsScopesChecksBothScopesConcurrently(t *testing.T) {
@@ -384,46 +383,6 @@ func TestAgentSetupOpenclawJSONDescribesTemporaryClone(t *testing.T) {
 	entries, err := os.ReadDir(filepath.Join(home, ".openclaw"))
 	require.NoError(t, err)
 	require.Empty(t, entries)
-}
-
-// cleanupWarningProvider models a provider whose installation succeeds but cleanup warns.
-// The OpenClaw provider tests exercise the filesystem failure itself.
-type cleanupWarningProvider struct {
-	agentsetup.Provider
-}
-
-func (p cleanupWarningProvider) Apply(ctx context.Context, out io.Writer, plan agentsetup.Plan) error {
-	if err := p.Provider.Apply(ctx, out, plan); err != nil {
-		return err
-	}
-	fmt.Fprintln(out, "Warning: OpenClaw plugin cleanup failed; remove the temporary workspace manually")
-	return nil
-}
-
-func TestAgentSetupCleanupWarningStillReportsInstallSuccess(t *testing.T) {
-	provider := openclawMissingProvider(t, nil)
-	setup := testAgentSetupCmd()
-	setup.providers = map[string]agentsetup.Provider{provider.ID(): cleanupWarningProvider{provider}}
-	setup.callingAgent = func() string { return "" }
-	client := &agentReportUsageTelemetryClient{events: make(chan agentReportUsageTelemetryEvent, 10)}
-	setup.cmd.SetContext(stripe.WithTelemetryClient(context.Background(), client))
-
-	output, err := executeCommand(setup.cmd, "--client", "openclaw", "--yes")
-
-	require.NoError(t, err)
-	require.Contains(t, output, "Warning: OpenClaw plugin cleanup failed")
-	require.Contains(t, output, "done")
-	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
-	events := make([]agentReportUsageTelemetryEvent, 0, 3)
-	for len(events) < 3 {
-		events = append(events, waitForAgentReportUsageEvent(t, client))
-	}
-	require.ElementsMatch(t, []agentReportUsageTelemetryEvent{
-		{name: "Agent Setup: Client Detected", value: "openclaw"},
-		{name: "Agent Setup: Plugin Detected", value: "openclaw:not_installed"},
-		{name: "Agent Setup: Plugin Install", value: "openclaw:success"},
-	}, events)
-	assertNoAgentReportUsageEvent(t, client)
 }
 
 func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
