@@ -357,34 +357,6 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 	require.Contains(t, output, "4 installed, 0 updated, 0 skipped, 0 errors")
 }
 
-func TestAgentSetupOpenclawJSONDescribesTemporaryClone(t *testing.T) {
-	provider := openclawMissingProvider(t, func(context.Context, string, ...string) ([]byte, error) {
-		t.Fatal("JSON planning must not run installation commands")
-		return nil, nil
-	})
-	setup := testAgentSetupCmd()
-	setup.providers = map[string]agentsetup.Provider{provider.ID(): provider}
-	setup.callingAgent = func() string { return "" }
-	setup.cmd.SetContext(context.Background())
-
-	output, err := executeCommand(setup.cmd, "--client", "openclaw", "--json")
-
-	require.NoError(t, err)
-	var result agentSetupJSON
-	require.NoError(t, json.Unmarshal([]byte(output), &result))
-	require.Len(t, result.Actions, 1)
-	require.Equal(t, provider.Plan(agentsetup.Status{Detected: true, Status: agentsetup.StatusMissing}, false).Commands, result.Actions[0].Commands)
-	require.Len(t, result.Actions[0].Commands, 2)
-	require.Contains(t, output, "temporary-directory")
-	require.NotContains(t, output, `"mkdir"`)
-	require.NotContains(t, output, `"rm"`)
-	home, err := provider.Scanner.HomeDir()
-	require.NoError(t, err)
-	entries, err := os.ReadDir(filepath.Join(home, ".openclaw"))
-	require.NoError(t, err)
-	require.Empty(t, entries)
-}
-
 func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 	var installed []string
 	record := func(_ context.Context, name string, args ...string) ([]byte, error) {

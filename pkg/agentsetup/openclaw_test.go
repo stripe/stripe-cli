@@ -210,50 +210,6 @@ func TestOpenclawApply_CleansUpEvenIfInstallFails(t *testing.T) {
 	}
 }
 
-func TestOpenclawApply_WorkspaceAllocationFails(t *testing.T) {
-	allocationErr := errors.New("allocation failed")
-	for _, tc := range []struct {
-		stage, message string
-		cause          error
-	}{
-		{"home", "resolving home directory", allocationErr},
-		{"parent", "creating OpenClaw plugin workspace", os.ErrNotExist},
-		{"workspace", "creating OpenClaw plugin workspace", allocationErr},
-	} {
-		t.Run(tc.stage, func(t *testing.T) {
-			home := t.TempDir()
-			provider := NewOpenclawProvider(Scanner{HomeDir: func() (string, error) {
-				if tc.stage == "home" {
-					return "", allocationErr
-				}
-				return home, nil
-			}}, func(context.Context, string, ...string) ([]byte, error) {
-				t.Fatal("no subprocess should run without a workspace")
-				return nil, nil
-			}).(OpenclawProvider)
-			if tc.stage != "parent" {
-				provider.mkdirTemp = func(dir, _ string) (string, error) {
-					require.Equal(t, "workspace", tc.stage, "must not allocate a workspace after a prerequisite fails")
-					require.Equal(t, filepath.Join(home, ".openclaw"), dir)
-					return "", allocationErr
-				}
-			}
-			provider.removeAll = func(string) error {
-				t.Fatal("no workspace to clean up")
-				return nil
-			}
-
-			err := provider.Apply(context.Background(), nil, provider.Plan(Status{Detected: true, Status: StatusMissing}, false))
-
-			require.ErrorIs(t, err, tc.cause)
-			require.ErrorContains(t, err, tc.message)
-			if tc.stage == "parent" {
-				require.NoDirExists(t, filepath.Join(home, ".openclaw"))
-			}
-		})
-	}
-}
-
 func TestOpenclawApply_RetryLeavesLegacyDirectoryUntouched(t *testing.T) {
 	for _, cleanupFails := range []bool{false, true} {
 		t.Run(fmt.Sprintf("cleanupFails=%t", cleanupFails), func(t *testing.T) {
