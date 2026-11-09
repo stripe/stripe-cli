@@ -382,8 +382,7 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 	validated := make([]ManagedSandbox, 0, len(records))
 	for _, record := range records {
 		if !validTestmodeWorkspaceID(record.sandbox.WorkspaceID) ||
-			!validAccountID(record.sandbox.AccountID) ||
-			strings.TrimSpace(record.sandbox.Name) == "" {
+			!validAccountID(record.sandbox.AccountID) {
 			return nil, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response contained an invalid sandbox")
 		}
 
@@ -409,6 +408,11 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 
 	result := make([]ManagedSandbox, 0, len(byWorkspaceID))
 	for _, sandbox := range byWorkspaceID {
+		// Apply display defaults after duplicate validation so conflicting names
+		// cannot collapse into the same record.
+		if strings.TrimSpace(sandbox.Name) == "" {
+			sandbox.Name = "New business"
+		}
 		result = append(result, sandbox)
 	}
 	sort.Slice(result, func(i, j int) bool {
