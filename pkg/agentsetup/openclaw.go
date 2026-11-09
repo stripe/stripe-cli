@@ -161,9 +161,6 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 	if p.mkdirTemp == nil {
 		p.mkdirTemp = os.MkdirTemp
 	}
-	if p.removeAll == nil {
-		p.removeAll = os.RemoveAll
-	}
 	home, err := p.Scanner.withDefaults().HomeDir()
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "resolving home directory for OpenClaw plugin workspace: %w", err)
@@ -172,15 +169,6 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "creating OpenClaw plugin workspace: %w", err)
 	}
-	defer func() {
-		if err := p.removeAll(workspace); err != nil {
-			fmt.Fprintf(out, "Warning: OpenClaw plugin cleanup failed; remove %q manually: %v\n", workspace, err)
-			if tc := stripe.GetTelemetryClient(ctx); tc != nil {
-				go tc.SendEvent(ctx, "Agent Setup: Plugin Cleanup", "openclaw:error")
-			}
-		}
-	}()
-
 	repoPath := filepath.Join(workspace, "repo")
 	for _, command := range plan.Commands {
 		command = append([]string(nil), command...)
@@ -191,9 +179,23 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 		}
 		if _, err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
 			fmt.Fprintf(out, "OpenClaw plugin %s step failed: %v\n", command[0], err)
+			p.cleanup(ctx, out, workspace)
 			return err
 		}
 	}
 
+	p.cleanup(ctx, out, workspace)
 	return nil
+}
+
+func (p OpenclawProvider) cleanup(ctx context.Context, out io.Writer, workspace string) {
+	if p.removeAll == nil {
+		p.removeAll = os.RemoveAll
+	}
+	if err := p.removeAll(workspace); err != nil {
+		fmt.Fprintf(out, "Warning: OpenClaw plugin cleanup failed; remove %q manually: %v\n", workspace, err)
+		if tc := stripe.GetTelemetryClient(ctx); tc != nil {
+			go tc.SendEvent(ctx, "Agent Setup: Plugin Cleanup", "openclaw:error")
+		}
+	}
 }
