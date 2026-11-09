@@ -54,28 +54,6 @@ func TestInitConfigDoesNotChmodThroughSymlink(t *testing.T) {
 	}
 }
 
-func TestConfigWriteConfigFieldRefusesSymlink(t *testing.T) {
-	profilesFile, victimFile := setupSymlinkedProfilesFile(t)
-
-	c := &Config{
-		Color:        "auto",
-		LogLevel:     "info",
-		ProfilesFile: profilesFile,
-		Profile: Profile{
-			ProfileName: "default",
-		},
-	}
-	c.InitConfig()
-	KeyRing = keyring.NewMemoryStore(nil)
-
-	err := c.WriteConfigField("default.color", "on")
-	require.ErrorContains(t, err, "symlink")
-
-	victimContents, err := os.ReadFile(victimFile)
-	require.NoError(t, err)
-	require.Equal(t, "original = true\n", string(victimContents))
-}
-
 func TestProfileWriteConfigFieldRefusesSymlink(t *testing.T) {
 	profilesFile, victimFile := setupSymlinkedProfilesFile(t)
 

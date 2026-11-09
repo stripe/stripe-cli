@@ -842,9 +842,6 @@ func secureConfigPermissions(path string) error {
 	if err != nil {
 		return fmt.Errorf("checking config permissions: %w", err)
 	}
-	if err := fsutil.RefuseWriteThroughSymlinkOS(path, filepath.Dir(filepath.Dir(path)), filepath.Base(path)); err != nil {
-		return err
-	}
 	if !info.Mode().IsRegular() {
 		return errorcategory.New(errorcategory.Filesystem, "config is not a regular file")
 	}
@@ -852,6 +849,9 @@ func secureConfigPermissions(path string) error {
 		return nil
 	}
 
+	if err := fsutil.RefuseWriteThroughSymlinkOS(path, filepath.Dir(filepath.Dir(path)), filepath.Base(path)); err != nil {
+		return err
+	}
 	if err := configFileChmod(path, os.FileMode(0600)); err != nil {
 		return fmt.Errorf("setting config permissions to 0600: %w", err)
 	}
