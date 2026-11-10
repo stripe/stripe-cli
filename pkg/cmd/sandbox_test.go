@@ -492,6 +492,33 @@ func TestSandboxCreateCmd_AlreadyLoggedIn_WithRealKey(t *testing.T) {
 }
 
 func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
+	cleanup := setupSandboxTestConfig(t)
+	defer cleanup()
+
+	const claimURL = "https://dashboard.stripe.com/onboard_sandbox/existing"
+	setupActiveClaimableSandbox(t, claimURL, "2099-01-01")
+
+	var recs []claimStatusRequest
+	server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":false}`, &recs)
+	defer server.Close()
+
+	cmd := newSandboxCreateCmd()
+	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--api-base", server.URL})
+
+	output, err := captureStdout(t, func() error {
+		return cmd.cmd.Execute()
+	})
+	require.NoError(t, err)
+	assert.Contains(t, output, "You already have an active sandbox")
+	assert.Contains(t, output, "Claim it before then")
+	assert.Contains(t, output, "stripe sandboxes claim")
+	require.Len(t, recs, 1)
+	assert.Equal(t, http.MethodGet, recs[0].Method)
+	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
+	assert.Equal(t, sandboxClaimStatusVersion, recs[0].Version)
+}
+
+func TestSandboxCreateCmd_ExistingSandboxShowsRemainingDays(t *testing.T) {
 	tomorrow := time.Now().UTC().AddDate(0, 0, 1).Format(time.DateOnly)
 	inSevenDays := time.Now().UTC().AddDate(0, 0, 7).Format(time.DateOnly)
 	for _, tt := range []struct {
@@ -511,8 +538,7 @@ func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 			const claimURL = "https://dashboard.stripe.com/onboard_sandbox/existing"
 			setupActiveClaimableSandbox(t, claimURL, tt.expiresAt)
 
-			var recs []claimStatusRequest
-			server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":false}`, &recs)
+			server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":false}`, nil)
 			defer server.Close()
 
 			cmd := newSandboxCreateCmd()
@@ -522,13 +548,7 @@ func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 				return cmd.cmd.Execute()
 			})
 			require.NoError(t, err)
-			assert.Contains(t, output, "You already have an active sandbox")
 			assert.Contains(t, output, "This sandbox expires "+tt.expected+". Claim it before then")
-			assert.Contains(t, output, "stripe sandboxes claim")
-			require.Len(t, recs, 1)
-			assert.Equal(t, http.MethodGet, recs[0].Method)
-			assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
-			assert.Equal(t, sandboxClaimStatusVersion, recs[0].Version)
 		})
 	}
 }
