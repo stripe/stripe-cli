@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +27,7 @@ func newGatewayServer(t *testing.T, check func(r *http.Request)) *httptest.Serve
 		assert.Equal(t, defaultPath, r.URL.Path)
 		check(r)
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"data":{"v2ListDoctorRules":{"doctor_rules":[{"topic":"webhooks","severity":"high"}]}}}`))
+		_, _ = w.Write([]byte(`{"data":{"v2ListIntegHlthAlerts":{"alerts":[{"health_insight_id":"hi_123","status":"open"}],"next_page":"page_2"}}}`))
 	}))
 	t.Cleanup(ts.Close)
 	return ts
@@ -37,6 +38,15 @@ func TestNewClientSendsCredentialsAndPreviewVersion(t *testing.T) {
 		assert.Equal(t, "Bearer "+testAPIKey, r.Header.Get("Authorization"))
 		assert.Equal(t, requests.StripePreviewVersionHeaderValue, r.Header.Get("Stripe-Version"))
 		assert.Empty(t, r.Header.Get("Stripe-Context"))
+
+		var body struct {
+			OperationName string                 `json:"operationName"`
+			Variables     map[string]interface{} `json:"variables"`
+		}
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		assert.Equal(t, "ListIntegHlthAlerts", body.OperationName)
+		// Unset optional filters are omitted rather than sent as zero values.
+		assert.Equal(t, map[string]interface{}{"statuses": []interface{}{"open"}}, body.Variables)
 	})
 
 	client, err := NewClient(context.Background(), Options{
@@ -46,10 +56,12 @@ func TestNewClientSendsCredentialsAndPreviewVersion(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	resp, err := ListDoctorRules(context.Background(), client, true)
+	resp, err := ListIntegHlthAlerts(context.Background(), client, []string{"open"}, 0, "", "", "")
 	require.NoError(t, err)
-	require.Len(t, resp.V2ListDoctorRules.Doctor_rules, 1)
-	assert.Equal(t, "webhooks", resp.V2ListDoctorRules.Doctor_rules[0].Topic)
+	require.Len(t, resp.V2ListIntegHlthAlerts.Alerts, 1)
+	assert.Equal(t, "hi_123", resp.V2ListIntegHlthAlerts.Alerts[0].Health_insight_id)
+	assert.Equal(t, "open", resp.V2ListIntegHlthAlerts.Alerts[0].Status)
+	assert.Equal(t, "page_2", resp.V2ListIntegHlthAlerts.Next_page)
 }
 
 func TestNewClientUsesStripeVersionOverride(t *testing.T) {
@@ -65,7 +77,7 @@ func TestNewClientUsesStripeVersionOverride(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = ListDoctorRules(context.Background(), client, true)
+	_, err = ListIntegHlthAlerts(context.Background(), client, []string{"open"}, 0, "", "", "")
 	require.NoError(t, err)
 }
 

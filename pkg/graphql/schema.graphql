@@ -3,7 +3,6 @@
 # omitted. Copy new fields from the gateway's schema when adding operations.
 
 type Query {
-  v2ListDoctorRules(active: Boolean!, context: StripeContextInput): V2IntegrationHealthListDoctorRulesResponse
   v2ListIntegHlthAlerts(context: StripeContextInput, last_updated_after: String, last_updated_before: String, limit: Int, page: String, statuses: [V2IntegrationHealthOpenEnumAlertStatus!]!): V2IntegrationHealthListIntegHlthAlertsResponse
 }
 
@@ -21,68 +20,6 @@ enum LiveModeEnum {
 
 # Open enum with values "open" and "resolved"; bound to string in genqlient.yaml.
 scalar V2IntegrationHealthOpenEnumAlertStatus
-
-type V2IntegrationHealthListDoctorRulesResponse {
-  doctor_rules: [V2IntegrationHealthDoctorRule!]!
-}
-
-type V2IntegrationHealthDoctorRule {
-  action: String!
-  docs: [String!]!
-  logic: [V2IntegrationHealthDoctorLogicItem!]!
-  message: String!
-  severity: String!
-  topic: String!
-}
-
-type V2IntegrationHealthDoctorLogicItem {
-  chapter: V2IntegrationHealthDoctorChapter
-  condition_group: V2IntegrationHealthDoctorConditionGroup
-  entry: V2IntegrationHealthDoctorEntryItem
-  matcher_type: String!
-}
-
-type V2IntegrationHealthDoctorChapter {
-  id: ID!
-  items: [V2IntegrationHealthDoctorLogicItem!]!
-  name: String!
-  order: Int!
-  timeout_in_days: Int
-}
-
-type V2IntegrationHealthDoctorConditionGroup {
-  items: [V2IntegrationHealthDoctorLogicItem!]!
-  logical_operator: String!
-}
-
-type V2IntegrationHealthDoctorEntryItem {
-  compare_versions: Boolean
-  data_type: String!
-  fuzzy_match_key: Boolean
-  key: String
-  matcher: V2IntegrationHealthDoctorValueRule
-  method: String
-  path: V2IntegrationHealthDoctorValueRule
-  pattern_matcher: String
-  post_params: [V2IntegrationHealthDoctorMatcherItem!]!
-  request_headers: [V2IntegrationHealthDoctorMatcherItem!]!
-}
-
-type V2IntegrationHealthDoctorMatcherItem {
-  compare_versions: Boolean
-  fuzzy_match_key: Boolean
-  items: [V2IntegrationHealthDoctorMatcherItem!]!
-  key: String
-  logical_operator: String
-  matcher: V2IntegrationHealthDoctorValueRule
-  matcher_type: String!
-  pattern_matcher: String
-}
-
-type V2IntegrationHealthDoctorValueRule {
-  operator: String!
-  value: String
-}
 
 type V2IntegrationHealthListIntegHlthAlertsResponse {
   alerts: [V2IntegrationHealthAlertDetail!]!
