@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -341,8 +342,8 @@ func TestManagementClientCreateRetryPreservesTargetAndIdempotency(t *testing.T) 
 	client.ShowHeaders = true
 	var created CreatedSandbox
 	var err error
-	headers, debug := captureManagementDiagnostics(t, func() { created, err = client.Create(context.Background(), CreateOptions{Name: "Retry sandbox"}) })
-	assertRetryDiagnostics(t, headers, debug, "create", "play_parent", "true")
+	headers, _ := captureManagementDiagnostics(t, log.DebugLevel, func() { created, err = client.Create(context.Background(), CreateOptions{Name: "Retry sandbox"}) })
+	assertRetryHeaders(t, headers, "play_parent", "true")
 	require.NoError(t, err)
 	require.Equal(t, CreatedSandbox{AccountID: "acct_created"}, created)
 	require.Equal(t, 1, refreshes)
@@ -589,8 +590,8 @@ func TestManagementClientDeleteRefreshPreservesTarget(t *testing.T) {
 	client.ShowHeaders = true
 	var deleted DeletedSandbox
 	var err error
-	headers, debug := captureManagementDiagnostics(t, func() { deleted, err = client.Delete(context.Background(), "acct_target") })
-	assertRetryDiagnostics(t, headers, debug, "delete", "acct_target", "false")
+	headers, _ := captureManagementDiagnostics(t, log.DebugLevel, func() { deleted, err = client.Delete(context.Background(), "acct_target") })
+	assertRetryHeaders(t, headers, "acct_target", "false")
 	require.NoError(t, err)
 	require.Equal(t, DeletedSandbox{AccountID: "acct_target", Name: "Target sandbox"}, deleted)
 	require.Equal(t, 1, refreshes)

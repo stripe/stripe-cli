@@ -130,7 +130,7 @@ profile already has an API key, the command opens Dashboard instead. If anonymou
 provisioning fails, the command falls back to browser-based signup or login.
 
 Use --show-headers (-s) to inspect managed requests and --log-level=debug for
-request summaries. --show-headers requires managed creation with a CLI login.
+request progress. --show-headers requires managed creation with a CLI login.
 
 For a claimable sandbox, keys are saved to the current CLI profile so
 subsequent stripe commands work immediately.`,

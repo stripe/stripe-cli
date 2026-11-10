@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
@@ -64,6 +65,14 @@ func TestSandboxManagementShowHeaders(t *testing.T) {
 				defer reader.Close()
 				defer func() { os.Stderr = oldStderr }()
 				os.Stderr = writer
+				logger := log.StandardLogger()
+				oldOutput, oldLevel := logger.Out, logger.Level
+				log.SetOutput(writer)
+				log.SetLevel(log.DebugLevel)
+				oldConfiguredLevel := Config.LogLevel
+				Config.LogLevel = "debug"
+				defer func() { Config.LogLevel = oldConfiguredLevel }()
+				defer func() { log.SetOutput(oldOutput); log.SetLevel(oldLevel) }()
 				err = command.Execute()
 				require.NoError(t, writer.Close())
 				os.Stderr = oldStderr
@@ -75,6 +84,8 @@ func TestSandboxManagementShowHeaders(t *testing.T) {
 				require.Contains(t, string(headers), "/v1/stripecli/workspace_context")
 				require.NotContains(t, string(headers), "oak_live_test")
 				require.NotContains(t, stdout.String(), "Request-Id")
+				require.NotContains(t, stdout.String(), "Sandbox management request completed")
+				require.Contains(t, string(headers), "Sandbox management request completed")
 				switch operation {
 				case "create":
 					require.Contains(t, stdout.String(), "Account ID: acct_created")

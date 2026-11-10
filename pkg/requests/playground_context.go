@@ -16,14 +16,14 @@ type PlaygroundContext struct {
 }
 
 // GetPlaygroundContext fetches the playground associated with the active OAuth context.
-func GetPlaygroundContext(ctx context.Context, apiBaseURL string, profile *config.Profile, creds stripe.Credentials, livemode bool, diagnostics ...*Diagnostics) (PlaygroundContext, error) {
+func GetPlaygroundContext(ctx context.Context, apiBaseURL string, profile *config.Profile, creds stripe.Credentials, livemode bool, showHeaders bool) (PlaygroundContext, error) {
 	base := &Base{
 		Profile:        profile,
 		Method:         http.MethodGet,
 		SuppressOutput: true,
 		APIBaseURL:     apiBaseURL,
 		Livemode:       livemode,
-		Diagnostics:    firstDiagnostics(diagnostics),
+		ShowHeaders:    showHeaders,
 	}
 
 	resp, err := base.MakeRequest(ctx, creds, "/v1/stripecli/playground_context", &RequestParameters{}, nil, true, nil)
@@ -33,7 +33,7 @@ func GetPlaygroundContext(ctx context.Context, apiBaseURL string, profile *confi
 
 	var playgroundContext PlaygroundContext
 	if err := json.Unmarshal(resp, &playgroundContext); err != nil {
-		return PlaygroundContext{}, base.Diagnostics.WithRequestID(fmt.Errorf("failed to decode playground context response: %w", err))
+		return PlaygroundContext{}, fmt.Errorf("failed to decode playground context response: %w", err)
 	}
 	return playgroundContext, nil
 }

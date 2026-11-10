@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
@@ -85,8 +85,15 @@ func NewManagementClient(apiBaseURL string, profile *config.Profile) *Management
 	return &ManagementClient{APIBaseURL: apiBaseURL, Profile: profile}
 }
 
-func (c *ManagementClient) diagnostics(operation, stage string) *requests.Diagnostics {
-	return &requests.Diagnostics{ShowHeaders: c.ShowHeaders, Operation: operation, Stage: stage}
+func logManagementRequest(operation, stage string, err error) {
+	fields := log.Fields{"operation": operation, "stage": stage, "outcome": "success"}
+	if err != nil {
+		fields["outcome"] = "failure"
+		if status, ok := requestStatusCode(err); ok {
+			fields["status"] = status
+		}
+	}
+	log.WithFields(fields).Debug("Sandbox management request completed")
 }
 
 // Create creates a sandbox beneath the active live OAuth account.
@@ -116,13 +123,13 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 		return CreatedSandbox{}, err
 	}
 
-	playgroundDiagnostics := c.diagnostics("sandbox_create", "playground_context")
-	playgroundContext, err := requests.GetPlaygroundContext(ctx, c.APIBaseURL, c.Profile, creds, true, playgroundDiagnostics)
+	playgroundContext, err := requests.GetPlaygroundContext(ctx, c.APIBaseURL, c.Profile, creds, true, c.ShowHeaders)
+	logManagementRequest("sandbox_create", "playground_context", err)
 	if err != nil {
 		return CreatedSandbox{}, safeDependencyError("could not resolve the active playground", err)
 	}
 	if !validPlaygroundID(playgroundContext.PlaygroundID) {
-		return CreatedSandbox{}, playgroundDiagnostics.WithRequestID(errorcategory.New(errorcategory.API, "could not resolve the active playground: the response was invalid"))
+		return CreatedSandbox{}, errorcategory.New(errorcategory.API, "could not resolve the active playground: the response was invalid")
 	}
 
 	body := map[string]interface{}{
@@ -136,13 +143,13 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 		if err != nil {
 			return CreatedSandbox{}, err
 		}
-		workspaceDiagnostics := c.diagnostics("sandbox_create", "workspace_context")
-		workspaceContext, workspaceErr := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true, workspaceDiagnostics)
+		workspaceContext, workspaceErr := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true, c.ShowHeaders)
+		logManagementRequest("sandbox_create", "workspace_context", workspaceErr)
 		if workspaceErr != nil {
 			return CreatedSandbox{}, safeDependencyError("could not resolve the active live workspace", workspaceErr)
 		}
 		if !validLiveWorkspaceID(workspaceContext.WorkspaceID) {
-			return CreatedSandbox{}, workspaceDiagnostics.WithRequestID(errorcategory.New(errorcategory.API, "could not resolve the active live workspace: the response was invalid"))
+			return CreatedSandbox{}, errorcategory.New(errorcategory.API, "could not resolve the active live workspace: the response was invalid")
 		}
 		body["replica_of"] = workspaceContext.WorkspaceID
 	}
@@ -159,7 +166,7 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 		SuppressOutput: true,
 		APIBaseURL:     c.APIBaseURL,
 		Livemode:       true,
-		Diagnostics:    c.diagnostics("sandbox_create", "create"),
+		ShowHeaders:    c.ShowHeaders,
 	}
 	response, err := base.MakeRequest(
 		ctx,
@@ -174,6 +181,7 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 			return nil
 		},
 	)
+	logManagementRequest("sandbox_create", "create", err)
 	if err != nil {
 		return CreatedSandbox{}, safeCreateError(err)
 	}
@@ -182,7 +190,7 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 		AccountID string `json:"v1_account_id"`
 	}
 	if err := json.Unmarshal(response, &parsed); err != nil || !validAccountID(parsed.AccountID) {
-		return CreatedSandbox{}, base.Diagnostics.WithRequestID(errorcategory.New(errorcategory.API, "sandbox creation could not be confirmed; check Dashboard before retrying"))
+		return CreatedSandbox{}, errorcategory.New(errorcategory.API, "sandbox creation could not be confirmed; check Dashboard before retrying")
 	}
 
 	return CreatedSandbox{AccountID: parsed.AccountID}, nil
@@ -191,22 +199,18 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 // ListAccessible resolves the active live OAuth workspace and returns the
 // sandboxes accessible beneath it.
 func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox, error) {
-	return c.listAccessible(ctx, "sandbox_list")
-}
-
-func (c *ManagementClient) listAccessible(ctx context.Context, operation string) ([]ManagedSandbox, error) {
 	creds, err := c.resolveCredentials()
 	if err != nil {
 		return nil, err
 	}
 
-	workspaceDiagnostics := c.diagnostics(operation, "workspace_context")
-	workspaceContext, err := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true, workspaceDiagnostics)
+	workspaceContext, err := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true, c.ShowHeaders)
+	logManagementRequest("sandbox_list", "workspace_context", err)
 	if err != nil {
 		return nil, safeDependencyError("could not resolve the active live workspace", err)
 	}
 	if !validLiveWorkspaceID(workspaceContext.WorkspaceID) {
-		return nil, workspaceDiagnostics.WithRequestID(errorcategory.New(errorcategory.API, "could not resolve the active live workspace: the response was invalid"))
+		return nil, errorcategory.New(errorcategory.API, "could not resolve the active live workspace: the response was invalid")
 	}
 
 	base := &requests.Base{
@@ -215,7 +219,7 @@ func (c *ManagementClient) listAccessible(ctx context.Context, operation string)
 		SuppressOutput: true,
 		APIBaseURL:     c.APIBaseURL,
 		Livemode:       true,
-		Diagnostics:    c.diagnostics(operation, "list"),
+		ShowHeaders:    c.ShowHeaders,
 	}
 	response, err := base.MakeRequest(
 		ctx,
@@ -232,17 +236,17 @@ func (c *ManagementClient) listAccessible(ctx context.Context, operation string)
 		true,
 		nil,
 	)
+	logManagementRequest("sandbox_list", "list", err)
 	if err != nil {
 		return nil, safeDependencyError("could not list accessible sandboxes", err)
 	}
 
-	parsed, err := decodeAccessibleSandboxes(response)
-	if err != nil {
-		return nil, base.Diagnostics.WithRequestID(err)
+	var parsed accessibleSandboxesResponse
+	if err := json.Unmarshal(response, &parsed); err != nil {
+		return nil, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response was invalid")
 	}
 
-	sandboxes, err := normalizeAccessibleSandboxes(parsed)
-	return sandboxes, base.Diagnostics.WithRequestID(err)
+	return normalizeAccessibleSandboxes(parsed)
 }
 
 // Delete closes a sandbox beneath the active live OAuth account.
@@ -252,7 +256,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 		return DeletedSandbox{}, errorcategory.New(errorcategory.UserInput, "sandbox account must be an account id (acct_...)")
 	}
 
-	sandboxes, err := c.listAccessible(ctx, "sandbox_delete")
+	sandboxes, err := c.ListAccessible(ctx)
 	if err != nil {
 		return DeletedSandbox{}, err
 	}
@@ -287,7 +291,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 		SuppressOutput: true,
 		APIBaseURL:     c.APIBaseURL,
 		Livemode:       true,
-		Diagnostics:    c.diagnostics("sandbox_delete", "delete"),
+		ShowHeaders:    c.ShowHeaders,
 	}
 	response, err := base.MakeRequest(
 		ctx,
@@ -306,6 +310,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 			return nil
 		},
 	)
+	logManagementRequest("sandbox_delete", "delete", err)
 	if err != nil {
 		return DeletedSandbox{}, safeDeleteError(err)
 	}
@@ -314,7 +319,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(response, &parsed); err != nil || parsed.ID != managedSandbox.WorkspaceID {
-		return DeletedSandbox{}, base.Diagnostics.WithRequestID(errorcategory.New(errorcategory.API, "sandbox deletion could not be confirmed; run `stripe sandboxes list` before retrying"))
+		return DeletedSandbox{}, errorcategory.New(errorcategory.API, "sandbox deletion could not be confirmed; run `stripe sandboxes list` before retrying")
 	}
 
 	return DeletedSandbox{AccountID: managedSandbox.AccountID, Name: managedSandbox.Name}, nil
@@ -366,49 +371,6 @@ type compartmentLabel struct {
 	UsageType string `json:"usage_type"`
 }
 
-func decodeAccessibleSandboxes(body []byte) (accessibleSandboxesResponse, error) {
-	var raw struct {
-		Workspaces    []json.RawMessage `json:"workspaces"`
-		Organizations []struct {
-			Workspaces        []json.RawMessage  `json:"workspaces"`
-			CompartmentLabels []compartmentLabel `json:"compartment_labels"`
-		} `json:"organizations"`
-	}
-	if err := json.Unmarshal(body, &raw); err != nil {
-		return accessibleSandboxesResponse{}, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response was invalid")
-	}
-	decode := func(records []json.RawMessage, position string) ([]accessibleSandbox, error) {
-		result := make([]accessibleSandbox, len(records))
-		for i, record := range records {
-			if err := json.Unmarshal(record, &result[i]); err != nil {
-				reason := "record must be a sandbox object"
-				var typeError *json.UnmarshalTypeError
-				if errors.As(err, &typeError) {
-					switch typeError.Field {
-					case "id", "merchant_id", "name", "is_legacy_testmode_compartment", "compartment_labels", "compartment_labels.usage_type":
-						reason = typeError.Field + " has an invalid JSON type"
-					}
-				}
-				return nil, errorcategory.Errorf(errorcategory.API, "could not list accessible sandboxes: the response contained an invalid sandbox at %s[%d]: %s", position, i, reason)
-			}
-		}
-		return result, nil
-	}
-	workspaces, err := decode(raw.Workspaces, "workspaces")
-	if err != nil {
-		return accessibleSandboxesResponse{}, err
-	}
-	parsed := accessibleSandboxesResponse{Workspaces: workspaces}
-	for i, organization := range raw.Organizations {
-		workspaces, err := decode(organization.Workspaces, fmt.Sprintf("organizations[%d].workspaces", i))
-		if err != nil {
-			return accessibleSandboxesResponse{}, err
-		}
-		parsed.Organizations = append(parsed.Organizations, sandboxOrganization{Workspaces: workspaces, CompartmentLabels: organization.CompartmentLabels})
-	}
-	return parsed, nil
-}
-
 const (
 	sandboxAccessLabelPrivate   = "sandbox_access_level_private"
 	sandboxAccessLabelGlobal    = "sandbox_access_level_global"
@@ -419,42 +381,32 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 	type sandboxWithAccessLabels struct {
 		sandbox      accessibleSandbox
 		accessLabels []compartmentLabel
-		position     string
 	}
 
 	records := make([]sandboxWithAccessLabels, 0, len(response.Workspaces))
-	for i, workspace := range response.Workspaces {
+	for _, workspace := range response.Workspaces {
 		records = append(records, sandboxWithAccessLabels{
 			sandbox:      workspace,
 			accessLabels: workspace.CompartmentLabels,
-			position:     fmt.Sprintf("workspaces[%d]", i),
 		})
 	}
-	for i, organization := range response.Organizations {
+	for _, organization := range response.Organizations {
 		// Account sandboxes in a sandbox organization inherit the organization's
 		// default access setting, which is also how Dashboard renders them.
-		for j, workspace := range organization.Workspaces {
+		for _, workspace := range organization.Workspaces {
 			records = append(records, sandboxWithAccessLabels{
 				sandbox:      workspace,
 				accessLabels: organization.CompartmentLabels,
-				position:     fmt.Sprintf("organizations[%d].workspaces[%d]", i, j),
 			})
 		}
 	}
 
 	validated := make([]ManagedSandbox, 0, len(records))
 	for _, record := range records {
-		invalidField := ""
-		switch {
-		case !validTestmodeWorkspaceID(record.sandbox.WorkspaceID):
-			invalidField = "id must be a nonempty test workspace ID"
-		case !validAccountID(record.sandbox.AccountID):
-			invalidField = "merchant_id must be a nonempty account ID"
-		case strings.TrimSpace(record.sandbox.Name) == "":
-			invalidField = "name must be nonblank"
-		}
-		if invalidField != "" {
-			return nil, errorcategory.Errorf(errorcategory.API, "could not list accessible sandboxes: the response contained an invalid sandbox at %s: %s", record.position, invalidField)
+		if !validTestmodeWorkspaceID(record.sandbox.WorkspaceID) ||
+			!validAccountID(record.sandbox.AccountID) ||
+			strings.TrimSpace(record.sandbox.Name) == "" {
+			return nil, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response contained an invalid sandbox")
 		}
 
 		validated = append(validated, ManagedSandbox{
@@ -467,10 +419,10 @@ func normalizeAccessibleSandboxes(response accessibleSandboxesResponse) ([]Manag
 	}
 
 	byWorkspaceID := make(map[string]ManagedSandbox, len(validated))
-	for i, sandbox := range validated {
+	for _, sandbox := range validated {
 		if existing, ok := byWorkspaceID[sandbox.WorkspaceID]; ok {
 			if existing != sandbox {
-				return nil, errorcategory.Errorf(errorcategory.API, "could not list accessible sandboxes: the response contained conflicting sandbox records at %s: duplicate id has inconsistent fields", records[i].position)
+				return nil, errorcategory.New(errorcategory.API, "could not list accessible sandboxes: the response contained conflicting sandbox records")
 			}
 			continue
 		}
@@ -534,8 +486,7 @@ func validCountryCode(country string) bool {
 		country[1] >= 'A' && country[1] <= 'Z'
 }
 
-func safeCreateError(err error) (safe error) {
-	defer func() { safe = requests.WithRequestID(safe, requests.RequestIDFromError(err)) }()
+func safeCreateError(err error) error {
 	if requestErr, ok := requestError(err); ok {
 		if isMaxSandboxesCreatedError(requestErr) {
 			return errorcategory.New(errorcategory.API, maxSandboxesCreatedCopy)
@@ -566,8 +517,7 @@ func isMaxSandboxesCreatedError(requestErr requests.RequestError) bool {
 		requestErr.Message == maxSandboxesCreatedMessageWithoutCode
 }
 
-func safeDeleteError(err error) (safe error) {
-	defer func() { safe = requests.WithRequestID(safe, requests.RequestIDFromError(err)) }()
+func safeDeleteError(err error) error {
 	if _, ok := requestStatusCode(err); ok {
 		return safeDependencyError("could not delete sandbox", err)
 	}
@@ -585,8 +535,7 @@ func safeDeleteError(err error) (safe error) {
 	return errorcategory.New(category, "sandbox deletion outcome is unknown; run `stripe sandboxes list` before retrying")
 }
 
-func safeDependencyError(operation string, err error) (safe error) {
-	defer func() { safe = requests.WithRequestID(safe, requests.RequestIDFromError(err)) }()
+func safeDependencyError(operation string, err error) error {
 	if errors.Is(err, context.Canceled) {
 		return errorcategory.New(errorcategory.Network, operation+": request canceled")
 	}

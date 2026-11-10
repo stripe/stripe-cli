@@ -18,9 +18,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -86,7 +84,6 @@ func (r *RequestParameters) SetVersion(value string) {
 type RequestError struct {
 	msg           string
 	StatusCode    int
-	RequestID     string
 	ErrorType     string
 	ErrorCode     string
 	Message       string      // the human-readable "message" field from the error response body
@@ -102,9 +99,6 @@ func (e RequestError) Error() string {
 func (e RequestError) HTTPStatusCode() int {
 	return e.StatusCode
 }
-
-// StripeRequestID returns correlation metadata without exposing the response body.
-func (e RequestError) StripeRequestID() string { return e.RequestID }
 
 // IsAPIKeyExpiredError returns true if the provided error was caused by a
 // request returning an `api_key_expired` error code.
@@ -155,10 +149,9 @@ type Base struct {
 
 	DryRun bool
 
-	Diagnostics *Diagnostics
+	ShowHeaders bool
 
 	autoConfirm bool
-	showHeaders bool
 }
 
 // DryRunDetails contains the details of a dry-run request.
@@ -239,7 +232,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
-	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
+	rb.Cmd.Flags().BoolVarP(&rb.ShowHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test). Requires that you're logged in to live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
 	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it")
@@ -311,7 +304,7 @@ func (rb *Base) MakeMultiPartRequestWithAdditionalParams(ctx context.Context, cr
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders || (rb.Diagnostics != nil && rb.Diagnostics.ShowHeaders),
+		Verbose:     rb.ShowHeaders,
 	}
 
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
@@ -327,7 +320,7 @@ func (rb *Base) MakeRequest(ctx context.Context, creds stripe.Credentials, path 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders || (rb.Diagnostics != nil && rb.Diagnostics.ShowHeaders),
+		Verbose:     rb.ShowHeaders,
 	}
 
 	return rb.MakeRequestWithClient(ctx, client, path, params, additionalParams, errOnStatus, additionalConfigure)
@@ -381,7 +374,6 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	}
 
 	creds := credentialsFromPerformer(client)
-	fields := log.Fields{"method": rb.Method, "endpoint": path, "active_account": safeDiagnosticValue(creds.OAKContext, safeContext)}
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		creds.ApplyAccountContextHeaders(req.Header, params.stripeAccount, params.stripeContext)
@@ -393,27 +385,17 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			}
 		}
 
-		rb.Diagnostics.configure(fields, req)
 		return nil
 	}
 
-	started := time.Now()
 	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configure)
 
 	if err != nil {
-		rb.Diagnostics.complete(fields, 0, "", "", "network_error", started)
 		return []byte{}, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
-	requestID := safeDiagnosticValue(resp.Header.Get("Request-Id"), safeRequestID)
-	requestError := compileRequestError(body, resp.StatusCode)
-	requestError.RequestID = requestID
-	rb.Diagnostics.response(fields, requestError, err, started)
-	if err != nil && rb.Diagnostics != nil {
-		return []byte{}, WithRequestID(err, requestID)
-	}
 
 	// Print upgrade notices to stderr so users never miss them, regardless of --show-headers.
 	if !rb.SuppressOutput {
@@ -423,6 +405,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	}
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
+		requestError := compileRequestError(body, resp.StatusCode)
 		requestError.HasOAKContext = creds.OAKContext != ""
 
 		// For OAK tokens, "unauthorized" means the token was manually revoked
@@ -433,11 +416,11 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			uat, _ := rb.Profile.GetUAT()
 			if strings.HasPrefix(uat, "oak_") {
 				if refreshErr := config.OAuthTokenRefresher(rb.Profile); refreshErr != nil {
-					return []byte{}, rb.Diagnostics.WithRequestID(refreshErr)
+					return []byte{}, refreshErr
 				}
 				newCreds, credErr := rb.Profile.ResolveCredentials(rb.Livemode)
 				if credErr != nil {
-					return []byte{}, rb.Diagnostics.WithRequestID(credErr)
+					return []byte{}, credErr
 				}
 				if sc, ok := client.(*stripe.Client); ok {
 					sc.Credentials = newCreds

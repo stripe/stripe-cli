@@ -16,14 +16,14 @@ type WorkspaceContext struct {
 }
 
 // GetWorkspaceContext fetches the workspace associated with the active OAuth context.
-func GetWorkspaceContext(ctx context.Context, apiBaseURL string, profile *config.Profile, creds stripe.Credentials, livemode bool, diagnostics ...*Diagnostics) (WorkspaceContext, error) {
+func GetWorkspaceContext(ctx context.Context, apiBaseURL string, profile *config.Profile, creds stripe.Credentials, livemode bool, showHeaders bool) (WorkspaceContext, error) {
 	base := &Base{
 		Profile:        profile,
 		Method:         http.MethodGet,
 		SuppressOutput: true,
 		APIBaseURL:     apiBaseURL,
 		Livemode:       livemode,
-		Diagnostics:    firstDiagnostics(diagnostics),
+		ShowHeaders:    showHeaders,
 	}
 
 	resp, err := base.MakeRequest(ctx, creds, "/v1/stripecli/workspace_context", &RequestParameters{}, nil, true, nil)
@@ -33,7 +33,7 @@ func GetWorkspaceContext(ctx context.Context, apiBaseURL string, profile *config
 
 	var workspaceContext WorkspaceContext
 	if err := json.Unmarshal(resp, &workspaceContext); err != nil {
-		return WorkspaceContext{}, base.Diagnostics.WithRequestID(fmt.Errorf("failed to decode workspace context response: %w", err))
+		return WorkspaceContext{}, fmt.Errorf("failed to decode workspace context response: %w", err)
 	}
 	return workspaceContext, nil
 }
