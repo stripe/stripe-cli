@@ -378,7 +378,6 @@ func init() {
 	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
 	rootCmd.AddCommand(newFeedbackCmd().cmd)
 	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
-	rootCmd.AddCommand(newGraphqlCmd(&Config).cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newLogoutCmd().cmd)

@@ -2,7 +2,7 @@ schema: schema.graphql
 operations:
   - operations.graphql
 generated: generated.go
-package: graphqlexp
+package: graphql
 bindings:
   V2IntegrationHealthOpenEnumAlertStatus:
     type: string

@@ -1,20 +1,10 @@
-# Minimal subset of the graphql.stripe.com schema used by the experimental
-# `stripe graphql` command. Only the types queried in operations.graphql are
-# declared here; directives and descriptions are omitted.
+# Minimal subset of the graphql.stripe.com schema. Only the types queried in
+# operations.graphql are declared here; directives and descriptions are
+# omitted. Copy new fields from the gateway's schema when adding operations.
 
 type Query {
-  inlineAPIVersion: InlineAPIVersionOutput!
-  inlineGreeting(name: String!): InlineGreetingOutput!
   v2ListDoctorRules(active: Boolean!, context: StripeContextInput): V2IntegrationHealthListDoctorRulesResponse
   v2ListIntegHlthAlerts(context: StripeContextInput, last_updated_after: String, last_updated_before: String, limit: Int, page: String, statuses: [V2IntegrationHealthOpenEnumAlertStatus!]!): V2IntegrationHealthListIntegHlthAlertsResponse
-}
-
-type InlineAPIVersionOutput {
-  version: String!
-}
-
-type InlineGreetingOutput {
-  greeting: String!
 }
 
 input StripeContextInput {
