@@ -131,7 +131,7 @@ func sandboxTestServer(t *testing.T, salt string, secretNumber int64, challenge 
 				"secret_key":      "sk_test_sandbox",
 				"publishable_key": "pk_test_sandbox",
 				"claim_url":       "https://dashboard.stripe.com/claim_sandbox/test",
-				"expires_at":      "2026-05-10T00:00:00Z",
+				"expires_at":      time.Now().UTC().AddDate(0, 0, 2).Format(time.RFC3339),
 				"account_id":      "acct_sandbox_123",
 			})
 		default:
@@ -364,8 +364,11 @@ func TestSandboxCreateCmd_ProvisionFlow_Succeeds(t *testing.T) {
 	cmd := newSandboxCreateCmd()
 	cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--base-url", server.URL})
 
-	err := cmd.cmd.Execute()
+	output, err := captureStdout(t, func() error {
+		return cmd.cmd.Execute()
+	})
 	require.NoError(t, err)
+	assert.Contains(t, output, "(in 2 days). Claim it before then by using the above claim_url")
 
 	// Verify keys were saved to config
 	key, _ := Config.Profile.GetAPIKey(false)
@@ -513,6 +516,41 @@ func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 	assert.Equal(t, http.MethodGet, recs[0].Method)
 	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
 	assert.Equal(t, sandboxClaimStatusVersion, recs[0].Version)
+}
+
+func TestSandboxCreateCmd_ExistingSandboxShowsRemainingDays(t *testing.T) {
+	tomorrow := time.Now().UTC().AddDate(0, 0, 1).Format(time.DateOnly)
+	inSevenDays := time.Now().UTC().AddDate(0, 0, 7).Format(time.DateOnly)
+	for _, tt := range []struct {
+		name      string
+		expiresAt string
+		expected  string
+	}{
+		{"tomorrow", tomorrow, tomorrow + " (in 1 day)"},
+		{"seven days", inSevenDays, inSevenDays + " (in 7 days)"},
+		{"timestamp tomorrow", tomorrow + "T00:00:00Z", tomorrow + "T00:00:00Z (in 1 day)"},
+		{"invalid date", "invalid-date", "invalid-date"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cleanup := setupSandboxTestConfig(t)
+			defer cleanup()
+
+			const claimURL = "https://dashboard.stripe.com/onboard_sandbox/existing"
+			setupActiveClaimableSandbox(t, claimURL, tt.expiresAt)
+
+			server := newClaimStatusServer(t, http.StatusOK, `{"is_claimed":false}`, nil)
+			defer server.Close()
+
+			cmd := newSandboxCreateCmd()
+			cmd.cmd.SetArgs([]string{"--email", "test@stripe.com", "--api-base", server.URL})
+
+			output, err := captureStdout(t, func() error {
+				return cmd.cmd.Execute()
+			})
+			require.NoError(t, err)
+			assert.Contains(t, output, "This sandbox expires "+tt.expected+". Claim it before then")
+		})
+	}
 }
 
 func TestSandboxCreateCmd_FromGitResolvesName(t *testing.T) {

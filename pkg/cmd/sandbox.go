@@ -261,7 +261,7 @@ func (scc *sandboxCreateCmd) runAnonymousSandboxCreateCmd(cmd *cobra.Command) er
 
 		expiresAt := Config.Profile.ReadProfileString(config.SandboxExpiresAtName)
 		if expiresAt != "" {
-			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandboxes claim`.\n", expiresAt)
+			fmt.Printf("\nThis sandbox expires %s. Claim it before then by running `stripe sandboxes claim`.\n", formatSandboxExpiry(expiresAt))
 		} else {
 			fmt.Printf("\nRun `stripe sandboxes claim` when you're ready to claim your sandbox.\n")
 		}
@@ -403,12 +403,32 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color *aurora.Auro
 
 	fmt.Printf("\nUse the keys above to start building your integration.\n")
 	if result.GetExpiresAt() != "" {
-		fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by using the above claim_url or running `stripe sandboxes claim`.\n", result.GetExpiresAt())
+		fmt.Printf("\nThis sandbox expires %s. Claim it before then by using the above claim_url or running `stripe sandboxes claim`.\n", formatSandboxExpiry(result.GetExpiresAt()))
 	} else {
 		fmt.Printf("\nClaim your sandbox by using the above claim_url or running `stripe sandboxes claim`.\n")
 	}
 
 	return nil
+}
+
+// formatSandboxExpiry returns "<expiresAt> (in N days)" ("day" for 1), or expiresAt alone if parsing fails.
+func formatSandboxExpiry(expiresAt string) string {
+	expiry, err := time.Parse(time.DateOnly, expiresAt)
+	if err != nil {
+		expiry, err = time.Parse(time.RFC3339, expiresAt)
+		if err != nil {
+			return expiresAt
+		}
+	}
+	now := time.Now().UTC()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	expiry = expiry.UTC()
+	expiryDate := time.Date(expiry.Year(), expiry.Month(), expiry.Day(), 0, 0, 0, 0, time.UTC)
+	days := max(0, int(expiryDate.Sub(today)/(24*time.Hour)))
+	if days == 1 {
+		return fmt.Sprintf("%s (in 1 day)", expiresAt)
+	}
+	return fmt.Sprintf("%s (in %d days)", expiresAt, days)
 }
 
 // saveSandboxToConfig backs up the current profile and writes the new
