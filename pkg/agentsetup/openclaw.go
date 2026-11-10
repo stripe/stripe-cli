@@ -140,9 +140,9 @@ func openclawPluginIsStripe(plugin openclawInstalledPlugin) bool {
 func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", openclawRepoPlaceholder}
 	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawRepoPlaceholder}
-	commands := [][]string{gitInstallCommand, installCommand}
+	installOrReinstallcommands := [][]string{gitInstallCommand, installCommand}
 
-	return getPlanByStatus(status, force, commands, commands)
+	return getPlanByStatus(status, force, installOrReinstallcommands, installOrReinstallcommands)
 }
 
 // Apply clones and installs in an isolated workspace, then attempts cleanup
@@ -157,14 +157,15 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 	if out == nil {
 		out = io.Discard
 	}
-	if p.mkdirTemp == nil {
-		p.mkdirTemp = os.MkdirTemp
+	mkdirTemp := p.mkdirTemp
+	if mkdirTemp == nil {
+		mkdirTemp = os.MkdirTemp
 	}
 	home, err := p.Scanner.withDefaults().HomeDir()
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "resolving home directory for OpenClaw plugin workspace: %w", err)
 	}
-	workspace, err := p.mkdirTemp(filepath.Join(home, ".openclaw"), "stripe-openclaw-*")
+	workspace, err := mkdirTemp(filepath.Join(home, ".openclaw"), "stripe-openclaw-*")
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "creating OpenClaw plugin workspace: %w", err)
 	}
@@ -177,9 +178,8 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 			}
 		}
 		if _, err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
-			fmt.Fprintf(out, "OpenClaw plugin %s step failed: %v\n", command[0], err)
 			p.cleanup(out, workspace)
-			return err
+			return errorcategory.Errorf(errorcategory.Internal, "OpenClaw plugin %s step failed: %w", command[0], err)
 		}
 	}
 
@@ -188,10 +188,11 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 }
 
 func (p OpenclawProvider) cleanup(out io.Writer, workspace string) {
-	if p.removeAll == nil {
-		p.removeAll = os.RemoveAll
+	removeAll := p.removeAll
+	if removeAll == nil {
+		removeAll = os.RemoveAll
 	}
-	if err := p.removeAll(workspace); err != nil {
+	if err := removeAll(workspace); err != nil {
 		fmt.Fprintf(out, "Warning: OpenClaw plugin cleanup failed; remove %q manually: %v\n", workspace, err)
 	}
 }

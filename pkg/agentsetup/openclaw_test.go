@@ -197,8 +197,8 @@ func TestOpenclawApply_CleansUpEvenIfInstallFails(t *testing.T) {
 
 			err := provider.Apply(context.Background(), out, provider.Plan(Status{Detected: true}, false))
 
-			require.Same(t, installErr, err)
-			require.Contains(t, out.String(), failStage+" step failed")
+			require.ErrorIs(t, err, installErr)
+			require.ErrorContains(t, err, failStage+" step failed")
 			if failStage == "git" {
 				require.Equal(t, []string{"git"}, commands)
 			} else {
