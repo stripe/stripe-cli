@@ -165,7 +165,7 @@ func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) e
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "resolving home directory for OpenClaw plugin workspace: %w", err)
 	}
-	workspace, err := mkdirTemp(filepath.Join(home, ".openclaw"), "stripe-openclaw-*")
+	workspace, err := mkdirTemp(filepath.Join(home, ".openclaw"), "stripe-*")
 	if err != nil {
 		return errorcategory.Errorf(errorcategory.Internal, "creating OpenClaw plugin workspace: %w", err)
 	}
