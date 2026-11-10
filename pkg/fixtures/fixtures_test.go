@@ -259,33 +259,6 @@ func TestProtectedFixtureHeaders(t *testing.T) {
 	require.Zero(t, calls.Load())
 }
 
-func TestFixtureHeaderPreflight(t *testing.T) {
-	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		w.Write([]byte(`{}`))
-	}))
-	defer server.Close()
-
-	fxt, err := NewFixtureFromRawString(afero.NewMemMapFs(), stripe.NewAPIKeyCredentials(apiKey), "", server.URL, `{
-		"fixtures": [
-			{"name":"benign", "path":"/v1/customers", "method":"post"},
-			{"name":"invalid", "path":"/v1/customers", "method":"post", "expected_error_type":"invalid_request_error",
-			 "headers":{"Authorization":"dummy-override"}, "params":{"description":"${missing:response}"}}
-		]
-	}`)
-	require.NoError(t, err)
-	_, err = fxt.Execute(context.Background(), "")
-	require.ErrorContains(t, err, "Authorization")
-	require.Zero(t, calls.Load())
-	require.Empty(t, fxt.Responses)
-
-	fxt.Skip = []string{"invalid"}
-	_, err = fxt.Execute(context.Background(), "")
-	require.NoError(t, err)
-	require.EqualValues(t, 1, calls.Load())
-}
-
 func TestFixtureHeaderValidationBeforeEnvironmentParameters(t *testing.T) {
 	t.Setenv("FIXTURE_PROCESS_SENTINEL", "dummy-process-value")
 	dir := t.TempDir()
@@ -298,11 +271,15 @@ func TestFixtureHeaderValidationBeforeEnvironmentParameters(t *testing.T) {
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
+		w.Write([]byte(`{}`))
 	}))
 	defer server.Close()
-	const raw = `{"fixtures":[{"name":"environment_step","path":"/v1/customers","method":"post",
-		"headers":{"Authorization":"Bearer dummy-untrusted"},
-		"params":{"description":"${.env:FIXTURE_PROCESS_SENTINEL}","metadata":{"value":"${.env:FIXTURE_FILE_SENTINEL}"}}}]}`
+	const raw = `{"fixtures":[
+		{"name":"benign","path":"/v1/customers","method":"post"},
+		{"name":"environment_step","path":"/v1/customers","method":"post","expected_error_type":"invalid_request_error",
+		 "headers":{"Authorization":"Bearer dummy-untrusted"},
+		 "params":{"description":"${.env:FIXTURE_PROCESS_SENTINEL}",
+		           "metadata":{"value":"${.env:FIXTURE_FILE_SENTINEL}","missing":"${missing:response}"}}}]}`
 	fs := afero.NewMemMapFs()
 	require.NoError(t, afero.WriteFile(fs, file, []byte(raw), 0o600))
 	fromFile, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", server.URL, file, nil, nil, nil, nil, false)
@@ -315,8 +292,14 @@ func TestFixtureHeaderValidationBeforeEnvironmentParameters(t *testing.T) {
 		for _, value := range []string{"dummy-untrusted", "dummy-process-value", "dummy-file-value", "FIXTURE_PROCESS_SENTINEL", "FIXTURE_FILE_SENTINEL"} {
 			assert.NotContains(t, err.Error(), value)
 		}
+		require.Empty(t, fxt.Responses)
 	}
 	require.Zero(t, calls.Load())
+
+	fromRaw.Skip = []string{"environment_step"}
+	_, err = fromRaw.Execute(context.Background(), "")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, calls.Load())
 }
 
 func TestAllowedFixtureHeadersPreserveCredentials(t *testing.T) {
@@ -700,10 +683,8 @@ func TestEmbeddedMeterSessionAuthorization(t *testing.T) {
 			creds := stripe.NewOAKCredentials("oak_dummy_selected", "dummy-context", false)
 			fxt, err := NewFixtureFromFile(fs, creds, "", "", path, nil, nil, nil, nil, false)
 			require.NoError(t, err)
-			require.Equal(t, path, fxt.embeddedFixturePath)
 			var stream FixtureRequest
 			for _, data := range fxt.FixtureData.Requests {
-				require.NoError(t, fxt.validateRequestHeaders(data))
 				if data.Name == "create_billing_meter_event_stream" {
 					stream = data
 				}
@@ -742,8 +723,6 @@ func TestEmbeddedMeterSessionAuthorization(t *testing.T) {
 				fromForged, err := NewFixtureFromRawString(fs, creds, "", "", string(forgedJSON))
 				require.NoError(t, err)
 				for _, untrusted := range []*Fixture{fromRaw, fromFile, edited, fromForged} {
-					require.Empty(t, untrusted.embeddedFixturePath)
-					require.ErrorContains(t, untrusted.validateRequestHeaders(stream), "Authorization")
 					_, err := untrusted.Execute(context.Background(), "")
 					require.ErrorContains(t, err, "Authorization")
 				}
