@@ -67,6 +67,9 @@ type Fixture struct {
 	BaseURL       string
 	Responses     map[string]gjson.Result
 	FixtureData   FixtureData
+
+	// Only actual, unedited embedded content may use bundled session authentication.
+	embeddedFixturePath string
 }
 
 // NewFixtureFromFile creates a to later run steps for populating test data
@@ -91,6 +94,9 @@ func NewFixtureFromFile(fs afero.Fs, creds stripe.Credentials, stripeAccount, ba
 		filedata, err = io.ReadAll(f)
 		if err != nil {
 			return nil, err
+		}
+		if !edit {
+			fxt.embeddedFixturePath = file
 		}
 	} else {
 		filedata, err = afero.ReadFile(fxt.Fs, file)
@@ -296,6 +302,15 @@ func getFixtureFilenameWithWildcard(path string) string {
 // Execute takes the parsed fixture file and runs through all the requests
 // defined to populate the user's account
 func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, error) {
+	// Validate all selected steps before any request or parameter interpolation.
+	for _, data := range fxt.FixtureData.Requests {
+		if !isNameIn(data.Name, fxt.Skip) {
+			if err := fxt.validateRequestHeaders(data); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	requestNames := make([]string, len(fxt.FixtureData.Requests))
 	for i, data := range fxt.FixtureData.Requests {
 		if isNameIn(data.Name, fxt.Skip) {
@@ -362,6 +377,35 @@ func (fxt *Fixture) unsupportedAPIKey(path string) bool {
 	return strings.HasPrefix(path, "/v2/") && !strings.HasPrefix(fxt.Credentials.Token, "sk_") && !strings.HasPrefix(fxt.Credentials.Token, "oak_")
 }
 
+func (fxt *Fixture) validateRequestHeaders(data FixtureRequest) error {
+	for name, value := range data.Headers {
+		switch http.CanonicalHeaderKey(name) {
+		case "Authorization":
+			if fxt.allowsSessionAuthorization(data, value) {
+				continue
+			}
+		case "Stripe-Livemode", "Stripe-Context", "Stripe-Account":
+		default:
+			continue
+		}
+		return errorcategory.Errorf(errorcategory.UserInput, "fixture step %q cannot set protected header %q; use CLI credentials and account selection flags instead", data.Name, name)
+	}
+	return nil
+}
+
+func (fxt *Fixture) allowsSessionAuthorization(data FixtureRequest, value string) bool {
+	switch fxt.embeddedFixturePath {
+	case "triggers/v1.billing.meter.no_meter_found.json", "triggers/v1.billing.meter.error_report_triggered.json":
+		return data.Name == "create_billing_meter_event_stream" &&
+			strings.EqualFold(data.Method, http.MethodPost) &&
+			data.Path == "/v2/billing/meter_event_stream" &&
+			data.APIBase == "https://meter-events.stripe.com" &&
+			value == "Bearer ${billing_meter_event_session:authentication_token}"
+	default:
+		return false
+	}
+}
+
 func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.Request) error {
 	return func(req *http.Request) error {
 		for k, v := range headers {
@@ -376,6 +420,10 @@ func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.R
 }
 
 func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
+	if err := fxt.validateRequestHeaders(data); err != nil {
+		return nil, err
+	}
+
 	apiBase, err := fxt.getAPIBase(data)
 	if err != nil {
 		return make([]byte, 0), err
