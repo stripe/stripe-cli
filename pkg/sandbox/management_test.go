@@ -218,6 +218,26 @@ func TestManagementClientCreateExplainsSandboxLimit(t *testing.T) {
 			errorBody: `{"error":{"code":"max_sandboxes_created","message":"sentinel oak_secret acct_secret wksp_secret"},"private":"body_secret"}`,
 		},
 		{
+			name:    "copy live compartments limit",
+			options: CreateOptions{Name: "Copied sandbox"},
+			wantRequests: []string{
+				"GET /v1/stripecli/playground_context",
+				"GET /v1/stripecli/workspace_context",
+				"POST /v2/sandboxes",
+			},
+			// Reconstructed from gateway status/code/message, not a captured body.
+			errorBody: `{"error":{"code":"compartments_max_tree_size_reached","message":"Sandbox could not be created: An account can only have up to 5 sandboxes."}}`,
+		},
+		{
+			name:    "blank compartments limit ignores server copy",
+			options: CreateOptions{Name: "Blank sandbox", Blank: true, Country: "US"},
+			wantRequests: []string{
+				"GET /v1/stripecli/playground_context",
+				"POST /v2/sandboxes",
+			},
+			errorBody: `{"error":{"code":"compartments_max_tree_size_reached","message":"sentinel oak_secret acct_secret wksp_secret"},"private":"body_secret"}`,
+		},
+		{
 			name:    "blank current QA response",
 			options: CreateOptions{Name: "Blank sandbox", Blank: true, Country: "US"},
 			wantRequests: []string{
@@ -384,6 +404,28 @@ func TestSafeCreateError(t *testing.T) {
 			},
 			wantCategory: errorcategory.API,
 			wantMessage:  "Could not create sandbox: your account has reached the limit for sandboxes. Delete a sandbox to create a new one.",
+		},
+		{
+			name: "compartments limit on wrong status",
+			err: requests.RequestError{
+				StatusCode: http.StatusInternalServerError,
+				ErrorCode:  "compartments_max_tree_size_reached",
+				Message:    "Sandbox could not be created: An account can only have up to 5 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
+		},
+		{
+			name: "unrelated code with exact limit message",
+			err: requests.RequestError{
+				StatusCode: http.StatusBadRequest,
+				ErrorCode:  "parameter_invalid",
+				Message:    "Sandbox could not be created: An account can only have up to 5 sandboxes.",
+				Body:       "body_secret",
+			},
+			wantCategory: errorcategory.API,
+			wantMessage:  "could not create sandbox: the Stripe API returned an unavailable response",
 		},
 		{
 			name: "QA limit message on wrong status",
