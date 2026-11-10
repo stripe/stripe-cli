@@ -405,6 +405,54 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 	require.Equal(t, 1, metadataLookups)
 }
 
+// TestResolvePluginForInstallUsesAnonymousMetadataWhenAPIKeyExpired covers a
+// saved key past its expiry: a plugin anyone can install must not need a fresh
+// login, while one the anonymous endpoint cannot find still reports the expired
+// key, which is what tells the user to log in again.
+func TestResolvePluginForInstallUsesAnonymousMetadataWhenAPIKeyExpired(t *testing.T) {
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		require.Equal(t, "/v1/stripecli/get-plugin-metadata", req.URL.Path)
+		res.WriteHeader(http.StatusUnauthorized)
+		_, _ = res.Write([]byte(`{"error":{"code":"api_key_expired","message":"Expired API Key provided: rk_test_***1111","type":"invalid_request_error"}}`))
+	}))
+	defer apiServer.Close()
+
+	t.Run("plugin anyone can install", func(t *testing.T) {
+		dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			require.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
+			require.Empty(t, req.Header.Get("Authorization"))
+			body, err := json.Marshal(requests.PluginMetadata{
+				BinaryURL:      "https://example.test/appA/2.0.1",
+				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+			})
+			require.NoError(t, err)
+			_, _ = res.Write(body)
+		}))
+		defer dashboardServer.Close()
+
+		resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, afero.NewMemMapFs(), "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
+		require.NoError(t, err)
+		require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
+		require.Equal(t, "2.0.1", resolvedPlugin.Version)
+		require.Equal(t, "https://example.test/appA/2.0.1", resolvedPlugin.BinaryURL)
+	})
+
+	t.Run("plugin the anonymous endpoint cannot find", func(t *testing.T) {
+		dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+			res.WriteHeader(http.StatusNotFound)
+			_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
+		}))
+		defer dashboardServer.Close()
+
+		_, err := ResolvePluginForInstall(context.Background(), config, afero.NewMemMapFs(), "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
+		require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
+	})
+}
+
 func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	config := &TestConfig{}

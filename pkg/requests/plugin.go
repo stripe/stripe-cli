@@ -68,48 +68,95 @@ func getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL string) strin
 	return apiBaseURL
 }
 
-// GetPluginMetadata returns plugin-specific manifest and binary information.
-// It uses the authenticated endpoint when an API key is available and the
-// anonymous endpoint otherwise.
-func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
+// getFromPluginEndpoint sends a GET to one of the plugin endpoints, which come in
+// pairs: an authenticated endpoint on the API host for a caller with an API key,
+// and an anonymous one on the Dashboard host for a caller without one. pathFor
+// picks which path of the pair a key gets, as getPluginMetadataPath does.
+//
+// A key the API reports as expired is retried against the anonymous endpoint.
+// That endpoint is all a logged-out caller ever gets, so without the retry a
+// lapsed key would fail requests that logging out lets through. The retry
+// carries no credentials at all, so the expired key never reaches the Dashboard
+// host.
+//
+// If the anonymous endpoint fails too, the expired key is what gets reported,
+// since logging in again is the fix: a plugin the anonymous endpoint cannot find
+// may be one only a logged-in account can see. The exception is a refusal
+// because this CLI is too old, which no login would change.
+func getFromPluginEndpoint(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pathFor func(apiKey string) string, requestParams map[string]interface{}) ([]byte, error) {
+	resolvedCreds, err := profile.ResolveCredentialsForAnyMode(false)
+	if err != nil {
+		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
+	}
+
+	resp, err := sendPluginEndpointRequest(ctx, profile, resolvedCreds, getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL), pathFor(apiKey), apiVersion, requestParams)
+	if apiKey == "" || !IsAPIKeyExpiredError(err) {
+		return resp, err
+	}
+
+	anonymousBaseURL := getPluginEndpointBaseURL("", apiBaseURL, dashboardBaseURL)
+	anonymousPath := pathFor("")
+	log.WithFields(log.Fields{
+		"prefix":   "requests.getFromPluginEndpoint",
+		"base_url": anonymousBaseURL,
+		"endpoint": anonymousPath,
+	}).Debug("API key has expired, retrying with the anonymous plugin endpoint")
+
+	// No profile either. Given one, a 401 here could have the request layer
+	// refresh the profile's OAuth token and retry with it, putting credentials
+	// back on a request meant to carry none.
+	resp, anonymousErr := sendPluginEndpointRequest(ctx, nil, stripe.Credentials{}, anonymousBaseURL, anonymousPath, apiVersion, requestParams)
+	if anonymousErr == nil {
+		return resp, nil
+	}
+	if _, requiresNewerCLI := PluginRequiresNewerCLI(anonymousErr); requiresNewerCLI {
+		return nil, anonymousErr
+	}
+
+	log.WithFields(log.Fields{
+		"prefix": "requests.getFromPluginEndpoint",
+	}).Debugf("anonymous plugin endpoint failed too, reporting the expired API key: %s", anonymousErr)
+
+	return nil, err
+}
+
+func sendPluginEndpointRequest(ctx context.Context, profile *config.Profile, creds stripe.Credentials, baseURL, path, apiVersion string, requestParams map[string]interface{}) ([]byte, error) {
+	base := &Base{
+		Profile:        profile,
+		Method:         http.MethodGet,
+		SuppressOutput: true,
+		APIBaseURL:     baseURL,
+	}
+
 	params := &RequestParameters{
 		data:    []string{},
 		version: apiVersion,
 	}
 
-	metadataBaseURL := getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL)
-	metadataPath := getPluginMetadataPath(apiKey)
+	return base.MakeRequest(ctx, creds, path, params, requestParams, true, nil)
+}
 
+// GetPluginMetadata returns plugin-specific manifest and binary information.
+// It uses the authenticated endpoint when an API key is available and the
+// anonymous endpoint otherwise, or once the API reports the key as expired;
+// see getFromPluginEndpoint.
+func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
 	log.WithFields(log.Fields{
 		"prefix":   "requests.GetPluginMetadata",
-		"base_url": metadataBaseURL,
-		"endpoint": metadataPath,
+		"base_url": getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL),
+		"endpoint": getPluginMetadataPath(apiKey),
 		"plugin":   pluginName,
 		"version":  version,
 		"os":       os,
 		"arch":     arch,
 	}).Debug("Fetching plugin metadata")
 
-	base := &Base{
-		Profile:        profile,
-		Method:         http.MethodGet,
-		SuppressOutput: true,
-		APIBaseURL:     metadataBaseURL,
-	}
-
-	resolvedCreds, err := profile.ResolveCredentialsForAnyMode(base.Livemode)
-	if err != nil {
-		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
-	}
-
-	requestParams := map[string]interface{}{
+	resp, err := getFromPluginEndpoint(ctx, apiBaseURL, dashboardBaseURL, apiVersion, apiKey, profile, getPluginMetadataPath, map[string]interface{}{
 		"plugin":  pluginName,
 		"version": version,
 		"os":      os,
 		"arch":    arch,
-	}
-
-	resp, err := base.MakeRequest(ctx, resolvedCreds, metadataPath, params, requestParams, true, nil)
+	})
 	if err != nil {
 		return PluginMetadata{}, err
 	}
@@ -162,43 +209,19 @@ func PluginRequiresNewerCLI(err error) (minCoreVersion string, ok bool) {
 
 // GetPluginList returns the list of plugins visible to the current caller for
 // the requested platform. It uses the authenticated endpoint when an API key is
-// available and the anonymous endpoint otherwise.
+// available and the anonymous endpoint otherwise, or once the API reports the
+// key as expired; see getFromPluginEndpoint.
 func GetPluginList(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, os, arch string) ([]byte, error) {
-	params := &RequestParameters{
-		data:    []string{},
-		version: apiVersion,
-	}
-
-	listBaseURL := getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL)
-	listPath := getPluginListPath(apiKey)
-
 	log.WithFields(log.Fields{
 		"prefix":   "requests.GetPluginList",
-		"base_url": listBaseURL,
-		"endpoint": listPath,
+		"base_url": getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL),
+		"endpoint": getPluginListPath(apiKey),
 		"os":       os,
 		"arch":     arch,
 	}).Debug("Fetching plugin list")
 
-	base := &Base{
-		Profile:        profile,
-		Method:         http.MethodGet,
-		SuppressOutput: true,
-		APIBaseURL:     listBaseURL,
-	}
-
-	resolvedCreds, err := profile.ResolveCredentialsForAnyMode(base.Livemode)
-	if err != nil {
-		resolvedCreds = stripe.NewAPIKeyCredentials(apiKey)
-	}
-
-	resp, err := base.MakeRequest(ctx, resolvedCreds, listPath, params, map[string]interface{}{
+	return getFromPluginEndpoint(ctx, apiBaseURL, dashboardBaseURL, apiVersion, apiKey, profile, getPluginListPath, map[string]interface{}{
 		"os":   os,
 		"arch": arch,
-	}, true, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
+	})
 }
