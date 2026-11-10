@@ -411,8 +411,6 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color *aurora.Auro
 	return nil
 }
 
-// formatSandboxExpiry counts UTC calendar days, rather than full 24-hour periods,
-// so a sandbox expiring tomorrow still shows one day remaining late today.
 func formatSandboxExpiry(expiresAt string) string {
 	expiry, err := time.Parse(time.DateOnly, expiresAt)
 	if err != nil {
