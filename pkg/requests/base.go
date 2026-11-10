@@ -18,7 +18,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -84,6 +86,7 @@ func (r *RequestParameters) SetVersion(value string) {
 type RequestError struct {
 	msg           string
 	StatusCode    int
+	RequestID     string
 	ErrorType     string
 	ErrorCode     string
 	Message       string      // the human-readable "message" field from the error response body
@@ -99,6 +102,9 @@ func (e RequestError) Error() string {
 func (e RequestError) HTTPStatusCode() int {
 	return e.StatusCode
 }
+
+// StripeRequestID returns correlation metadata without exposing the response body.
+func (e RequestError) StripeRequestID() string { return e.RequestID }
 
 // IsAPIKeyExpiredError returns true if the provided error was caused by a
 // request returning an `api_key_expired` error code.
@@ -148,6 +154,8 @@ type Base struct {
 	IsPreviewCommand bool
 
 	DryRun bool
+
+	Diagnostics *Diagnostics
 
 	autoConfirm bool
 	showHeaders bool
@@ -303,7 +311,7 @@ func (rb *Base) MakeMultiPartRequestWithAdditionalParams(ctx context.Context, cr
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders,
+		Verbose:     rb.showHeaders || (rb.Diagnostics != nil && rb.Diagnostics.ShowHeaders),
 	}
 
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
@@ -319,7 +327,7 @@ func (rb *Base) MakeRequest(ctx context.Context, creds stripe.Credentials, path 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders,
+		Verbose:     rb.showHeaders || (rb.Diagnostics != nil && rb.Diagnostics.ShowHeaders),
 	}
 
 	return rb.MakeRequestWithClient(ctx, client, path, params, additionalParams, errOnStatus, additionalConfigure)
@@ -373,6 +381,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	}
 
 	creds := credentialsFromPerformer(client)
+	fields := log.Fields{"method": rb.Method, "endpoint": path, "active_account": safeDiagnosticValue(creds.OAKContext, safeContext)}
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		creds.ApplyAccountContextHeaders(req.Header, params.stripeAccount, params.stripeContext)
@@ -384,17 +393,27 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			}
 		}
 
+		rb.Diagnostics.configure(fields, req)
 		return nil
 	}
 
+	started := time.Now()
 	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configure)
 
 	if err != nil {
+		rb.Diagnostics.complete(fields, 0, "", "", "network_error", started)
 		return []byte{}, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
+	requestID := safeDiagnosticValue(resp.Header.Get("Request-Id"), safeRequestID)
+	requestError := compileRequestError(body, resp.StatusCode)
+	requestError.RequestID = requestID
+	rb.Diagnostics.response(fields, requestError, err, started)
+	if err != nil && rb.Diagnostics != nil {
+		return []byte{}, WithRequestID(err, requestID)
+	}
 
 	// Print upgrade notices to stderr so users never miss them, regardless of --show-headers.
 	if !rb.SuppressOutput {
@@ -404,7 +423,6 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	}
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
-		requestError := compileRequestError(body, resp.StatusCode)
 		requestError.HasOAKContext = creds.OAKContext != ""
 
 		// For OAK tokens, "unauthorized" means the token was manually revoked
@@ -415,11 +433,11 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			uat, _ := rb.Profile.GetUAT()
 			if strings.HasPrefix(uat, "oak_") {
 				if refreshErr := config.OAuthTokenRefresher(rb.Profile); refreshErr != nil {
-					return []byte{}, refreshErr
+					return []byte{}, rb.Diagnostics.WithRequestID(refreshErr)
 				}
 				newCreds, credErr := rb.Profile.ResolveCredentials(rb.Livemode)
 				if credErr != nil {
-					return []byte{}, credErr
+					return []byte{}, rb.Diagnostics.WithRequestID(credErr)
 				}
 				if sc, ok := client.(*stripe.Client); ok {
 					sc.Credentials = newCreds

@@ -324,10 +324,12 @@ func TestManagementClientCreateRetryPreservesTargetAndIdempotency(t *testing.T) 
 		case "/v2/sandboxes":
 			postHeaders = append(postHeaders, r.Header.Clone())
 			if len(postHeaders) == 1 {
+				w.Header().Set("Request-Id", "req_retry123")
 				w.WriteHeader(http.StatusUnauthorized)
 				_, _ = w.Write([]byte(`{"error":{"code":"unauthorized","message":"expired"}}`))
 				return
 			}
+			w.Header().Set("Request-Id", "req_retry123")
 			_, _ = w.Write([]byte(`{"v1_account_id":"acct_created"}`))
 		default:
 			t.Fatalf("unexpected request path %q", r.URL.Path)
@@ -335,7 +337,12 @@ func TestManagementClientCreateRetryPreservesTargetAndIdempotency(t *testing.T) 
 	}))
 	defer server.Close()
 
-	created, err := NewManagementClient(server.URL, profile).Create(context.Background(), CreateOptions{Name: "Retry sandbox"})
+	client := NewManagementClient(server.URL, profile)
+	client.ShowHeaders = true
+	var created CreatedSandbox
+	var err error
+	headers, debug := captureManagementDiagnostics(t, func() { created, err = client.Create(context.Background(), CreateOptions{Name: "Retry sandbox"}) })
+	assertRetryDiagnostics(t, headers, debug, "create", "play_parent", "true")
 	require.NoError(t, err)
 	require.Equal(t, CreatedSandbox{AccountID: "acct_created"}, created)
 	require.Equal(t, 1, refreshes)
@@ -568,15 +575,22 @@ func TestManagementClientDeleteRefreshPreservesTarget(t *testing.T) {
 		require.Equal(t, http.MethodPost, r.Method)
 		closeHeaders = append(closeHeaders, r.Header.Clone())
 		if len(closeHeaders) == 1 {
+			w.Header().Set("Request-Id", "req_retry123")
 			w.WriteHeader(http.StatusUnauthorized)
 			_, _ = w.Write([]byte(`{"error":{"code":"unauthorized","message":"expired"}}`))
 			return
 		}
+		w.Header().Set("Request-Id", "req_retry123")
 		_, _ = w.Write([]byte(`{"id":"wksp_test_target"}`))
 	}))
 	defer server.Close()
 
-	deleted, err := NewManagementClient(server.URL, profile).Delete(context.Background(), "acct_target")
+	client := NewManagementClient(server.URL, profile)
+	client.ShowHeaders = true
+	var deleted DeletedSandbox
+	var err error
+	headers, debug := captureManagementDiagnostics(t, func() { deleted, err = client.Delete(context.Background(), "acct_target") })
+	assertRetryDiagnostics(t, headers, debug, "delete", "acct_target", "false")
 	require.NoError(t, err)
 	require.Equal(t, DeletedSandbox{AccountID: "acct_target", Name: "Target sandbox"}, deleted)
 	require.Equal(t, 1, refreshes)
