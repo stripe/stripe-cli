@@ -592,6 +592,33 @@ func TestManagementClientDeleteRejectsLegacyTestmodeBeforeClose(t *testing.T) {
 	require.False(t, closeRequested)
 }
 
+func TestManagementClientDeleteUnnamedSandbox(t *testing.T) {
+	profile := managementTestProfile(t, "acct_live_parent", true, "oak_initial")
+	closeRequests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if serveDeleteDiscoveryResponse(t, w, r, "acct_live_parent", "oak_initial", `{"workspaces":[
+  {"id":"wksp_test_other","merchant_id":"acct_other","name":""},
+  {"id":"wksp_test_named","merchant_id":"acct_named","name":"Named sandbox"}
+],"organizations":[{"workspaces":[{"id":"wksp_test_target","merchant_id":"acct_target"}]}]}`) {
+			return
+		}
+		closeRequests++
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/workspaces/undocumented/testmode/wksp_test_target/close", r.URL.Path)
+		require.Equal(t, "acct_target", r.Header.Get("Stripe-Context"))
+		require.Equal(t, "false", r.Header.Get("Stripe-Livemode"))
+		require.Empty(t, r.Header.Get("Stripe-Account"))
+		_, _ = w.Write([]byte(`{"id":"wksp_test_target"}`))
+	}))
+	defer server.Close()
+
+	deleted, err := NewManagementClient(server.URL, profile).Delete(context.Background(), "acct_target")
+
+	require.NoError(t, err)
+	require.Equal(t, DeletedSandbox{AccountID: "acct_target", Name: "New business"}, deleted)
+	require.Equal(t, 1, closeRequests)
+}
+
 func TestManagementClientDeleteRefreshPreservesTarget(t *testing.T) {
 	profile := managementTestProfile(t, "acct_live_parent", true, "oak_initial")
 	refreshes := 0
@@ -857,6 +884,43 @@ func serveDeleteDiscoveryResponse(t *testing.T, w http.ResponseWriter, r *http.R
 	}
 }
 
+func TestManagementClientListAccessibleUnnamedSandboxes(t *testing.T) {
+	workspaces := `[
+  {"id":"wksp_test_missing","merchant_id":"acct_missing"},
+  {"id":"wksp_test_empty","merchant_id":"acct_empty","name":""},
+  {"id":"wksp_test_whitespace","merchant_id":"acct_whitespace","name":" \t\n\u2003"},
+  {"id":"wksp_test_named","merchant_id":"acct_named","name":"  Named sandbox  "},
+  {"id":"wksp_test_fallback","merchant_id":"acct_fallback","name":"New business"}
+]`
+	tests := []struct {
+		name        string
+		response    string
+		accessLevel SandboxAccessLevel
+	}{
+		{name: "top level", response: `{"workspaces":` + workspaces + `}`, accessLevel: SandboxAccessLevelPrivate},
+		{name: "organization", response: `{"organizations":[{"compartment_labels":[{"usage_type":"sandbox_access_level_global"}],"workspaces":` + workspaces + `}]}`, accessLevel: SandboxAccessLevelGlobal},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			profile := managementTestProfile(t, "acct_live_123", true, "oak_test_123")
+			server := managementTestServer(t, `{"workspace_id":"wksp_live_parent"}`, test.response)
+			defer server.Close()
+
+			got, err := NewManagementClient(server.URL, profile).ListAccessible(context.Background())
+
+			require.NoError(t, err)
+			require.Equal(t, []ManagedSandbox{
+				{WorkspaceID: "wksp_test_named", AccountID: "acct_named", Name: "  Named sandbox  ", AccessLevel: test.accessLevel},
+				{WorkspaceID: "wksp_test_empty", AccountID: "acct_empty", Name: "New business", AccessLevel: test.accessLevel},
+				{WorkspaceID: "wksp_test_fallback", AccountID: "acct_fallback", Name: "New business", AccessLevel: test.accessLevel},
+				{WorkspaceID: "wksp_test_missing", AccountID: "acct_missing", Name: "New business", AccessLevel: test.accessLevel},
+				{WorkspaceID: "wksp_test_whitespace", AccountID: "acct_whitespace", Name: "New business", AccessLevel: test.accessLevel},
+			}, got)
+		})
+	}
+}
+
 func TestSandboxAccessLevelFromLabels(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -1021,7 +1085,9 @@ func TestManagementClientRejectsInvalidSandboxResponses(t *testing.T) {
 		{name: "malformed JSON", response: `{"workspaces":`},
 		{name: "missing workspace id", response: `{"workspaces":[{"merchant_id":"acct_1","name":"one"}]}`},
 		{name: "missing account id", response: `{"workspaces":[{"id":"wksp_test_1","name":"one"}]}`},
-		{name: "missing name", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1"}]}`},
+		{name: "missing workspace id and name", response: `{"workspaces":[{"merchant_id":"acct_1"}]}`},
+		{name: "missing account id and empty name", response: `{"organizations":[{"workspaces":[{"id":"wksp_test_1","name":""}]}]}`},
+		{name: "invalid account id and whitespace name", response: `{"workspaces":[{"id":"wksp_test_1","merchant_id":"org_1","name":" "}]}`},
 		{name: "live workspace", response: `{"workspaces":[{"id":"wksp_live_1","merchant_id":"acct_1","name":"one"}]}`},
 		{name: "conflicting duplicate", response: `{"workspaces":[
   {"id":"wksp_test_1","merchant_id":"acct_1","name":"one"},
@@ -1031,6 +1097,13 @@ func TestManagementClientRejectsInvalidSandboxResponses(t *testing.T) {
   {"id":"wksp_test_1","merchant_id":"acct_1","name":"one","is_legacy_testmode_compartment":false},
   {"id":"wksp_test_1","merchant_id":"acct_1","name":"one","is_legacy_testmode_compartment":true}
 ]}`},
+		{name: "conflicting blank names", response: `{"workspaces":[
+  {"id":"wksp_test_1","merchant_id":"acct_1","name":""},
+  {"id":"wksp_test_1","merchant_id":"acct_1","name":" "}
+]}`},
+		{name: "conflicting missing and fallback names", response: `{"workspaces":[
+  {"id":"wksp_test_1","merchant_id":"acct_1"}
+],"organizations":[{"workspaces":[{"id":"wksp_test_1","merchant_id":"acct_1","name":"New business"}]}]}`},
 	}
 
 	for _, test := range tests {
