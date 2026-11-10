@@ -261,9 +261,9 @@ func (scc *sandboxCreateCmd) runAnonymousSandboxCreateCmd(cmd *cobra.Command) er
 
 		expiresAt := Config.Profile.ReadProfileString(config.SandboxExpiresAtName)
 		if expiresAt != "" {
-			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandboxes claim`.\n", expiresAt)
+			fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by running `stripe sandbox claim`.\n", expiresAt)
 		} else {
-			fmt.Printf("\nRun `stripe sandboxes claim` when you're ready to claim your sandbox.\n")
+			fmt.Printf("\nRun `stripe sandbox claim` when you're ready to claim your sandbox.\n")
 		}
 		return nil
 	}
@@ -403,9 +403,9 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color *aurora.Auro
 
 	fmt.Printf("\nUse the keys above to start building your integration.\n")
 	if result.GetExpiresAt() != "" {
-		fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by using the above claim_url or running `stripe sandboxes claim`.\n", result.GetExpiresAt())
+		fmt.Printf("\nThis sandbox expires %s (in 7 days). Claim it before then by using the above claim_url or running `stripe sandbox claim`.\n", result.GetExpiresAt())
 	} else {
-		fmt.Printf("\nClaim your sandbox by using the above claim_url or running `stripe sandboxes claim`.\n")
+		fmt.Printf("\nClaim your sandbox by using the above claim_url or running `stripe sandbox claim`.\n")
 	}
 
 	return nil

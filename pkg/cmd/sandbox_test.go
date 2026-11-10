@@ -508,7 +508,7 @@ func TestSandboxCreateCmd_ExistingSandboxShowsActiveMessage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, output, "You already have an active sandbox")
 	assert.Contains(t, output, "Claim it before then")
-	assert.Contains(t, output, "stripe sandboxes claim")
+	assert.Contains(t, output, "stripe sandbox claim")
 	require.Len(t, recs, 1)
 	assert.Equal(t, http.MethodGet, recs[0].Method)
 	assert.Equal(t, "/v2/core/claimable_sandboxes/status", recs[0].Path)
@@ -750,7 +750,7 @@ func TestSandboxCreateCmd_ExistingSandboxClaimedOmitsClaimGuidance(t *testing.T)
 	assert.Contains(t, output, "You already have an active sandbox")
 	assert.Contains(t, output, sandboxAlreadyClaimedMessage)
 	assert.NotContains(t, output, "Claim it before then")
-	assert.NotContains(t, output, "stripe sandboxes claim")
+	assert.NotContains(t, output, "stripe sandbox claim")
 }
 
 func TestSandboxClaimCmd_StatusEndpointErrors(t *testing.T) {
@@ -817,7 +817,7 @@ func TestSandboxCreateCmd_ExistingSandboxStatusErrorFallsBackToClaimGuidance(t *
 	require.NoError(t, err)
 	assert.Contains(t, output, "You already have an active sandbox")
 	assert.Contains(t, output, "Claim it before then")
-	assert.Contains(t, output, "stripe sandboxes claim")
+	assert.Contains(t, output, "stripe sandbox claim")
 	assert.NotContains(t, output, sandboxAlreadyClaimedMessage)
 }
 
