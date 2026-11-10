@@ -73,7 +73,9 @@ func TestRequestDiagnosticsControls(t *testing.T) {
 				} {
 					require.Equal(t, value, fields[key], key)
 				}
-				require.NotEmpty(t, fields["elapsed"])
+				elapsed, ok := fields["elapsed"].(float64)
+				require.True(t, ok)
+				require.GreaterOrEqual(t, elapsed, float64(0))
 			}
 			for _, secret := range []string{"body_secret", "request_secret", "oak_secret", "sk_secret", "header_secret"} {
 				require.NotContains(t, headers+debug.String(), secret)
