@@ -61,7 +61,7 @@ func TestFeedbackHelpCommunicatesParametersAndFeatureOptions(t *testing.T) {
 	assert.True(t, strings.HasPrefix(output, "\nShare feedback on"))
 	assert.True(t, strings.HasSuffix(output, "\n\n"))
 	requiredFlags := []string{"--sentiment", "--message", "--context"}
-	optionalFlags := []string{"--feature", "--actor", "--json"}
+	optionalFlags := []string{"--features", "--actor", "--json"}
 	previousIndex := -1
 	for _, flag := range append(requiredFlags, optionalFlags...) {
 		index := strings.Index(output, flag)
@@ -70,9 +70,11 @@ func TestFeedbackHelpCommunicatesParametersAndFeatureOptions(t *testing.T) {
 	}
 
 	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("sentiment").Usage, "required")
-	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("feature").Usage, "optional")
-	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("feature").Usage, "see feature options below")
+	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("features").Usage, "optional")
+	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("features").Usage, "see feature options below")
 	assert.Contains(t, feedbackCommand.cmd.Flags().Lookup("actor").Usage, "default: agent when run by a recognized coding agent, otherwise human")
+	assert.NotContains(t, output, "--feature ")
+	assert.True(t, feedbackCommand.cmd.Flags().Lookup("feature").Hidden)
 	assert.Contains(t, output, "Feature options:")
 	assert.Greater(t, strings.Index(output, "Feature options:"), strings.Index(output, "Flags:"))
 	assert.Contains(t, output, "apps")
@@ -107,6 +109,7 @@ type feedbackCase struct {
 	sentiment  string
 	message    string
 	context    string
+	features   []string
 	feature    string
 	actor      string
 	jsonOutput bool
@@ -126,6 +129,7 @@ func (feedbackInput feedbackCase) applyTo(feedbackCommand *feedbackCmd) {
 	feedbackCommand.sentiment = feedbackInput.sentiment
 	feedbackCommand.message = feedbackInput.message
 	feedbackCommand.context = feedbackInput.context
+	feedbackCommand.features = feedbackInput.features
 	feedbackCommand.feature = feedbackInput.feature
 	feedbackCommand.actor = feedbackInput.actor
 	feedbackCommand.jsonOutput = feedbackInput.jsonOutput
@@ -245,7 +249,8 @@ func TestFeedbackSubmit(t *testing.T) {
 				assert.Equal(t, "this is a test feedback message", request.FormValue("message"))
 				assert.Equal(t, "cli", request.FormValue("channel"))
 				assert.Equal(t, "human", request.FormValue("actor"))
-				assert.Equal(t, "cli", request.FormValue("feature_area"))
+				assert.Equal(t, "cli", request.FormValue("feature_areas[0]"))
+				assert.NotContains(t, request.Form, "feature_area")
 				assert.Equal(t, "testing the feedback command", request.FormValue("context"))
 				assert.Equal(t, "test-device", request.FormValue("device_name"))
 				assert.NotEmpty(t, request.FormValue("os"))
@@ -392,8 +397,14 @@ func TestFeedbackValidateSuppliedFields(t *testing.T) {
 		assert.NoError(t, feedbackCommand.validateSuppliedFields())
 	}
 
-	feedbackCommand.feature = "not-a-real-area"
+	feedbackCommand.features = []string{"skills", "not-a-real-area"}
 	err := feedbackCommand.validateSuppliedFields()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--features")
+	feedbackCommand.features = nil
+
+	feedbackCommand.feature = "not-a-real-area"
+	err = feedbackCommand.validateSuppliedFields()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--feature")
 	feedbackCommand.feature = ""
@@ -423,4 +434,41 @@ func TestFeedbackMissingRequiredFields(t *testing.T) {
 
 	feedbackCommand.sentiment = ""
 	assert.Equal(t, []string{"--sentiment", "--context"}, feedbackCommand.missingRequiredFields())
+}
+
+func TestFeedbackFeatureFlags(t *testing.T) {
+	tests := []struct {
+		name  string
+		flags []string
+		want  []string
+	}{
+		{"legacy", []string{"--feature", "cli"}, []string{"cli"}},
+		{"comma-separated", []string{"--features", "skills,connect"}, []string{"skills", "connect"}},
+		{"repeated", []string{"--features", "skills", "--features", "connect"}, []string{"skills", "connect"}},
+		{"both", []string{"--feature", "docs", "--features", "skills,connect"}, []string{"skills", "connect", "docs"}},
+	}
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.NoError(t, r.ParseForm())
+				var got []string
+				for index := range testCase.want {
+					got = append(got, r.FormValue(fmt.Sprintf("feature_areas[%d]", index)))
+				}
+				assert.Equal(t, testCase.want, got)
+				assert.Empty(t, r.FormValue(fmt.Sprintf("feature_areas[%d]", len(testCase.want))))
+				assert.NotContains(t, r.Form, "feature_area")
+				fmt.Fprint(w, `{"id":"fbk_test","success":true}`)
+			}))
+			defer server.Close()
+			cleanup := setupFeedbackTestConfig(t, "sk_test_123456789012")
+			defer cleanup()
+			feedback := newTestFeedbackCmd(server.URL)
+			validFeedbackCase().applyTo(feedback)
+			feedback.jsonOutput = true
+			feedback.cmd.SetOut(new(bytes.Buffer))
+			require.NoError(t, feedback.cmd.ParseFlags(testCase.flags))
+			require.NoError(t, runFeedback(feedback))
+		})
+	}
 }
