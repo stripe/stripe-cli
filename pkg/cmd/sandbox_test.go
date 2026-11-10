@@ -1093,6 +1093,8 @@ func TestSandboxNamespaceExecution(t *testing.T) {
 				assert.Contains(t, output, "stripe sandboxes create")
 			})
 			t.Run("list", func(t *testing.T) {
+				defer setupSandboxTestConfig(t)()
+				setSandboxCreateOAuthContext(t)
 				command := newSandboxListCmd()
 				command.client = fakeSandboxListClient{sandboxes: []sandbox.ManagedSandbox{{Name: "My sandbox", AccountID: "acct_listed", AccessLevel: sandbox.SandboxAccessLevelPrivate}}}
 
@@ -2018,6 +2020,9 @@ func (f fakeSandboxListClient) ListAccessible(context.Context) ([]sandbox.Manage
 }
 
 func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
+	defer setupSandboxTestConfig(t)()
+	setSandboxCreateOAuthContext(t)
+
 	cmd := newSandboxListCmd()
 	cmd.client = fakeSandboxListClient{
 		sandboxes: []sandbox.ManagedSandbox{
@@ -2045,10 +2050,13 @@ func TestSandboxListCmd_PresentsSandboxes(t *testing.T) {
 	assert.Equal(t, []string{"New", "business", "acct_unnamed", "Private"}, strings.Fields(lines[5]))
 	assert.NotContains(t, stdout.String(), "wksp_")
 	assert.NotContains(t, stdout.String(), "TYPE")
-	assert.Empty(t, stderr.String())
+	assert.Equal(t, "Showing only sandboxes explicitly authorized to this CLI session beneath the active live account acct_live.\nRun `stripe login` to authorize existing sandboxes.\nCheck Dashboard to see all sandboxes you can access.\n", stderr.String())
 }
 
 func TestSandboxListCmd_Empty(t *testing.T) {
+	defer setupSandboxTestConfig(t)()
+	setSandboxCreateOAuthContext(t)
+
 	cmd := newSandboxListCmd()
 	cmd.client = fakeSandboxListClient{sandboxes: []sandbox.ManagedSandbox{}}
 
@@ -2058,8 +2066,8 @@ func TestSandboxListCmd_Empty(t *testing.T) {
 
 	require.NoError(t, cmd.cmd.Execute())
 
-	assert.Equal(t, "No sandboxes found.\n", stdout.String())
-	assert.Empty(t, stderr.String())
+	assert.Empty(t, stdout.String())
+	assert.Equal(t, "No sandboxes are explicitly authorized to this CLI session beneath the active live account acct_live.\nRun `stripe login` to authorize existing sandboxes.\nCheck Dashboard to see all sandboxes you can access.\n", stderr.String())
 }
 
 func TestSandboxListCmd_ClientError(t *testing.T) {
@@ -2079,15 +2087,20 @@ func TestSandboxListCmd_ClientError(t *testing.T) {
 }
 
 func TestSandboxListCmd_Surface(t *testing.T) {
+	defer setupSandboxTestConfig(t)()
+	setSandboxCreateOAuthContext(t)
+
 	cmd := newSandboxListCmd()
 	assert.False(t, cmd.cmd.Hidden)
 	assert.Equal(t, "List sandboxes authorized to the CLI", cmd.cmd.Short)
 	assert.Contains(t, cmd.cmd.Long, "active live account")
-	assert.Contains(t, cmd.cmd.Long, "authorized to this CLI session")
-	assert.Contains(t, cmd.cmd.Long, "authorize additional sandboxes")
+	assert.Contains(t, cmd.cmd.Long, "explicitly authorized to this CLI session")
+	assert.Contains(t, cmd.cmd.Long, "authorize existing sandboxes")
+	assert.Contains(t, cmd.cmd.Long, "Dashboard")
+	assert.Contains(t, cmd.cmd.Long, "stderr")
 	assert.Contains(t, cmd.cmd.Long, "stripe login")
 	assert.Equal(t, "stripe sandboxes list", cmd.cmd.Example)
-	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "authorized to the CLI")
+	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "explicitly authorized to this CLI session")
 	assert.Contains(t, cmd.cmd.Annotations[AIAgentHelpAnnotationKey], "stripe sandboxes delete")
 	require.NotNil(t, cmd.cmd.Flags().Lookup("api-base"))
 	assert.Nil(t, cmd.cmd.Flags().Lookup("stripe-account"))
@@ -2103,8 +2116,8 @@ func TestSandboxListCmd_Surface(t *testing.T) {
 	cmd.cmd.SilenceErrors = true
 	cmd.cmd.SetArgs([]string{"--api-base=http://example.test"})
 	require.NoError(t, cmd.cmd.Execute())
-	assert.Equal(t, "No sandboxes found.\n", stdout.String())
-	assert.Empty(t, stderr.String())
+	assert.Empty(t, stdout.String())
+	assert.Equal(t, "No sandboxes are explicitly authorized to this CLI session beneath the active live account acct_live.\nRun `stripe login` to authorize existing sandboxes.\nCheck Dashboard to see all sandboxes you can access.\n", stderr.String())
 
 	for _, args := range [][]string{{"acct_123"}, {"--stripe-account=acct_123"}, {"--stripe-version=2026-01-01"}} {
 		cmd := newSandboxListCmd()
