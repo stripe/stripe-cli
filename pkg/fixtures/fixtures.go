@@ -376,18 +376,27 @@ func (fxt *Fixture) unsupportedAPIKey(path string) bool {
 // values chosen by the fixture author (literals, defaults, or .env lookups).
 func (fxt *Fixture) validateRequestHeaders(data FixtureRequest) error {
 	for name, value := range data.Headers {
-		switch http.CanonicalHeaderKey(name) {
-		case "Authorization":
+		// Compare case-insensitively and fold underscores into hyphens:
+		// proxies and app servers commonly treat Stripe_Account and
+		// Stripe-Account as the same header.
+		switch normalized := strings.ToLower(strings.ReplaceAll(name, "_", "-")); normalized {
+		case "authorization":
 			if fxt.referencesSessionToken(data.Name, value) {
 				continue
 			}
-		case "Stripe-Context", "Stripe-Account":
+		case "stripe-account", "stripe-context":
 			if fxt.referencesEarlierResponse(data.Name, value) {
 				continue
 			}
-		case "Stripe-Livemode":
-		default:
+		case "stripe-version":
 			continue
+		default:
+			// Reserve the rest of the Stripe-* namespace (Stripe-Livemode
+			// today) so headers the CLI's credential and scope handling
+			// grows later are protected without updating this list.
+			if !strings.HasPrefix(normalized, "stripe-") {
+				continue
+			}
 		}
 		return errorcategory.Errorf(errorcategory.UserInput, "fixture step %q cannot set protected header %q to this value; reference an earlier step's response (for example \"${step:field}\") or rely on CLI credentials and account selection flags instead", data.Name, name)
 	}
@@ -460,6 +469,9 @@ func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.R
 }
 
 func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
+	// Execute already validated every selected step up front so runs fail
+	// before any request is sent; this repeat is defense in depth for any
+	// future caller that reaches makeRequest without that pass.
 	if err := fxt.validateRequestHeaders(data); err != nil {
 		return nil, err
 	}

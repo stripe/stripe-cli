@@ -223,8 +223,8 @@ func TestProtectedFixtureHeaders(t *testing.T) {
 		stripe.NewAPIKeyCredentials("sk_test_dummy_selected"),
 		stripe.NewOAKCredentials("oak_dummy_selected", "dummy-context", false),
 	} {
-		for _, header := range []string{"Authorization", "Stripe-Livemode", "Stripe-Context", "Stripe-Account"} {
-			for _, name := range []string{header, strings.ToLower(header), strings.ToUpper(header), strings.ToLower(header[:1]) + header[1:]} {
+		for _, header := range []string{"Authorization", "Stripe-Livemode", "Stripe-Context", "Stripe-Account", "Stripe-Future-Scope"} {
+			for _, name := range []string{header, strings.ToLower(header), strings.ToUpper(header), strings.ToLower(header[:1]) + header[1:], strings.ReplaceAll(header, "-", "_"), strings.ToLower(strings.ReplaceAll(header, "-", "_"))} {
 				for _, value := range []string{"", "dummy-override-value", "${.env:FIXTURE_HEADER_SENTINEL}"} {
 					t.Run(creds.Token+"/"+name+"/"+value, func(t *testing.T) {
 						data := FixtureRequest{
@@ -314,10 +314,9 @@ func TestAccountScopeHeadersMayReferenceEarlierResponses(t *testing.T) {
 func TestFixtureHeaderValidationBeforeEnvironmentParameters(t *testing.T) {
 	t.Setenv("FIXTURE_PROCESS_SENTINEL", "dummy-process-value")
 	dir := t.TempDir()
-	oldWD, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { require.NoError(t, os.Chdir(oldWD)) })
+	// godotenv reads .env from the real working directory, so afero cannot
+	// stand in here; t.Chdir restores the directory and forbids t.Parallel.
+	t.Chdir(dir)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ".env"), []byte("FIXTURE_FILE_SENTINEL=dummy-file-value\n"), 0o600))
 
 	var calls atomic.Int32
@@ -608,12 +607,7 @@ CUST_ID="char_12345"`
 
 func TestUpdateEnvRefusesSymlink(t *testing.T) {
 	tempDir := t.TempDir()
-	oldWD, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(tempDir))
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(oldWD))
-	})
+	t.Chdir(tempDir)
 
 	victimFile := filepath.Join(tempDir, "victim")
 	require.NoError(t, os.WriteFile(victimFile, []byte("ORIGINAL=1\n"), 0o644))
@@ -626,7 +620,7 @@ func TestUpdateEnvRefusesSymlink(t *testing.T) {
 		},
 	}
 
-	err = fxt.updateEnv(map[string]string{
+	err := fxt.updateEnv(map[string]string{
 		"CHAR_ID": "${char_bender:id}",
 	})
 	require.ErrorContains(t, err, "symlink")
