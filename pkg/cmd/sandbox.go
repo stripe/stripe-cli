@@ -769,18 +769,19 @@ func newSandboxListCmd() *sandboxListCmd {
 	slc.cmd = &cobra.Command{
 		Use:   "list",
 		Short: "List sandboxes authorized to the CLI",
-		Long: `List the Stripe sandboxes authorized to this CLI session under your active live account.
+		Long: `List only the Stripe sandboxes explicitly authorized to this CLI session beneath your active live account.
 
 This list can be narrower than the sandboxes you can access in Dashboard.
-Run stripe login to authorize additional sandboxes. The command requires an active live account.
-The output includes each sandbox's name, account ID, and access setting.`,
+Run stripe login to authorize existing sandboxes. Check Dashboard to see all sandboxes you can access.
+The command requires an active live account. Its ID and authorization guidance are printed to stderr.
+The table on stdout includes each sandbox's name, account ID, and access setting.`,
 		Example: `stripe sandboxes list`,
 		Args:    validators.NoArgs,
 		RunE:    slc.runSandboxListCmd,
 		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  Run `stripe sandboxes list` after `stripe login` to inspect sandboxes authorized to the CLI under the active live account.\n" +
+			AIAgentHelpAnnotationKey: "  Run `stripe sandboxes list` after `stripe login` to inspect sandboxes explicitly authorized to this CLI session beneath the active live account.\n" +
 				"  The ACCOUNT value can be passed to `stripe sandboxes delete`.\n" +
-				"  Output is a table with NAME, ACCOUNT, and ACCESS columns.",
+				"  Output is a table with NAME, ACCOUNT, and ACCESS columns; authorization guidance is on stderr.",
 		},
 	}
 
@@ -810,8 +811,19 @@ func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) 
 		}
 	}
 
+	creds, err := Config.Profile.ResolveCredentials(true)
+	if err != nil {
+		return err
+	}
+
 	if len(sandboxes) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "No sandboxes found.")
+		fmt.Fprintf(cmd.ErrOrStderr(), "No sandboxes are explicitly authorized to this CLI session beneath the active live account %s.\n", creds.OAKContext)
+	} else {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Showing only sandboxes explicitly authorized to this CLI session beneath the active live account %s.\n", creds.OAKContext)
+	}
+	fmt.Fprintln(cmd.ErrOrStderr(), "Run `stripe login` to authorize existing sandboxes.")
+	fmt.Fprintln(cmd.ErrOrStderr(), "Check Dashboard to see all sandboxes you can access.")
+	if len(sandboxes) == 0 {
 		return nil
 	}
 
