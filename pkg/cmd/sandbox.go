@@ -411,6 +411,7 @@ func (scc *sandboxCreateCmd) outputResult(cmd *cobra.Command, color *aurora.Auro
 	return nil
 }
 
+// formatSandboxExpiry returns "<expiresAt> (in N days)" ("day" for 1), or expiresAt alone if parsing fails.
 func formatSandboxExpiry(expiresAt string) string {
 	expiry, err := time.Parse(time.DateOnly, expiresAt)
 	if err != nil {
