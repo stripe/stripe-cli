@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -122,10 +123,149 @@ func TestGetPluginMetadataSurfacesRequiresNewerCLI(t *testing.T) {
 
 	profile := &config.Profile{APIKey: "sk_test_1234"}
 
-	_, err := GetPluginMetadata(context.Background(), server.URL, server.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64")
+	_, err := GetPluginMetadata(context.Background(), server.URL, server.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64", false)
 	require.Error(t, err)
 
 	minCoreVersion, ok := PluginRequiresNewerCLI(err)
 	require.True(t, ok)
 	require.Equal(t, "1.30.0", minCoreVersion)
+}
+
+// apiKeyExpiredBody is the API's answer for a key past its expiry date, such as
+// one saved by `stripe login` long enough ago.
+const apiKeyExpiredBody = `{
+  "error": {
+    "code": "api_key_expired",
+    "message": "Expired API Key provided: rk_test_*************1234",
+    "type": "invalid_request_error"
+  }
+}`
+
+// TestGetPluginMetadataRetriesAnonymouslyWhenAPIKeyExpired covers a caller that
+// opted into the anonymous fallback and a key the API rejects as expired.
+func TestGetPluginMetadataRetriesAnonymouslyWhenAPIKeyExpired(t *testing.T) {
+	const expiredKey = "rk_test_expired_1234"
+
+	tests := []struct {
+		name            string
+		anonymousStatus int
+		anonymousBody   string
+		check           func(t *testing.T, metadata PluginMetadata, err error)
+	}{
+		{
+			name:            "plugin anyone can install",
+			anonymousStatus: http.StatusOK,
+			anonymousBody:   `{"binary_url":"https://example.test/appA/2.0.1","plugin_manifest":"manifest"}`,
+			check: func(t *testing.T, metadata PluginMetadata, err error) {
+				require.NoError(t, err)
+				require.Equal(t, "https://example.test/appA/2.0.1", metadata.BinaryURL)
+				require.Equal(t, "manifest", metadata.PluginManifest)
+			},
+		},
+		{
+			// Possibly a plugin only a logged-in account can see, so the expired key
+			// is still what gets reported: logging in again is the fix.
+			name:            "plugin the anonymous endpoint cannot find",
+			anonymousStatus: http.StatusNotFound,
+			anonymousBody:   `{"error":{"message":"not found"}}`,
+			check: func(t *testing.T, _ PluginMetadata, err error) {
+				require.True(t, IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
+			},
+		},
+		{
+			// No login changes an outage, so it is reported instead of the key.
+			name:            "anonymous endpoint down",
+			anonymousStatus: http.StatusInternalServerError,
+			anonymousBody:   `{"error":{"message":"boom"}}`,
+			check: func(t *testing.T, _ PluginMetadata, err error) {
+				var requestErr RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusInternalServerError, requestErr.StatusCode)
+			},
+		},
+		{
+			// Nor does it change this answer.
+			name:            "plugin that needs a newer CLI",
+			anonymousStatus: http.StatusBadRequest,
+			anonymousBody:   requiresNewerCLIBody,
+			check: func(t *testing.T, _ PluginMetadata, err error) {
+				minCoreVersion, ok := PluginRequiresNewerCLI(err)
+				require.True(t, ok, "want the newer-CLI refusal reported, got: %v", err)
+				require.Equal(t, "1.30.0", minCoreVersion)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// The profile's key is the one that should be sent, and STRIPE_API_KEY
+			// would win over it.
+			t.Setenv("STRIPE_API_KEY", "")
+
+			var apiRequests, dashboardRequests int
+			apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				apiRequests++
+				assert.Equal(t, "/v1/stripecli/get-plugin-metadata", req.URL.Path)
+				assert.Equal(t, "Bearer "+expiredKey, req.Header.Get("Authorization"))
+				res.WriteHeader(http.StatusUnauthorized)
+				_, _ = res.Write([]byte(apiKeyExpiredBody))
+			}))
+			defer apiServer.Close()
+
+			dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				dashboardRequests++
+				assert.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
+				assert.Empty(t, req.Header.Get("Authorization"), "the expired key must not be sent to the Dashboard host")
+				assert.Equal(t, "appA", req.URL.Query().Get("plugin"))
+				assert.Equal(t, "2.0.1", req.URL.Query().Get("version"))
+				res.WriteHeader(tt.anonymousStatus)
+				_, _ = res.Write([]byte(tt.anonymousBody))
+			}))
+			defer dashboardServer.Close()
+
+			profile := &config.Profile{APIKey: expiredKey}
+			metadata, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "appA", "2.0.1", "darwin", "arm64", true)
+			tt.check(t, metadata, err)
+			require.Equal(t, 1, apiRequests)
+			require.Equal(t, 1, dashboardRequests)
+		})
+	}
+}
+
+// TestGetPluginMetadataDoesNotRetryAnonymously covers the 401s the fallback is
+// not for: an expired key whose caller did not opt in, and a key rejected for
+// any other reason.
+func TestGetPluginMetadataDoesNotRetryAnonymously(t *testing.T) {
+	tests := []struct {
+		name                  string
+		body                  string
+		anonymousOnExpiredKey bool
+		wantExpired           bool
+	}{
+		{"expired key, caller did not opt in", apiKeyExpiredBody, false, true},
+		{"key rejected for another reason", `{"error":{"message":"Invalid API Key provided: sk_test_****1234","type":"invalid_request_error"}}`, true, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				res.WriteHeader(http.StatusUnauthorized)
+				_, _ = res.Write([]byte(tt.body))
+			}))
+			defer apiServer.Close()
+
+			dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				t.Errorf("unexpected anonymous retry: %s", req.URL.String())
+			}))
+			defer dashboardServer.Close()
+
+			profile := &config.Profile{APIKey: "sk_test_1234"}
+			_, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64", tt.anonymousOnExpiredKey)
+
+			var requestErr RequestError
+			require.ErrorAs(t, err, &requestErr)
+			require.Equal(t, http.StatusUnauthorized, requestErr.StatusCode)
+			require.Equal(t, tt.wantExpired, IsAPIKeyExpiredError(err))
+		})
+	}
 }

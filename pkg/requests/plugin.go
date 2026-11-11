@@ -71,7 +71,13 @@ func getPluginEndpointBaseURL(apiKey, apiBaseURL, dashboardBaseURL string) strin
 // GetPluginMetadata returns plugin-specific manifest and binary information.
 // It uses the authenticated endpoint when an API key is available and the
 // anonymous endpoint otherwise.
-func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string) (PluginMetadata, error) {
+//
+// With anonymousOnExpiredKey, a key the API reports as expired is retried
+// against the anonymous endpoint, which is all a logged-out caller ever gets.
+// Callers opt in because the anonymous endpoint sees less than the account
+// does, which is fine for an install but would let an upgrade quietly stand in
+// the anonymous view for the account's.
+func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion, apiKey string, profile *config.Profile, pluginName, version, os, arch string, anonymousOnExpiredKey bool) (PluginMetadata, error) {
 	params := &RequestParameters{
 		data:    []string{},
 		version: apiVersion,
@@ -110,6 +116,9 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 	}
 
 	resp, err := base.MakeRequest(ctx, resolvedCreds, metadataPath, params, requestParams, true, nil)
+	if err != nil && anonymousOnExpiredKey && apiKey != "" && IsAPIKeyExpiredError(err) {
+		resp, err = retryPluginMetadataAnonymously(ctx, apiBaseURL, dashboardBaseURL, apiVersion, requestParams, err)
+	}
 	if err != nil {
 		return PluginMetadata{}, err
 	}
@@ -120,6 +129,50 @@ func GetPluginMetadata(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVer
 	}
 
 	return metadata, nil
+}
+
+// retryPluginMetadataAnonymously sends a metadata request whose API key has
+// expired to the anonymous endpoint instead. It carries no credentials, so the
+// expired key never reaches the Dashboard host, and no profile, since given one
+// a 401 could have the request layer refresh the profile's OAuth token and put
+// credentials back on it.
+//
+// If the anonymous endpoint cannot find the plugin either, expiredErr is
+// reported, since it may be a plugin only a logged-in account can see. Any
+// other failure, such as an outage or a refusal because this CLI is too old, is
+// reported as it is: logging in would not change it.
+func retryPluginMetadataAnonymously(ctx context.Context, apiBaseURL, dashboardBaseURL, apiVersion string, requestParams map[string]interface{}, expiredErr error) ([]byte, error) {
+	base := &Base{
+		Method:         http.MethodGet,
+		SuppressOutput: true,
+		APIBaseURL:     getPluginEndpointBaseURL("", apiBaseURL, dashboardBaseURL),
+	}
+	params := &RequestParameters{
+		data:    []string{},
+		version: apiVersion,
+	}
+
+	log.WithFields(log.Fields{
+		"prefix":   "requests.GetPluginMetadata",
+		"base_url": base.APIBaseURL,
+		"endpoint": getPluginMetadataPath(""),
+	}).Debug("API key has expired, retrying with the anonymous plugin metadata endpoint")
+
+	resp, err := base.MakeRequest(ctx, stripe.Credentials{}, getPluginMetadataPath(""), params, requestParams, true, nil)
+	if err == nil {
+		return resp, nil
+	}
+
+	var requestErr RequestError
+	if !errors.As(err, &requestErr) || requestErr.StatusCode != http.StatusNotFound {
+		return nil, err
+	}
+
+	log.WithFields(log.Fields{
+		"prefix": "requests.GetPluginMetadata",
+	}).Debugf("anonymous plugin metadata endpoint could not find the plugin either, reporting the expired API key: %s", err)
+
+	return nil, expiredErr
 }
 
 // PluginRequiresNewerCLI reports whether err is a plugin metadata response saying

@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	cfgpkg "github.com/stripe/stripe-cli/pkg/config"
@@ -403,6 +404,113 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 	require.Equal(t, "2.0.1", resolvedPlugin.Version)
 	require.Equal(t, "https://example.test/appA/2.0.1", resolvedPlugin.BinaryURL)
 	require.Equal(t, 1, metadataLookups)
+}
+
+// apiKeyExpiredBody is the API's answer for a key past its expiry date.
+const apiKeyExpiredBody = `{"error":{"code":"api_key_expired","message":"Expired API Key provided: rk_test_***1111","type":"invalid_request_error"}}`
+
+// TestResolvePluginForInstallWhenAPIKeyExpired covers which installs fall back
+// to the anonymous metadata endpoint once the key has expired. A plugin anyone
+// can install must not need a fresh login, but the expired key is reported when
+// the user chose it, or when the anonymous latest could replace an installed
+// release only the account can see with an older public one.
+func TestResolvePluginForInstallWhenAPIKeyExpired(t *testing.T) {
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusUnauthorized)
+		_, _ = res.Write([]byte(apiKeyExpiredBody))
+	}))
+	defer apiServer.Close()
+
+	tests := []struct {
+		name             string
+		version          string
+		installedVersion string
+		overrideKey      bool
+		wantAnonymous    bool
+	}{
+		{name: "named version", version: "2.0.1", wantAnonymous: true},
+		{name: "latest, not installed", wantAnonymous: true},
+		{name: "latest over an installed plugin", installedVersion: "3.0.0"},
+		{name: "key given via --api-key or STRIPE_API_KEY", version: "2.0.1", overrideKey: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.overrideKey {
+				stubSavedAPIKey(t)
+			}
+			config := &TestConfig{}
+			config.InitConfig()
+			fs := afero.NewMemMapFs()
+			if tt.installedVersion != "" {
+				installPath, err := (&Plugin{Shortname: "appA"}).getPluginInstallPath(config, tt.installedVersion)
+				require.NoError(t, err)
+				require.NoError(t, fs.MkdirAll(installPath, 0o755))
+			}
+
+			var dashboardRequests int
+			dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				dashboardRequests++
+				assert.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
+				assert.Empty(t, req.Header.Get("Authorization"))
+				body, err := json.Marshal(requests.PluginMetadata{
+					BinaryURL:      "https://example.test/appA/2.0.1",
+					PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+				})
+				assert.NoError(t, err)
+				_, _ = res.Write(body)
+			}))
+			defer dashboardServer.Close()
+
+			resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", tt.version, apiServer.URL, dashboardServer.URL)
+			if tt.wantAnonymous {
+				require.NoError(t, err)
+				require.Equal(t, "2.0.1", resolvedPlugin.Version)
+				require.Equal(t, "https://example.test/appA/2.0.1", resolvedPlugin.BinaryURL)
+				require.Equal(t, 1, dashboardRequests)
+				return
+			}
+
+			require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
+			require.Zero(t, dashboardRequests)
+		})
+	}
+}
+
+// TestResolvePluginForUpgradeDoesNotUseAnonymousMetadataWhenAPIKeyExpired covers
+// upgrades: the anonymous endpoint's latest release can be older than one only
+// the account can see, so an upgrade must not resolve against it.
+func TestResolvePluginForUpgradeDoesNotUseAnonymousMetadataWhenAPIKeyExpired(t *testing.T) {
+	stubSavedAPIKey(t)
+	config := &TestConfig{}
+	config.InitConfig()
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(http.StatusUnauthorized)
+		_, _ = res.Write([]byte(apiKeyExpiredBody))
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Errorf("unexpected anonymous retry: %s", req.URL.String())
+	}))
+	defer dashboardServer.Close()
+
+	_, err := ResolvePluginForUpgrade(context.Background(), config, afero.NewMemMapFs(), "appA", apiServer.URL, dashboardServer.URL)
+	// Kept in the chain, not just the message, so the CLI can tell the user to log
+	// in again.
+	require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
+}
+
+// stubSavedAPIKey makes TestConfig's key count as one saved by `stripe login`
+// rather than an override; see hasOverrideAPIKey.
+func stubSavedAPIKey(t *testing.T) {
+	t.Helper()
+	original := hasOverrideAPIKey
+	hasOverrideAPIKey = func(*cfgpkg.Profile) bool { return false }
+	t.Cleanup(func() { hasOverrideAPIKey = original })
 }
 
 func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(t *testing.T) {
