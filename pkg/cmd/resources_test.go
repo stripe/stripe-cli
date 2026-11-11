@@ -13,6 +13,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
+	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 
 	"github.com/BurntSushi/toml"
@@ -32,7 +33,6 @@ func newResourcesTestRoot(t *testing.T) *cobra.Command {
 	root.PersistentFlags().StringVar(&cfg.Profile.APIKey, "api-key", "", "Your API key to use for the command")
 	root.AddCommand(newResourcesCmd().cmd)
 	resources.AddAllResourcesCmds(root, cfg)
-	require.NoError(t, resource.AddDatabasesCmd(root, cfg))
 	require.NoError(t, resource.PostProcessResourceCommands(root, cfg))
 
 	return root
@@ -45,10 +45,14 @@ func TestResources(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestResourcesHidesDatabases(t *testing.T) {
-	output, err := executeCommand(newResourcesTestRoot(t), "resources")
+func TestResourcesDoesNotListDatabases(t *testing.T) {
+	root := newResourcesTestRoot(t)
+	output, err := executeCommand(root, "resources")
 	require.NoError(t, err)
 	require.NotContains(t, output, "databases")
+
+	_, found := cmdutil.FindSubCmd(root, "databases")
+	require.False(t, found, "generated resources must not register a databases command")
 }
 
 func TestResourcesHelpAlias(t *testing.T) {
