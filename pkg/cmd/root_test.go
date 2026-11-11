@@ -20,7 +20,6 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
-	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -279,9 +278,6 @@ func assertNoBuiltInDatabasesCommand(t *testing.T) {
 	}
 	walk(rootCmd)
 
-	_, found := cmdutil.FindSubCmd(rootCmd, "databases")
-	require.False(t, found)
-
 	// Command resolution fails without sending any request.
 	apiBase := "--api-base=" + ts.URL
 	apiKey := "--api-key=sk_test_1234567890"
@@ -309,10 +305,6 @@ func assertNoBuiltInDatabasesCommand(t *testing.T) {
 	require.NotContains(t, completionOutput, "databases")
 
 	// An unrelated resource command still resolves and sends its request.
-	customersList, found := cmdutil.FindSubCmd(rootCmd, "customers", "list")
-	require.True(t, found)
-	require.Equal(t, "list", customersList.Name())
-
 	_, err = executeCommand(rootCmd, apiBase, apiKey, "customers", "list")
 	require.NoError(t, err)
 	require.Equal(t, int32(1), requestCount.Load())

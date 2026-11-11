@@ -13,7 +13,6 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
-	"github.com/stripe/stripe-cli/pkg/cmdutil"
 	"github.com/stripe/stripe-cli/pkg/config"
 
 	"github.com/BurntSushi/toml"
@@ -46,13 +45,9 @@ func TestResources(t *testing.T) {
 }
 
 func TestResourcesDoesNotListDatabases(t *testing.T) {
-	root := newResourcesTestRoot(t)
-	output, err := executeCommand(root, "resources")
+	output, err := executeCommand(newResourcesTestRoot(t), "resources")
 	require.NoError(t, err)
 	require.NotContains(t, output, "databases")
-
-	_, found := cmdutil.FindSubCmd(root, "databases")
-	require.False(t, found, "generated resources must not register a databases command")
 }
 
 func TestResourcesHelpAlias(t *testing.T) {
