@@ -2,7 +2,6 @@ package fixtures
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -208,6 +209,192 @@ func TestMakeRequestWithStringFixture(t *testing.T) {
 	require.Equal(t, "cust_12345", fxt.Responses["cust_bender"].Get("id").String())
 	require.Equal(t, "char_12345", fxt.Responses["char_bender"].Get("id").String())
 	require.True(t, fxt.Responses["char_bender"].Get("charge").Bool())
+}
+
+func TestProtectedFixtureHeaders(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	for _, creds := range []stripe.Credentials{
+		stripe.NewAPIKeyCredentials("sk_test_dummy_selected"),
+		stripe.NewOAKCredentials("oak_dummy_selected", "dummy-context", false),
+	} {
+		for _, header := range []string{"Authorization", "Stripe-Livemode", "Stripe-Context", "Stripe-Account", "Stripe-Future-Scope"} {
+			for _, name := range []string{header, strings.ToLower(header), strings.ToUpper(header), strings.ToLower(header[:1]) + header[1:], strings.ReplaceAll(header, "-", "_"), strings.ToLower(strings.ReplaceAll(header, "-", "_"))} {
+				for _, value := range []string{"", "dummy-override-value", "${.env:FIXTURE_HEADER_SENTINEL}"} {
+					t.Run(creds.Token+"/"+name+"/"+value, func(t *testing.T) {
+						data := FixtureRequest{
+							Name: "protected_step", Path: customersPath, Method: "post",
+							ExpectedErrorType: "invalid_request_error",
+							Headers:           map[string]string{name: value},
+						}
+						fxt := &Fixture{Credentials: creds, BaseURL: server.URL, FixtureData: FixtureData{Requests: []FixtureRequest{data}}}
+						_, err := fxt.Execute(context.Background(), "")
+						require.ErrorContains(t, err, data.Name)
+						require.ErrorContains(t, err, name)
+						require.ErrorContains(t, err, "CLI credentials and account selection")
+						assert.NotContains(t, err.Error(), "dummy-override-value")
+						assert.NotContains(t, err.Error(), "FIXTURE_HEADER_SENTINEL")
+						category, ok := errorcategory.Get(err)
+						require.True(t, ok)
+						require.Equal(t, errorcategory.UserInput, category)
+						_, err = fxt.makeRequest(context.Background(), data, "")
+						require.ErrorContains(t, err, name)
+					})
+				}
+			}
+			data := FixtureRequest{Name: "duplicates", Path: customersPath, Method: "post", Headers: map[string]string{header: "", strings.ToLower(header): "dummy-override-value"}}
+			fxt := &Fixture{Credentials: creds, BaseURL: server.URL, FixtureData: FixtureData{Requests: []FixtureRequest{data}}}
+			_, err := fxt.Execute(context.Background(), "")
+			require.Error(t, err)
+			_, err = fxt.makeRequest(context.Background(), data, "")
+			require.Error(t, err)
+		}
+	}
+	require.Zero(t, calls.Load())
+}
+
+func TestAccountScopeHeadersMayReferenceEarlierResponses(t *testing.T) {
+	var accountHeaders, contextHeaders []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		accountHeaders = append(accountHeaders, r.Header.Get("Stripe-Account"))
+		contextHeaders = append(contextHeaders, r.Header.Get("Stripe-Context"))
+		w.Write([]byte(`{"id":"acct_dummy_created"}`))
+	}))
+	defer server.Close()
+
+	fxt, err := NewFixtureFromRawString(afero.NewMemMapFs(), stripe.NewAPIKeyCredentials(apiKey), "", server.URL, `{"fixtures":[
+		{"name":"create_account","path":"/v1/accounts","method":"post"},
+		{"name":"scoped_customer","path":"/v1/customers","method":"post","headers":{"Stripe-Account":"${create_account:id}"}},
+		{"name":"scoped_context","path":"/v2/core/events","method":"get","headers":{"Stripe-Context":"${create_account:id}"}}]}`)
+	require.NoError(t, err)
+	_, err = fxt.Execute(context.Background(), "")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"", "acct_dummy_created", ""}, accountHeaders)
+	assert.Equal(t, []string{"", "", "acct_dummy_created"}, contextHeaders)
+
+	createAccount := fxt.FixtureData.Requests[0]
+	for name, headers := range map[string]map[string]string{
+		"own step":       {"Stripe-Account": "${scoped:id}"},
+		"missing step":   {"Stripe-Account": "${absent:id}"},
+		"default value":  {"Stripe-Account": "${create_account:id|acct_fallback}"},
+		"literal prefix": {"Stripe-Account": "acct_${create_account:id}"},
+		"env lookup":     {"Stripe-Context": "${.env:FIXTURE_CONTEXT}"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			data := FixtureRequest{Name: "scoped", Path: customersPath, Method: "post", Headers: headers}
+			blocked := &Fixture{Credentials: stripe.NewAPIKeyCredentials(apiKey), BaseURL: server.URL,
+				FixtureData: FixtureData{Requests: []FixtureRequest{createAccount, data}}}
+			_, err := blocked.Execute(context.Background(), "")
+			require.ErrorContains(t, err, "protected header")
+		})
+	}
+
+	t.Run("later step", func(t *testing.T) {
+		data := FixtureRequest{Name: "scoped", Path: customersPath, Method: "post", Headers: map[string]string{"Stripe-Account": "${create_account:id}"}}
+		blocked := &Fixture{Credentials: stripe.NewAPIKeyCredentials(apiKey), BaseURL: server.URL,
+			FixtureData: FixtureData{Requests: []FixtureRequest{data, createAccount}}}
+		_, err := blocked.Execute(context.Background(), "")
+		require.ErrorContains(t, err, "protected header")
+	})
+
+	t.Run("skipped source step", func(t *testing.T) {
+		scoped := FixtureRequest{Name: "scoped", Path: customersPath, Method: "post", Headers: map[string]string{"Stripe-Account": "${create_account:id}"}}
+		blocked := &Fixture{Credentials: stripe.NewAPIKeyCredentials(apiKey), BaseURL: server.URL, Skip: []string{"create_account"},
+			FixtureData: FixtureData{Requests: []FixtureRequest{createAccount, scoped}}}
+		_, err := blocked.Execute(context.Background(), "")
+		require.ErrorContains(t, err, "protected header")
+	})
+}
+
+func TestFixtureHeaderValidationBeforeEnvironmentParameters(t *testing.T) {
+	t.Setenv("FIXTURE_PROCESS_SENTINEL", "dummy-process-value")
+	dir := t.TempDir()
+	// godotenv reads .env from the real working directory, so afero cannot
+	// stand in here; t.Chdir restores the directory and forbids t.Parallel.
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, ".env"), []byte("FIXTURE_FILE_SENTINEL=dummy-file-value\n"), 0o600))
+
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+	const raw = `{"fixtures":[
+		{"name":"benign","path":"/v1/customers","method":"post"},
+		{"name":"environment_step","path":"/v1/customers","method":"post","expected_error_type":"invalid_request_error",
+		 "headers":{"Authorization":"Bearer dummy-untrusted"},
+		 "params":{"description":"${.env:FIXTURE_PROCESS_SENTINEL}",
+		           "metadata":{"value":"${.env:FIXTURE_FILE_SENTINEL}","missing":"${missing:response}"}}}]}`
+	fs := afero.NewMemMapFs()
+	require.NoError(t, afero.WriteFile(fs, file, []byte(raw), 0o600))
+	fromFile, err := NewFixtureFromFile(fs, stripe.NewAPIKeyCredentials(apiKey), "", server.URL, file, nil, nil, nil, nil, false)
+	require.NoError(t, err)
+	fromRaw, err := NewFixtureFromRawString(fs, stripe.NewAPIKeyCredentials(apiKey), "", server.URL, raw)
+	require.NoError(t, err)
+	for _, fxt := range []*Fixture{fromFile, fromRaw} {
+		_, err := fxt.Execute(context.Background(), "")
+		require.ErrorContains(t, err, "Authorization")
+		for _, value := range []string{"dummy-untrusted", "dummy-process-value", "dummy-file-value", "FIXTURE_PROCESS_SENTINEL", "FIXTURE_FILE_SENTINEL"} {
+			assert.NotContains(t, err.Error(), value)
+		}
+		require.Empty(t, fxt.Responses)
+	}
+	require.Zero(t, calls.Load())
+
+	fromRaw.Skip = []string{"environment_step"}
+	_, err = fromRaw.Execute(context.Background(), "")
+	require.NoError(t, err)
+	require.EqualValues(t, 1, calls.Load())
+}
+
+func TestAllowedFixtureHeadersPreserveCredentials(t *testing.T) {
+	t.Setenv("FIXTURE_CUSTOM_VALUE", "dummy-substitution")
+	for _, creds := range []stripe.Credentials{
+		stripe.NewAPIKeyCredentials("sk_test_dummy_selected"),
+		stripe.NewOAKCredentials("oak_dummy_selected", "dummy-context", false),
+	} {
+		for _, account := range []string{"", "dummy-connected-account"} {
+			t.Run(creds.Token+"/"+account, func(t *testing.T) {
+				var calls atomic.Int32
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					calls.Add(1)
+					assert.Equal(t, "Bearer "+creds.Token, r.Header.Get("Authorization"))
+					if creds.OAKLivemode != nil {
+						assert.Equal(t, "false", r.Header.Get("Stripe-Livemode"))
+					} else {
+						assert.Empty(t, r.Header.Get("Stripe-Livemode"))
+					}
+					expectedScope := make(http.Header)
+					creds.ApplyAccountContextHeaders(expectedScope, account, "")
+					assert.Equal(t, expectedScope.Get("Stripe-Context"), r.Header.Get("Stripe-Context"))
+					assert.Equal(t, expectedScope.Get("Stripe-Account"), r.Header.Get("Stripe-Account"))
+					assert.Equal(t, "dummy-substitution", r.Header.Get("X-Custom"))
+					assert.Equal(t, "2024-09-30.acacia", r.Header.Get("Stripe-Version"))
+					assert.Equal(t, stripe.V1ContentType, r.Header.Get("Content-Type"))
+					assert.Equal(t, "dummy-idempotency", r.Header.Get("Idempotency-Key"))
+					assert.NoError(t, r.ParseForm())
+					assert.Equal(t, "dummy-substitution", r.Form.Get("description"))
+					w.Write([]byte(`{}`))
+				}))
+				defer server.Close()
+				fxt, err := NewFixtureFromRawString(afero.NewMemMapFs(), creds, account, server.URL, `{
+					"fixtures":[{"name":"allowed","path":"/v1/customers","method":"post",
+					"headers":{"X-Custom":"${.env:FIXTURE_CUSTOM_VALUE}","Stripe-Version":"2024-09-30.acacia",
+					"Content-Type":"application/x-www-form-urlencoded","Idempotency-Key":"dummy-idempotency"},
+					"params":{"description":"${.env:FIXTURE_CUSTOM_VALUE}"}}]}`)
+				require.NoError(t, err)
+				_, err = fxt.Execute(context.Background(), "2020-08-27")
+				require.NoError(t, err)
+				require.EqualValues(t, 1, calls.Load())
+			})
+		}
+	}
 }
 
 func TestWithSkipMakeRequest(t *testing.T) {
@@ -420,12 +607,7 @@ CUST_ID="char_12345"`
 
 func TestUpdateEnvRefusesSymlink(t *testing.T) {
 	tempDir := t.TempDir()
-	oldWD, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(tempDir))
-	t.Cleanup(func() {
-		require.NoError(t, os.Chdir(oldWD))
-	})
+	t.Chdir(tempDir)
 
 	victimFile := filepath.Join(tempDir, "victim")
 	require.NoError(t, os.WriteFile(victimFile, []byte("ORIGINAL=1\n"), 0o644))
@@ -438,7 +620,7 @@ func TestUpdateEnvRefusesSymlink(t *testing.T) {
 		},
 	}
 
-	err = fxt.updateEnv(map[string]string{
+	err := fxt.updateEnv(map[string]string{
 		"CHAR_ID": "${char_bender:id}",
 	})
 	require.ErrorContains(t, err, "symlink")
@@ -523,12 +705,11 @@ func TestBundledFixtureAPIBasesAreAllowed(t *testing.T) {
 
 	checked := 0
 	for _, entry := range entries {
-		data, err := triggers.ReadFile("triggers/" + entry.Name())
-		require.NoError(t, err)
+		fxt, err := NewFixtureFromFile(afero.NewMemMapFs(), stripe.NewAPIKeyCredentials(apiKey), "", "", "triggers/"+entry.Name(), nil, nil, nil, nil, false)
+		require.NoError(t, err, entry.Name())
 
-		var fixture FixtureData
-		require.NoError(t, json.Unmarshal(data, &fixture), entry.Name())
-		for _, request := range fixture.Requests {
+		for _, request := range fxt.FixtureData.Requests {
+			assert.NoError(t, fxt.validateRequestHeaders(request), "%s: %s", entry.Name(), request.Name)
 			if request.APIBase != "" {
 				checked++
 				assert.NoError(t, stripe.ValidateFixtureAPIBaseURL(request.APIBase), "%s: %s", entry.Name(), request.Name)
@@ -536,6 +717,131 @@ func TestBundledFixtureAPIBasesAreAllowed(t *testing.T) {
 		}
 	}
 	require.NotZero(t, checked, "expected some bundled fixtures to set api_base")
+}
+
+func TestEmbeddedMeterSessionAuthorization(t *testing.T) {
+	for _, path := range []string{
+		"triggers/v1.billing.meter.no_meter_found.json",
+		"triggers/v1.billing.meter.error_report_triggered.json",
+	} {
+		t.Run(path, func(t *testing.T) {
+			fs := afero.NewMemMapFs()
+			creds := stripe.NewOAKCredentials("oak_dummy_selected", "dummy-context", false)
+			fxt, err := NewFixtureFromFile(fs, creds, "", "", path, nil, nil, nil, nil, false)
+			require.NoError(t, err)
+			var stream FixtureRequest
+			for _, data := range fxt.FixtureData.Requests {
+				if data.Name == "create_billing_meter_event_stream" {
+					stream = data
+				}
+			}
+			require.NotEmpty(t, stream.Headers["Authorization"])
+			fxt.Responses["billing_meter_event_session"] = gjson.Parse(`{"authentication_token":"dummy-session-token"}`)
+			req, err := http.NewRequest(http.MethodPost, stream.APIBase+stream.Path, nil)
+			require.NoError(t, err)
+			creds.SetRequestHeaders(req)
+			require.NoError(t, fxt.addCustomHeaders(stream.Headers)(req))
+			assert.Equal(t, "Bearer dummy-session-token", req.Header.Get("Authorization"))
+			assert.Equal(t, "false", req.Header.Get("Stripe-Livemode"))
+			assert.Equal(t, "dummy-context", req.Header.Get("Stripe-Context"))
+			assert.Empty(t, req.Header.Get("Stripe-Account"))
+
+			t.Run("copies and edits stay runnable", func(t *testing.T) {
+				raw := fxt.GetFixtureFileContent()
+				fromRaw, err := NewFixtureFromRawString(fs, creds, "", "", raw)
+				require.NoError(t, err)
+				localPath := "local/" + path
+				require.NoError(t, fs.MkdirAll(filepath.Dir(localPath), 0o700))
+				require.NoError(t, afero.WriteFile(fs, localPath, []byte(raw), 0o600))
+				fromFile, err := NewFixtureFromFile(fs, creds, "", "", localPath, nil, nil, nil, nil, false)
+				require.NoError(t, err)
+				mockEdit(t)
+				edited, err := NewFixtureFromFile(fs, creds, "", "", path, nil, nil, nil, nil, true)
+				require.NoError(t, err)
+				for _, copied := range []*Fixture{fromRaw, fromFile, edited} {
+					for _, data := range copied.FixtureData.Requests {
+						assert.NoError(t, copied.validateRequestHeaders(data), data.Name)
+					}
+				}
+			})
+
+			t.Run("skipped session step is untrusted", func(t *testing.T) {
+				skipped := *fxt
+				skipped.Skip = []string{"billing_meter_event_session"}
+				require.ErrorContains(t, skipped.validateRequestHeaders(stream), "Authorization")
+			})
+
+			t.Run("session step after the stream step is untrusted", func(t *testing.T) {
+				reordered := *fxt
+				reordered.FixtureData.Requests = make([]FixtureRequest, len(fxt.FixtureData.Requests))
+				copy(reordered.FixtureData.Requests, fxt.FixtureData.Requests)
+				for i, data := range reordered.FixtureData.Requests {
+					if data.Name == "billing_meter_event_session" {
+						reordered.FixtureData.Requests = append(reordered.FixtureData.Requests[:i], reordered.FixtureData.Requests[i+1:]...)
+						reordered.FixtureData.Requests = append(reordered.FixtureData.Requests, data)
+						break
+					}
+				}
+				require.ErrorContains(t, reordered.validateRequestHeaders(stream), "Authorization")
+			})
+
+			t.Run("session step with another shape is untrusted", func(t *testing.T) {
+				for _, mutate := range map[string]func(*FixtureRequest){
+					"path":   func(r *FixtureRequest) { r.Path = customersPath },
+					"method": func(r *FixtureRequest) { r.Method = "get" },
+				} {
+					mutated := *fxt
+					mutated.FixtureData.Requests = make([]FixtureRequest, len(fxt.FixtureData.Requests))
+					copy(mutated.FixtureData.Requests, fxt.FixtureData.Requests)
+					for i := range mutated.FixtureData.Requests {
+						if mutated.FixtureData.Requests[i].Name == "billing_meter_event_session" {
+							mutate(&mutated.FixtureData.Requests[i])
+						}
+					}
+					require.ErrorContains(t, mutated.validateRequestHeaders(stream), "Authorization")
+				}
+			})
+
+			for _, mutation := range []struct {
+				name   string
+				change func(*FixtureRequest)
+			}{
+				{"literal token", func(r *FixtureRequest) { r.Headers["Authorization"] = "Bearer dummy-other" }},
+				{"environment token", func(r *FixtureRequest) { r.Headers["Authorization"] = "Bearer ${.env:FIXTURE_TOKEN}" }},
+				{"defaulted token", func(r *FixtureRequest) {
+					r.Headers["Authorization"] = "Bearer ${billing_meter_event_session:authentication_token|dummy-fallback}"
+				}},
+				{"token with literal suffix", func(r *FixtureRequest) {
+					r.Headers["Authorization"] = "Bearer dummy-${billing_meter_event_session:authentication_token}"
+				}},
+				{"other response", func(r *FixtureRequest) { r.Headers["Authorization"] = "Bearer ${other:authentication_token}" }},
+				{"own response", func(r *FixtureRequest) {
+					r.Headers["Authorization"] = "Bearer ${create_billing_meter_event_stream:authentication_token}"
+				}},
+				{"empty token", func(r *FixtureRequest) { r.Headers["Authorization"] = "" }},
+				{"duplicate authorization", func(r *FixtureRequest) { r.Headers["authorization"] = "Bearer dummy-other" }},
+				{"mode", func(r *FixtureRequest) { r.Headers["Stripe-Livemode"] = "false" }},
+				{"literal context", func(r *FixtureRequest) { r.Headers["Stripe-Context"] = "dummy-context" }},
+				{"literal account", func(r *FixtureRequest) { r.Headers["Stripe-Account"] = "acct_dummy" }},
+			} {
+				t.Run(mutation.name, func(t *testing.T) {
+					changed := stream
+					changed.Headers = make(map[string]string)
+					for k, v := range stream.Headers {
+						changed.Headers[k] = v
+					}
+					mutation.change(&changed)
+					require.Error(t, fxt.validateRequestHeaders(changed))
+				})
+			}
+
+			t.Run("fixture without the session step", func(t *testing.T) {
+				other, err := NewFixtureFromFile(fs, creds, "", "", "triggers/payment_intent.succeeded.json", nil, nil, nil, nil, false)
+				require.NoError(t, err)
+				require.ErrorContains(t, other.validateRequestHeaders(stream), "Authorization")
+			})
+		})
+	}
 }
 
 func TestExecuteReturnsRequestNames(t *testing.T) {
@@ -686,14 +992,17 @@ func TestGetFixtureFilenameWithWildcard(t *testing.T) {
 }
 
 // Mock edit so that we don't try to open the fixture in an IDE during testing
-func mockEdit() {
+func mockEdit(t *testing.T) {
+	t.Helper()
+	original := Edit
+	t.Cleanup(func() { Edit = original })
 	Edit = func(path string, filedata []byte) ([]byte, error) {
 		return filedata, nil
 	}
 }
 
 func TestSkipSkipFlagIfEditIsTrue(t *testing.T) {
-	mockEdit()
+	mockEdit(t)
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch url := req.URL.String(); url {
@@ -724,7 +1033,7 @@ func TestSkipSkipFlagIfEditIsTrue(t *testing.T) {
 }
 
 func TestSkipOverrideFlagIfEditIsTrue(t *testing.T) {
-	mockEdit()
+	mockEdit(t)
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
@@ -762,7 +1071,7 @@ func TestSkipOverrideFlagIfEditIsTrue(t *testing.T) {
 }
 
 func TestSkipAddFlagIfEditIsTrue(t *testing.T) {
-	mockEdit()
+	mockEdit(t)
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
@@ -809,7 +1118,7 @@ func TestSkipAddFlagIfEditIsTrue(t *testing.T) {
 }
 
 func TestSkipRemoveFlagIfEditIsTrue(t *testing.T) {
-	mockEdit()
+	mockEdit(t)
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		body, err := io.ReadAll(req.Body)
