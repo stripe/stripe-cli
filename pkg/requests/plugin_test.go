@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -132,7 +133,7 @@ func TestGetPluginMetadataSurfacesRequiresNewerCLI(t *testing.T) {
 
 	profile := &config.Profile{APIKey: "sk_test_1234"}
 
-	_, err := GetPluginMetadata(context.Background(), server.URL, server.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64")
+	_, err := GetPluginMetadata(context.Background(), server.URL, server.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64", true)
 	require.Error(t, err)
 
 	minCoreVersion, ok := PluginRequiresNewerCLI(err)
@@ -172,6 +173,18 @@ func TestGetPluginMetadataRetriesAnonymouslyWhenAPIKeyExpired(t *testing.T) {
 			},
 		},
 		{
+			// No login changes an outage, so it is reported instead of the key.
+			name:            "anonymous endpoint down",
+			anonymousStatus: http.StatusInternalServerError,
+			anonymousBody:   `{"error":{"message":"boom"}}`,
+			check: func(t *testing.T, _ PluginMetadata, err error) {
+				var requestErr RequestError
+				require.ErrorAs(t, err, &requestErr)
+				require.Equal(t, http.StatusInternalServerError, requestErr.StatusCode)
+				require.False(t, IsAPIKeyExpiredError(err))
+			},
+		},
+		{
 			// No login changes this answer, so it is reported instead of the key.
 			name:            "plugin that needs a newer CLI",
 			anonymousStatus: http.StatusBadRequest,
@@ -186,11 +199,15 @@ func TestGetPluginMetadataRetriesAnonymouslyWhenAPIKeyExpired(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// The profile's key is the one that should be sent, and STRIPE_API_KEY
+			// would win over it.
+			t.Setenv("STRIPE_API_KEY", "")
+
 			var apiRequests, dashboardRequests int
 			apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 				apiRequests++
-				require.Equal(t, "/v1/stripecli/get-plugin-metadata", req.URL.Path)
-				require.Equal(t, "Bearer "+expiredKey, req.Header.Get("Authorization"))
+				assert.Equal(t, "/v1/stripecli/get-plugin-metadata", req.URL.Path)
+				assert.Equal(t, "Bearer "+expiredKey, req.Header.Get("Authorization"))
 				res.WriteHeader(http.StatusUnauthorized)
 				_, _ = res.Write([]byte(apiKeyExpiredBody))
 			}))
@@ -198,22 +215,56 @@ func TestGetPluginMetadataRetriesAnonymouslyWhenAPIKeyExpired(t *testing.T) {
 
 			dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 				dashboardRequests++
-				require.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
-				require.Empty(t, req.Header.Get("Authorization"), "the expired key must not be sent to the Dashboard host")
-				require.Equal(t, "appA", req.URL.Query().Get("plugin"))
-				require.Equal(t, "2.0.1", req.URL.Query().Get("version"))
+				assert.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
+				assert.Empty(t, req.Header.Get("Authorization"), "the expired key must not be sent to the Dashboard host")
+				assert.Equal(t, "appA", req.URL.Query().Get("plugin"))
+				assert.Equal(t, "2.0.1", req.URL.Query().Get("version"))
 				res.WriteHeader(tt.anonymousStatus)
 				_, _ = res.Write([]byte(tt.anonymousBody))
 			}))
 			defer dashboardServer.Close()
 
 			profile := &config.Profile{APIKey: expiredKey}
-			metadata, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "appA", "2.0.1", "darwin", "arm64")
+			metadata, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "appA", "2.0.1", "darwin", "arm64", true)
 			tt.check(t, metadata, err)
 			require.Equal(t, 1, apiRequests)
 			require.Equal(t, 1, dashboardRequests)
 		})
 	}
+}
+
+// TestGetPluginMetadataRemembersAnExpiredKey covers lookups after the first in one
+// process, such as install's second metadata fetch: they go straight to the
+// anonymous endpoint instead of repeating a request certain to fail, while a
+// lookup that must not fall back still gets the expired key reported.
+func TestGetPluginMetadataRemembersAnExpiredKey(t *testing.T) {
+	const expiredKey = "rk_test_expired_1234"
+
+	var apiRequests, dashboardRequests int
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		apiRequests++
+		res.WriteHeader(http.StatusUnauthorized)
+		_, _ = res.Write([]byte(apiKeyExpiredBody))
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		dashboardRequests++
+		_, _ = res.Write([]byte(`{"binary_url":"https://example.test/appA/2.0.1","plugin_manifest":"manifest"}`))
+	}))
+	defer dashboardServer.Close()
+
+	profile := &config.Profile{APIKey: expiredKey}
+	for range 2 {
+		_, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "appA", "2.0.1", "darwin", "arm64", true)
+		require.NoError(t, err)
+	}
+	require.Equal(t, 1, apiRequests)
+	require.Equal(t, 2, dashboardRequests)
+
+	_, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "appA", "", "darwin", "arm64", false)
+	require.True(t, IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
+	require.Equal(t, 2, dashboardRequests)
 }
 
 // TestGetPluginMetadataRetriesAnonymouslyOnlyForAnExpiredKey keeps the retry to
@@ -244,7 +295,7 @@ func TestGetPluginMetadataRetriesAnonymouslyOnlyForAnExpiredKey(t *testing.T) {
 			defer dashboardServer.Close()
 
 			profile := &config.Profile{APIKey: "sk_test_1234"}
-			_, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64")
+			_, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", "sk_test_1234", profile, "appA", "2.0.1", "darwin", "arm64", true)
 
 			var requestErr RequestError
 			require.ErrorAs(t, err, &requestErr)
@@ -253,27 +304,48 @@ func TestGetPluginMetadataRetriesAnonymouslyOnlyForAnExpiredKey(t *testing.T) {
 	}
 }
 
-func TestGetPluginListRetriesAnonymouslyWhenAPIKeyExpired(t *testing.T) {
+// TestGetPluginMetadataReportsExpiredKeyWithoutOptIn covers the lookups that
+// must not stand in the anonymous endpoint's view for the account's, such as an
+// upgrade picking the latest release.
+func TestGetPluginMetadataReportsExpiredKeyWithoutOptIn(t *testing.T) {
 	const expiredKey = "rk_test_expired_1234"
 
 	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		require.Equal(t, "/v1/stripecli/list-plugins", req.URL.Path)
 		res.WriteHeader(http.StatusUnauthorized)
 		_, _ = res.Write([]byte(apiKeyExpiredBody))
 	}))
 	defer apiServer.Close()
 
 	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		require.Equal(t, "/ajax/stripecli/list-plugins", req.URL.Path)
-		require.Empty(t, req.Header.Get("Authorization"), "the expired key must not be sent to the Dashboard host")
-		require.Equal(t, "darwin", req.URL.Query().Get("os"))
-		require.Equal(t, "arm64", req.URL.Query().Get("arch"))
-		_, _ = res.Write([]byte(`{"plugins":[]}`))
+		t.Errorf("unexpected anonymous retry: %s", req.URL.String())
 	}))
 	defer dashboardServer.Close()
 
 	profile := &config.Profile{APIKey: expiredKey}
-	body, err := GetPluginList(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "darwin", "arm64")
-	require.NoError(t, err)
-	require.JSONEq(t, `{"plugins":[]}`, string(body))
+	_, err := GetPluginMetadata(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "appA", "", "darwin", "arm64", false)
+	require.True(t, IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
+}
+
+// TestGetPluginListReportsExpiredKey covers `stripe plugin list`, where the
+// anonymous list would silently leave out plugins only the account can see.
+func TestGetPluginListReportsExpiredKey(t *testing.T) {
+	const expiredKey = "rk_test_expired_1234"
+
+	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/v1/stripecli/list-plugins" {
+			t.Errorf("unexpected path: %s", req.URL.Path)
+		}
+		res.WriteHeader(http.StatusUnauthorized)
+		_, _ = res.Write([]byte(apiKeyExpiredBody))
+	}))
+	defer apiServer.Close()
+
+	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t.Errorf("unexpected anonymous retry: %s", req.URL.String())
+	}))
+	defer dashboardServer.Close()
+
+	profile := &config.Profile{APIKey: expiredKey}
+	_, err := GetPluginList(context.Background(), apiServer.URL, dashboardServer.URL, "2020-08-27", expiredKey, profile, "darwin", "arm64")
+	require.True(t, IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
 }

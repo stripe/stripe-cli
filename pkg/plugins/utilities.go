@@ -60,6 +60,17 @@ type ResolvedPluginVersion struct {
 // checkLatestPluginVersionResolver is swappable for test injection.
 var checkLatestPluginVersionResolver = ResolvePluginForUpgrade
 
+// hasOverrideAPIKey reports whether the API key was given for this command, via
+// --api-key or STRIPE_API_KEY, rather than saved by `stripe login`. An expired
+// key the user chose is reported rather than replaced by anonymous access, since
+// quietly succeeding would hide it until some other command fails on it.
+//
+// Swappable for test injection: TestConfig supplies its key through --api-key's
+// field, which would otherwise make every test key an override.
+var hasOverrideAPIKey = func(profile *config.Profile) bool {
+	return profile.HasOverrideAPIKey()
+}
+
 // checkLatestPluginVersionTimeout bounds the best-effort upgrade hint lookup so
 // plugin commands do not hang on exit when the metadata endpoint is slow.
 var checkLatestPluginVersionTimeout = 2 * time.Second
@@ -489,7 +500,7 @@ func BackfillMissingInstalledPluginMetadata(ctx context.Context, config config.I
 			}).Debugf("could not read cached manifest plugin metadata before network fallback: %s", manifestErr)
 		}
 
-		resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, installedVersion, apiBaseURL, dashboardBaseURL, apiKey)
+		resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, installedVersion, apiBaseURL, dashboardBaseURL, apiKey, false)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"prefix":  "plugins.BackfillMissingInstalledPluginMetadata",
@@ -545,7 +556,13 @@ func LookUpPlugin(_ context.Context, config config.IConfig, fs afero.Fs, pluginN
 }
 
 // ResolvePluginForInstall resolves the plugin metadata needed by `stripe plugin install`
-// using the metadata endpoint first and cached plugin metadata as fallback.
+// using the metadata endpoint first and cached plugin metadata as fallback. An
+// expired API key falls back to the anonymous metadata endpoint, so a plugin
+// anyone can install does not need a fresh login -- unless the key was given as
+// an override (see hasOverrideAPIKey), or no version was named and the plugin is
+// already installed. The anonymous endpoint's latest release can be older than
+// an installed one only the account can see, so that install would be the
+// silent downgrade ResolvePluginForUpgrade guards against.
 func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, err
@@ -557,7 +574,9 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 	}
 	apiKey := creds.Token
 
-	resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey)
+	anonymousOnExpiredKey := !hasOverrideAPIKey(config.GetProfile()) &&
+		(version != "" || (&Plugin{Shortname: pluginName}).InstalledVersion(config, fs) == "")
+	resolvedPlugin, err := resolvePluginFromMetadata(ctx, config, fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey, anonymousOnExpiredKey)
 	if err == nil {
 		return resolvedPlugin, nil
 	}
@@ -597,7 +616,10 @@ func ResolvePluginForInstall(ctx context.Context, config config.IConfig, fs afer
 
 // ResolvePluginForUpgrade resolves the latest plugin metadata for
 // `stripe plugin upgrade` using the plugin metadata endpoint first and cached
-// plugin metadata as fallback.
+// plugin metadata as fallback. Unlike ResolvePluginForInstall, an expired API key
+// is not retried anonymously: the anonymous endpoint's latest release can be
+// older than one only the account can see, and upgrading to it would be a
+// silent downgrade.
 func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, apiBaseURL, dashboardBaseURL string) (*ResolvedPluginVersion, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, err
@@ -609,7 +631,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 	}
 	apiKey := creds.Token
 
-	resolvedPlugin, endpointErr := resolvePluginFromMetadata(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL, apiKey)
+	resolvedPlugin, endpointErr := resolvePluginFromMetadata(ctx, config, fs, pluginName, "", apiBaseURL, dashboardBaseURL, apiKey, false)
 	if endpointErr == nil {
 		return resolvedPlugin, nil
 	}
@@ -640,7 +662,7 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		return nil, normalizedErr
 	}
 
-	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %v; cached lookup failed: %w", pluginName, endpointErr, cachedErr)
+	return nil, fmt.Errorf("could not resolve plugin %s via plugin metadata endpoint: %w; cached lookup failed: %w", pluginName, endpointErr, cachedErr)
 }
 
 func resolveCachedPluginForInstall(config config.IConfig, fs afero.Fs, pluginName, version string) (*Plugin, error) {
@@ -858,7 +880,10 @@ func comparePluginVersions(left, right string) int {
 	}
 }
 
-func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey string) (*ResolvedPluginVersion, error) {
+// anonymousOnExpiredKey is passed through to requests.GetPluginMetadata, whose
+// getFromPluginEndpoint explains which lookups should fall back to the anonymous
+// endpoint once the API reports the key as expired.
+func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey string, anonymousOnExpiredKey bool) (*ResolvedPluginVersion, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, err
 	}
@@ -870,7 +895,7 @@ func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs af
 		basePlugin = &cachedPlugin
 	}
 
-	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH)
+	pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, config.GetProfile(), pluginName, version, runtime.GOOS, runtime.GOARCH, anonymousOnExpiredKey)
 	if err != nil {
 		// Translated here rather than left to normalizePluginMetadataError, which only
 		// runs once the cached lookup has failed too. The endpoint is the only thing that
