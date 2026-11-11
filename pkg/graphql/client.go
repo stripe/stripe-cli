@@ -16,6 +16,7 @@ import (
 	genqlient "github.com/Khan/genqlient/graphql"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -65,7 +66,7 @@ func HostForAccessBaseURL(accessBaseURL string) string {
 // profile's credentials with every request.
 func NewClient(ctx context.Context, opts Options) (genqlient.Client, error) {
 	if opts.Profile == nil {
-		return nil, fmt.Errorf("graphql: a profile is required")
+		return nil, errorcategory.New(errorcategory.Internal, "graphql: a profile is required")
 	}
 	if opts.APIBaseURL == "" {
 		opts.APIBaseURL = stripe.DefaultAPIBaseURL
@@ -115,7 +116,7 @@ func withWorkspaceContext(ctx context.Context, opts Options, creds stripe.Creden
 		return stripe.Credentials{}, fmt.Errorf("could not resolve the workspace for %s: %w", creds.OAKContext, err)
 	}
 	if wc.WorkspaceID == "" {
-		return stripe.Credentials{}, fmt.Errorf("no workspace found for %s", creds.OAKContext)
+		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.API, "no workspace found for %s", creds.OAKContext)
 	}
 
 	creds.OAKContext = wc.WorkspaceID
