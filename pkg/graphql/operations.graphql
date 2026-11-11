@@ -1,0 +1,40 @@
+query ListIntegHlthAlerts(
+  $statuses: [V2IntegrationHealthOpenEnumAlertStatus!]!
+  # @genqlient(omitempty: true)
+  $limit: Int
+  # @genqlient(omitempty: true)
+  $page: String
+  # @genqlient(omitempty: true)
+  $lastUpdatedAfter: String
+  # @genqlient(omitempty: true)
+  $lastUpdatedBefore: String
+) {
+  v2ListIntegHlthAlerts(
+    statuses: $statuses
+    limit: $limit
+    page: $page
+    last_updated_after: $lastUpdatedAfter
+    last_updated_before: $lastUpdatedBefore
+  ) {
+    alerts {
+      compartment_id
+      created_at
+      doctor_topic
+      health_insight {
+        recommended_action {
+          description
+          title
+        }
+        severity
+        summary
+        why_is_it_important
+      }
+      health_insight_id
+      last_updated
+      predicate_name
+      recent_integration_data
+      status
+    }
+    next_page
+  }
+}

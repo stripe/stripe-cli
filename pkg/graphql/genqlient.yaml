@@ -1,0 +1,8 @@
+schema: schema.graphql
+operations:
+  - operations.graphql
+generated: generated.go
+package: graphql
+bindings:
+  V2IntegrationHealthOpenEnumAlertStatus:
+    type: string

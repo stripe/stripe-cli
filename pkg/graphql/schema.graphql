@@ -1,0 +1,51 @@
+# Minimal subset of the graphql.stripe.com schema. Only the types queried in
+# operations.graphql are declared here; directives and descriptions are
+# omitted. Copy new fields from the gateway's schema when adding operations.
+
+type Query {
+  v2ListIntegHlthAlerts(context: StripeContextInput, last_updated_after: String, last_updated_before: String, limit: Int, page: String, statuses: [V2IntegrationHealthOpenEnumAlertStatus!]!): V2IntegrationHealthListIntegHlthAlertsResponse
+}
+
+input StripeContextInput {
+  apiKey: String
+  id: ID
+  legacyTestMode: Boolean
+  liveMode: LiveModeEnum
+}
+
+enum LiveModeEnum {
+  FORCE_LIVE
+  FORCE_TEST
+}
+
+# Open enum with values "open" and "resolved"; bound to string in genqlient.yaml.
+scalar V2IntegrationHealthOpenEnumAlertStatus
+
+type V2IntegrationHealthListIntegHlthAlertsResponse {
+  alerts: [V2IntegrationHealthAlertDetail!]!
+  next_page: String
+}
+
+type V2IntegrationHealthAlertDetail {
+  compartment_id: String!
+  created_at: String!
+  doctor_topic: String
+  health_insight: V2IntegrationHealthAlertHealthInsight
+  health_insight_id: String!
+  last_updated: String!
+  predicate_name: String!
+  recent_integration_data: [String!]!
+  status: V2IntegrationHealthOpenEnumAlertStatus!
+}
+
+type V2IntegrationHealthAlertHealthInsight {
+  recommended_action: V2IntegrationHealthRecommendedAction
+  severity: String
+  summary: String
+  why_is_it_important: String
+}
+
+type V2IntegrationHealthRecommendedAction {
+  description: String!
+  title: String!
+}
