@@ -328,11 +328,28 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	pluginToInstall := p
 	pluginDownloadURL := resolvedBinaryURL
 	var metadataLookupErr error
+	metadataBaseURL := apiBaseURL
+	if apiKey == "" && dashboardBaseURL != "" {
+		metadataBaseURL = dashboardBaseURL
+	}
 
 	if !skipMetadataLookup {
-		// The version is settled by now, so an anonymous answer for an expired key
-		// can only supply its download URL, never pick a different release.
-		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH, !hasOverrideAPIKey(cfg.GetProfile()))
+		metadataEndpoint := "/v1/stripecli/get-plugin-metadata"
+		if apiKey == "" {
+			metadataEndpoint = "/ajax/stripecli/plugins_metadata"
+		}
+
+		log.WithFields(log.Fields{
+			"prefix":   "plugins.plugin.Install",
+			"base_url": metadataBaseURL,
+			"endpoint": metadataEndpoint,
+			"plugin":   p.Shortname,
+			"version":  version,
+			"os":       runtime.GOOS,
+			"arch":     runtime.GOARCH,
+		}).Debug("Fetching plugin metadata for install")
+
+		pluginMetadata, err := requests.GetPluginMetadata(ctx, apiBaseURL, dashboardBaseURL, stripe.APIVersion, apiKey, cfg.GetProfile(), p.Shortname, version, runtime.GOOS, runtime.GOARCH, false)
 		if err != nil {
 			// Returned rather than kept as metadataLookupErr, which surfaces further down
 			// as a missing download URL. The install fails either way -- this lookup only

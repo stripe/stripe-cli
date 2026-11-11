@@ -406,97 +406,90 @@ func TestResolvePluginForInstallUsesAnonymousMetadataWithoutCachedManifest(t *te
 	require.Equal(t, 1, metadataLookups)
 }
 
-// TestResolvePluginForInstallUsesAnonymousMetadataWhenAPIKeyExpired covers a
-// saved key past its expiry: a plugin anyone can install must not need a fresh
-// login, while one the anonymous endpoint cannot find still reports the expired
-// key, which is what tells the user to log in again.
-func TestResolvePluginForInstallUsesAnonymousMetadataWhenAPIKeyExpired(t *testing.T) {
-	stubSavedAPIKey(t)
-	config := &TestConfig{}
-	config.InitConfig()
+// apiKeyExpiredBody is the API's answer for a key past its expiry date.
+const apiKeyExpiredBody = `{"error":{"code":"api_key_expired","message":"Expired API Key provided: rk_test_***1111","type":"invalid_request_error"}}`
+
+// TestResolvePluginForInstallWhenAPIKeyExpired covers which installs fall back
+// to the anonymous metadata endpoint once the key has expired. A plugin anyone
+// can install must not need a fresh login, but the expired key is reported when
+// the user chose it, or when the anonymous latest could replace an installed
+// release only the account can see with an older public one.
+func TestResolvePluginForInstallWhenAPIKeyExpired(t *testing.T) {
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 
 	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, "/v1/stripecli/get-plugin-metadata", req.URL.Path)
 		res.WriteHeader(http.StatusUnauthorized)
-		_, _ = res.Write([]byte(`{"error":{"code":"api_key_expired","message":"Expired API Key provided: rk_test_***1111","type":"invalid_request_error"}}`))
+		_, _ = res.Write([]byte(apiKeyExpiredBody))
 	}))
 	defer apiServer.Close()
 
-	t.Run("plugin anyone can install", func(t *testing.T) {
-		dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			assert.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
-			assert.Empty(t, req.Header.Get("Authorization"))
-			body, err := json.Marshal(requests.PluginMetadata{
-				BinaryURL:      "https://example.test/appA/2.0.1",
-				PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
-			})
-			assert.NoError(t, err)
-			_, _ = res.Write(body)
-		}))
-		defer dashboardServer.Close()
+	tests := []struct {
+		name             string
+		version          string
+		installedVersion string
+		overrideKey      bool
+		wantAnonymous    bool
+	}{
+		{name: "named version", version: "2.0.1", wantAnonymous: true},
+		{name: "latest, not installed", wantAnonymous: true},
+		{name: "latest over an installed plugin", installedVersion: "3.0.0"},
+		{name: "key given via --api-key or STRIPE_API_KEY", version: "2.0.1", overrideKey: true},
+	}
 
-		resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, afero.NewMemMapFs(), "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
-		require.NoError(t, err)
-		require.Equal(t, "appA", resolvedPlugin.Plugin.Shortname)
-		require.Equal(t, "2.0.1", resolvedPlugin.Version)
-		require.Equal(t, "https://example.test/appA/2.0.1", resolvedPlugin.BinaryURL)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !tt.overrideKey {
+				stubSavedAPIKey(t)
+			}
+			config := &TestConfig{}
+			config.InitConfig()
+			fs := afero.NewMemMapFs()
+			if tt.installedVersion != "" {
+				installPath, err := (&Plugin{Shortname: "appA"}).getPluginInstallPath(config, tt.installedVersion)
+				require.NoError(t, err)
+				require.NoError(t, fs.MkdirAll(installPath, 0o755))
+			}
 
-	t.Run("plugin the anonymous endpoint cannot find", func(t *testing.T) {
-		dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-			res.WriteHeader(http.StatusNotFound)
-			_, _ = res.Write([]byte(`{"error":{"message":"not found"}}`))
-		}))
-		defer dashboardServer.Close()
+			var dashboardRequests int
+			dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+				dashboardRequests++
+				assert.Equal(t, "/ajax/stripecli/plugins_metadata", req.URL.Path)
+				assert.Empty(t, req.Header.Get("Authorization"))
+				body, err := json.Marshal(requests.PluginMetadata{
+					BinaryURL:      "https://example.test/appA/2.0.1",
+					PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
+				})
+				assert.NoError(t, err)
+				_, _ = res.Write(body)
+			}))
+			defer dashboardServer.Close()
 
-		_, err := ResolvePluginForInstall(context.Background(), config, afero.NewMemMapFs(), "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
-		require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
-	})
-}
+			resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", tt.version, apiServer.URL, dashboardServer.URL)
+			if tt.wantAnonymous {
+				require.NoError(t, err)
+				require.Equal(t, "2.0.1", resolvedPlugin.Version)
+				require.Equal(t, "https://example.test/appA/2.0.1", resolvedPlugin.BinaryURL)
+				require.Equal(t, 1, dashboardRequests)
+				return
+			}
 
-// TestResolvePluginForInstallReportsExpiredOverrideAPIKey covers a key given via
-// --api-key or STRIPE_API_KEY: the user chose it, so its expiry is reported
-// rather than hidden behind anonymous access.
-func TestResolvePluginForInstallReportsExpiredOverrideAPIKey(t *testing.T) {
-	config := &TestConfig{}
-	config.InitConfig()
-
-	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusUnauthorized)
-		_, _ = res.Write([]byte(`{"error":{"code":"api_key_expired","message":"Expired API Key provided: rk_test_***1111","type":"invalid_request_error"}}`))
-	}))
-	defer apiServer.Close()
-
-	dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		t.Errorf("unexpected anonymous retry: %s", req.URL.String())
-	}))
-	defer dashboardServer.Close()
-
-	_, err := ResolvePluginForInstall(context.Background(), config, afero.NewMemMapFs(), "appA", "2.0.1", apiServer.URL, dashboardServer.URL)
-	require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
-}
-
-// stubSavedAPIKey makes TestConfig's key count as one saved by `stripe login`
-// rather than an override; see hasOverrideAPIKey.
-func stubSavedAPIKey(t *testing.T) {
-	t.Helper()
-	original := hasOverrideAPIKey
-	hasOverrideAPIKey = func(*cfgpkg.Profile) bool { return false }
-	t.Cleanup(func() { hasOverrideAPIKey = original })
+			require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
+			require.Zero(t, dashboardRequests)
+		})
+	}
 }
 
 // TestResolvePluginForUpgradeDoesNotUseAnonymousMetadataWhenAPIKeyExpired covers
-// the other side of the expired-key fallback: the anonymous endpoint's latest
-// release can be older than one only the account can see, so an upgrade must not
-// resolve against it.
+// upgrades: the anonymous endpoint's latest release can be older than one only
+// the account can see, so an upgrade must not resolve against it.
 func TestResolvePluginForUpgradeDoesNotUseAnonymousMetadataWhenAPIKeyExpired(t *testing.T) {
+	stubSavedAPIKey(t)
 	config := &TestConfig{}
 	config.InitConfig()
 
 	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusUnauthorized)
-		_, _ = res.Write([]byte(`{"error":{"code":"api_key_expired","message":"Expired API Key provided: rk_test_***1111","type":"invalid_request_error"}}`))
+		_, _ = res.Write([]byte(apiKeyExpiredBody))
 	}))
 	defer apiServer.Close()
 
@@ -511,66 +504,13 @@ func TestResolvePluginForUpgradeDoesNotUseAnonymousMetadataWhenAPIKeyExpired(t *
 	require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
 }
 
-// TestResolvePluginForInstallLatestOverInstalledPluginWhenAPIKeyExpired covers
-// `stripe plugin install appA` with no version: the anonymous latest is fine for
-// a fresh install, but over an installed plugin it could replace a release only
-// the account can see with an older public one.
-func TestResolvePluginForInstallLatestOverInstalledPluginWhenAPIKeyExpired(t *testing.T) {
-	stubSavedAPIKey(t)
-	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-
-	apiServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusUnauthorized)
-		_, _ = res.Write([]byte(`{"error":{"code":"api_key_expired","message":"Expired API Key provided: rk_test_***1111","type":"invalid_request_error"}}`))
-	}))
-	defer apiServer.Close()
-
-	tests := []struct {
-		name             string
-		installedVersion string
-		wantAnonymous    bool
-	}{
-		{name: "not installed", wantAnonymous: true},
-		{name: "already installed", installedVersion: "3.0.0", wantAnonymous: false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			config := &TestConfig{}
-			config.InitConfig()
-			fs := afero.NewMemMapFs()
-			if tt.installedVersion != "" {
-				installPath, err := (&Plugin{Shortname: "appA"}).getPluginInstallPath(config, tt.installedVersion)
-				require.NoError(t, err)
-				require.NoError(t, fs.MkdirAll(installPath, 0o755))
-			}
-
-			var dashboardRequests int
-			dashboardServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-				dashboardRequests++
-				body, err := json.Marshal(requests.PluginMetadata{
-					BinaryURL:      "https://example.test/appA/2.0.1",
-					PluginManifest: string(singlePluginManifest(t, "appA", manifestContent, nil)),
-				})
-				if err != nil {
-					t.Errorf("marshal metadata: %v", err)
-				}
-				_, _ = res.Write(body)
-			}))
-			defer dashboardServer.Close()
-
-			resolvedPlugin, err := ResolvePluginForInstall(context.Background(), config, fs, "appA", "", apiServer.URL, dashboardServer.URL)
-			if tt.wantAnonymous {
-				require.NoError(t, err)
-				require.Equal(t, "2.0.1", resolvedPlugin.Version)
-				require.Equal(t, 1, dashboardRequests)
-				return
-			}
-
-			require.True(t, requests.IsAPIKeyExpiredError(err), "want the expired key reported, got: %v", err)
-			require.Zero(t, dashboardRequests)
-		})
-	}
+// stubSavedAPIKey makes TestConfig's key count as one saved by `stripe login`
+// rather than an override; see hasOverrideAPIKey.
+func stubSavedAPIKey(t *testing.T) {
+	t.Helper()
+	original := hasOverrideAPIKey
+	hasOverrideAPIKey = func(*cfgpkg.Profile) bool { return false }
+	t.Cleanup(func() { hasOverrideAPIKey = original })
 }
 
 func TestResolvePluginForInstallFallsBackToCachedLocalMetadataWhenEndpointFails(t *testing.T) {

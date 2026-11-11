@@ -880,9 +880,7 @@ func comparePluginVersions(left, right string) int {
 	}
 }
 
-// anonymousOnExpiredKey is passed through to requests.GetPluginMetadata, whose
-// getFromPluginEndpoint explains which lookups should fall back to the anonymous
-// endpoint once the API reports the key as expired.
+// anonymousOnExpiredKey is passed through to requests.GetPluginMetadata.
 func resolvePluginFromMetadata(ctx context.Context, config config.IConfig, fs afero.Fs, pluginName, version, apiBaseURL, dashboardBaseURL, apiKey string, anonymousOnExpiredKey bool) (*ResolvedPluginVersion, error) {
 	if err := ValidatePluginShortname(pluginName); err != nil {
 		return nil, err
