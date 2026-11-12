@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -71,6 +72,49 @@ func TestRunUpgradeCmdBackfillsLocalMetadataWhenAlreadyInstalled(t *testing.T) {
 
 	require.NoError(t, uc.runUpgradeCmd(uc.Cmd, []string{"appA"}))
 	assertLocalMetadataBackfilled(t, cfg, fs, configPath)
+}
+
+func TestRunUpgradeCmdDoesNotCallCachedVersionLatest(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+
+	configPath := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	metadataPath := filepath.Join(configPath, "plugin-metadata", "appA.toml")
+	require.NoError(t, fs.MkdirAll(filepath.Dir(metadataPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, metadataPath, testPluginManifest(), 0600))
+
+	pluginBinaryPath := filepath.Join(configPath, "plugins", "appA", "2.0.1", "stripe-cli-app-a"+plugins.GetBinaryExtension())
+	require.NoError(t, fs.MkdirAll(filepath.Dir(pluginBinaryPath), 0755))
+	require.NoError(t, afero.WriteFile(fs, pluginBinaryPath, []byte("already installed"), 0755))
+
+	server := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		require.Equal(t, "/v1/stripecli/get-plugin-metadata", req.URL.Path)
+		res.WriteHeader(http.StatusForbidden)
+		_, _ = io.WriteString(res, `{"error":{"code":"more_permissions_required","message":"permission denied"}}`)
+	}))
+	defer server.Close()
+
+	uc := NewUpgradeCmd(cfg)
+	uc.fs = fs
+	uc.apiBaseURL = server.URL
+	uc.Cmd.SetContext(context.Background())
+
+	reader, writer, err := os.Pipe()
+	require.NoError(t, err)
+	previousStdout := os.Stdout
+	os.Stdout = writer
+	defer func() { os.Stdout = previousStdout }()
+
+	runErr := uc.runUpgradeCmd(uc.Cmd, []string{"appA"})
+	os.Stdout = previousStdout
+	require.NoError(t, writer.Close())
+	output, readErr := io.ReadAll(reader)
+	require.NoError(t, reader.Close())
+	require.NoError(t, runErr)
+	require.NoError(t, readErr)
+	require.Contains(t, string(output), "Could not check for updates")
+	require.Contains(t, string(output), "using cached plugin metadata")
+	require.NotContains(t, string(output), "(latest)")
 }
 
 func setupPluginCommandTest(t *testing.T) (*config.Config, afero.Fs, func()) {
