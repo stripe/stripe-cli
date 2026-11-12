@@ -36,9 +36,10 @@ func newOverviewCmd() *overviewCmd {
 	oc := &overviewCmd{}
 
 	oc.cmd = &cobra.Command{
-		Use:   "overview",
-		Args:  validators.NoArgs,
-		Short: "Show integration health alerts for your account",
+		Use:    "overview",
+		Args:   validators.NoArgs,
+		Hidden: true,
+		Short:  "Show integration health alerts for your account",
 		Long: `Show integration health alerts Stripe has detected for your account,
 along with why each matters and what to do about it.
 
