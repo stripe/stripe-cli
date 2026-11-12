@@ -44,7 +44,9 @@ func newOverviewCmd() *overviewCmd {
 along with why each matters and what to do about it.
 
 Uses the mode of your active account context. Alerts are only available in
-live mode and sandboxes, so pass --live if your active context is test mode.`,
+live mode and sandboxes, so if your active context is test mode, run
+'stripe switch --live' to select live mode or 'stripe switch' to select a
+sandbox.`,
 		Example: `stripe overview
   stripe overview --live
   stripe overview --format json`,
@@ -123,7 +125,7 @@ func overviewGraphQLError(err error, resource string) error {
 	if errors.As(err, &gqlErrs) {
 		for _, e := range gqlErrs {
 			if code, _ := e.Extensions["code"].(string); code == v2TestmodeUnsupportedCode {
-				return errorcategory.UserInputErrorf("%s aren't available in test mode; re-run with --live, or run `stripe switch` to select a sandbox", resource)
+				return errorcategory.UserInputErrorf("%s aren't available in test mode; run `stripe switch --live` to select live mode, or `stripe switch` to select a sandbox", resource)
 			}
 		}
 		return errorcategory.Errorf(errorcategory.API, "failed to retrieve %s: %s", resource, gqlErrorMessages(gqlErrs))

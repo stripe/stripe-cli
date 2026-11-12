@@ -135,7 +135,7 @@ func TestFetchIntegHlthAlerts_NonOKStatus(t *testing.T) {
 	assert.Equal(t, "failed to retrieve integration health alerts (status 500): gateway unavailable", err.Error())
 }
 
-func TestFetchIntegHlthAlerts_TestmodeUnsupportedSuggestsLive(t *testing.T) {
+func TestFetchIntegHlthAlerts_TestmodeUnsupportedSuggestsSwitch(t *testing.T) {
 	body := `{"data": null, "errors": [{"message": "This API is not included in the public preview of API v2 support in test mode.", "extensions": {"code": "v2_api_not_supported_in_testmode"}}]}`
 	server := newIntegHlthGateway(t, http.StatusOK, body, nil)
 
@@ -144,7 +144,7 @@ func TestFetchIntegHlthAlerts_TestmodeUnsupportedSuggestsLive(t *testing.T) {
 	category, ok := errorcategory.Get(err)
 	require.True(t, ok)
 	assert.Equal(t, errorcategory.UserInput, category)
-	assert.Contains(t, err.Error(), "--live")
+	assert.Contains(t, err.Error(), "stripe switch --live")
 }
 
 func TestFetchIntegHlthAlerts_SurfacesGraphQLErrorMessage(t *testing.T) {
