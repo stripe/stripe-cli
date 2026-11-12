@@ -1,65 +1,35 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"strconv"
 	"strings"
 
+	genqlient "github.com/Khan/genqlient/graphql"
 	"github.com/spf13/cobra"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/graphql"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-const (
-	integHlthAlertsPath       = "/v2/integ_hlth/alerts"
-	integHlthAPIVersion       = "2026-11-03-20.internal"
-	v2TestmodeUnsupportedCode = "v2_api_not_supported_in_testmode"
-)
+const v2TestmodeUnsupportedCode = "v2_api_not_supported_in_testmode"
+
+var newOverviewGraphQLClient = graphql.NewClient
 
 type overviewCmd struct {
-	cmd           *cobra.Command
-	format        string
-	limit         int
-	livemode      bool
-	stripeAccount string
-	apiBaseURL    string
-}
-
-type integHlthAlertsResponse struct {
-	Alerts      []integHlthAlert `json:"alerts"`
-	NextPageURL *string          `json:"next_page_url,omitempty"`
-}
-
-type integHlthAlert struct {
-	HealthInsightID       string                 `json:"health_insight_id"`
-	PredicateName         string                 `json:"predicate_name"`
-	CompartmentID         string                 `json:"compartment_id"`
-	RecentIntegrationData []string               `json:"recent_integration_data,omitempty"`
-	CreatedAt             string                 `json:"created_at"`
-	LastUpdated           string                 `json:"last_updated"`
-	HealthInsight         *integHlthAlertInsight `json:"health_insight,omitempty"`
-	Status                string                 `json:"status"`
-	DoctorTopic           *string                `json:"doctor_topic,omitempty"`
-}
-
-type integHlthAlertInsight struct {
-	Summary           *string                     `json:"summary,omitempty"`
-	Severity          *string                     `json:"severity,omitempty"`
-	WhyIsItImportant  *string                     `json:"why_is_it_important,omitempty"`
-	RecommendedAction *integHlthRecommendedAction `json:"recommended_action,omitempty"`
-}
-
-type integHlthRecommendedAction struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	cmd        *cobra.Command
+	format     string
+	limit      int
+	livemode   bool
+	apiBaseURL string
 }
 
 func newOverviewCmd() *overviewCmd {
@@ -80,10 +50,9 @@ live mode and sandboxes, so pass --live if your active context is test mode.`,
 		RunE: oc.runOverviewCmd,
 	}
 
-	oc.cmd.Flags().StringVar(&oc.format, "format", "", "Output format: 'json' for the raw API response")
+	oc.cmd.Flags().StringVar(&oc.format, "format", "", "Output format: 'json' for the full alert details")
 	oc.cmd.Flags().IntVar(&oc.limit, "limit", 0, "Maximum number of alerts to return")
 	oc.cmd.Flags().BoolVar(&oc.livemode, "live", false, "Show live mode alerts (default: your active context's mode). Requires that you're logged in to live mode — check with 'stripe whoami', switch with 'stripe switch'")
-	oc.cmd.Flags().StringVar(&oc.stripeAccount, "stripe-account", "", "Connected account (acct_...) to show alerts for")
 	oc.cmd.Flags().StringVar(&oc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	oc.cmd.Flags().MarkHidden("api-base") //nolint:errcheck
 
@@ -98,18 +67,27 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 		return errorcategory.UserInputErrorf("--limit must be a positive number")
 	}
 
-	var creds stripe.Credentials
-	var err error
-	if oc.livemode {
-		creds, err = Config.GetProfile().ResolveCredentials(true)
-	} else {
-		creds, err = Config.GetProfile().ResolveCredentialsForAnyMode(false)
+	livemode := oc.livemode
+	if !livemode {
+		// Follow the active context's mode rather than forcing test mode.
+		creds, err := Config.GetProfile().ResolveCredentialsForAnyMode(false)
+		if err != nil {
+			return err
+		}
+		livemode = creds.Livemode()
 	}
+
+	client, err := newOverviewGraphQLClient(cmd.Context(), graphql.Options{
+		Profile:       Config.GetProfile(),
+		Livemode:      livemode,
+		APIBaseURL:    oc.apiBaseURL,
+		StripeVersion: requests.StripePreviewVersionHeaderValue,
+	})
 	if err != nil {
 		return err
 	}
 
-	resp, err := fetchIntegHlthAlerts(cmd.Context(), oc.apiBaseURL, creds, oc.stripeAccount, oc.limit)
+	resp, err := fetchIntegHlthAlerts(cmd.Context(), client, oc.limit)
 	if err != nil {
 		return err
 	}
@@ -124,69 +102,41 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func fetchIntegHlthAlerts(ctx context.Context, apiBaseURL string, creds stripe.Credentials, stripeAccount string, limit int) (*integHlthAlertsResponse, error) {
-	if err := stripe.ValidateAPIBaseURL(apiBaseURL); err != nil {
-		return nil, err
-	}
-
-	baseURL, err := url.Parse(apiBaseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &stripe.Client{
-		BaseURL:     baseURL,
-		Credentials: creds,
-	}
-
-	query := url.Values{}
-	if limit > 0 {
-		query.Set("limit", strconv.Itoa(limit))
-	}
-
-	resp, err := client.PerformRequest(ctx, http.MethodGet, integHlthAlertsPath, query.Encode(), func(req *http.Request) error {
-		req.Header.Set("Stripe-Version", integHlthAPIVersion)
-		creds.ApplyAccountContextHeaders(req.Header, stripeAccount, "")
+func nonEmpty(s string) *string {
+	if s == "" {
 		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	switch {
-	case resp.StatusCode == http.StatusUnauthorized:
-		return nil, errorcategory.Errorf(errorcategory.Auth, "credentials rejected (status 401); run `stripe login`")
-	case resp.StatusCode != http.StatusOK:
-		return nil, integHlthAPIError(resp.StatusCode, body)
-	}
-
-	var parsed integHlthAlertsResponse
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return nil, errorcategory.Errorf(errorcategory.API, "failed to parse response: %w", err)
-	}
-	return &parsed, nil
+	return &s
 }
 
-func integHlthAPIError(statusCode int, body []byte) error {
-	var apiErr struct {
-		Error struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
+func overviewGraphQLError(err error, resource string) error {
+	var httpErr *genqlient.HTTPError
+	if errors.As(err, &httpErr) {
+		if httpErr.StatusCode == http.StatusUnauthorized {
+			return errorcategory.Errorf(errorcategory.Auth, "credentials rejected (status 401); run `stripe login`")
+		}
+		return errorcategory.Errorf(errorcategory.API, "failed to retrieve %s (status %d): %s", resource, httpErr.StatusCode, gqlErrorMessages(httpErr.Response.Errors))
 	}
-	if json.Unmarshal(body, &apiErr) != nil || apiErr.Error.Message == "" {
-		return errorcategory.Errorf(errorcategory.API, "failed to retrieve integration health alerts (status %d): %s", statusCode, strings.TrimSpace(string(body)))
+
+	var gqlErrs gqlerror.List
+	if errors.As(err, &gqlErrs) {
+		for _, e := range gqlErrs {
+			if code, _ := e.Extensions["code"].(string); code == v2TestmodeUnsupportedCode {
+				return errorcategory.UserInputErrorf("%s aren't available in test mode; re-run with --live, or run `stripe switch` to select a sandbox", resource)
+			}
+		}
+		return errorcategory.Errorf(errorcategory.API, "failed to retrieve %s: %s", resource, gqlErrorMessages(gqlErrs))
 	}
-	if apiErr.Error.Code == v2TestmodeUnsupportedCode {
-		return errorcategory.UserInputErrorf("integration health alerts aren't available in test mode; re-run with --live, or run `stripe switch` to select a sandbox")
+
+	return err
+}
+
+func gqlErrorMessages(errs gqlerror.List) string {
+	messages := make([]string, 0, len(errs))
+	for _, e := range errs {
+		messages = append(messages, strings.TrimSpace(e.Message))
 	}
-	return errorcategory.Errorf(errorcategory.API, "failed to retrieve integration health alerts (status %d): %s", statusCode, apiErr.Error.Message)
+	return strings.Join(messages, "; ")
 }
 
 func renderIntegHlthAlerts(w io.Writer, alerts []integHlthAlert) {
