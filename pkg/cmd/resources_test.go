@@ -32,7 +32,6 @@ func newResourcesTestRoot(t *testing.T) *cobra.Command {
 	root.PersistentFlags().StringVar(&cfg.Profile.APIKey, "api-key", "", "Your API key to use for the command")
 	root.AddCommand(newResourcesCmd().cmd)
 	resources.AddAllResourcesCmds(root, cfg)
-	require.NoError(t, resource.AddDatabasesCmd(root, cfg))
 	require.NoError(t, resource.PostProcessResourceCommands(root, cfg))
 
 	return root
@@ -45,7 +44,7 @@ func TestResources(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestResourcesHidesDatabases(t *testing.T) {
+func TestResourcesDoesNotListDatabases(t *testing.T) {
 	output, err := executeCommand(newResourcesTestRoot(t), "resources")
 	require.NoError(t, err)
 	require.NotContains(t, output, "databases")

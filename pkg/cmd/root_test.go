@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mitchellh/go-homedir"
@@ -227,25 +229,85 @@ func TestDocsRunsRootPersistentPreRun(t *testing.T) {
 	require.Contains(t, err.Error(), "invalid access base URL")
 }
 
-func TestDatabasesHiddenButDirectlyAddressable(t *testing.T) {
-	root := &cobra.Command{
-		Use:         "stripe",
-		Annotations: map[string]string{"get": "http"},
+// TestNoBuiltInDatabasesCommand verifies that the fully registered root command
+// (built-in, generated and HTTP commands, post-processing, plugin hints) does not
+// contain a databases command when no plugins are installed.
+//
+// Command registration happens in init(), which reads installed plugins from the
+// user's config folder, so the assertions run in a subprocess with isolated
+// config and plugin directories.
+func TestNoBuiltInDatabasesCommand(t *testing.T) {
+	if os.Getenv("BE_TestNoBuiltInDatabasesCommand") == "1" {
+		assertNoBuiltInDatabasesCommand(t)
+		return
 	}
-	root.SetUsageTemplate(getUsageTemplate())
-	root.AddCommand(&cobra.Command{Use: "version", Short: "Get the version of the Stripe CLI", RunE: noop})
-	err := resource.AddDatabasesCmd(root, &config.Config{})
-	require.NoError(t, err)
 
-	helpOutput, err := executeCommand(root, "--help")
+	dir := t.TempDir()
+	cmd := exec.Command(os.Args[0], "-test.run=^TestNoBuiltInDatabasesCommand$")
+	cmd.Env = append(os.Environ(),
+		"BE_TestNoBuiltInDatabasesCommand=1",
+		"HOME="+dir,
+		"XDG_CONFIG_HOME="+filepath.Join(dir, "config"),
+		"STRIPE_PLUGINS_PATH="+filepath.Join(dir, "plugins"),
+		"STRIPE_API_KEY=",
+		"STRIPE_CLI_TELEMETRY_OPTOUT=1",
+	)
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "subprocess failed:\n%s", output)
+}
+
+func assertNoBuiltInDatabasesCommand(t *testing.T) {
+	var requestCount atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"object":"list","data":[],"has_more":false}`)) //nolint:errcheck
+	}))
+	defer ts.Close()
+
+	Config.ProfilesFile = filepath.Join(t.TempDir(), "config.toml")
+
+	// Command-tree membership: no command or alias named "databases" anywhere.
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		for _, sub := range c.Commands() {
+			require.NotEqual(t, "databases", sub.Name(), "unexpected command %q", sub.CommandPath())
+			require.NotContains(t, sub.Aliases, "databases", "unexpected alias on %q", sub.CommandPath())
+			walk(sub)
+		}
+	}
+	walk(rootCmd)
+
+	// Command resolution fails without sending any request.
+	apiBase := "--api-base=" + ts.URL
+	apiKey := "--api-key=sk_test_1234567890"
+	for _, args := range [][]string{
+		{"databases", "list"},
+		{"databases", "users", "list"},
+	} {
+		_, err := executeCommand(rootCmd, append([]string{apiBase, apiKey}, args...)...)
+		require.Error(t, err, "args: %v", args)
+		require.Contains(t, err.Error(), `unknown command "databases"`)
+	}
+	require.Zero(t, requestCount.Load())
+
+	// Help, resources and completion output do not offer it.
+	helpOutput, err := executeCommand(rootCmd, "--help")
 	require.NoError(t, err)
 	require.NotContains(t, helpOutput, "databases")
 
-	output, err := executeCommand(root, "databases", "--help")
+	resourcesOutput, err := executeCommand(rootCmd, "resources")
 	require.NoError(t, err)
-	require.Contains(t, output, "Manage StripeDB")
-	require.Contains(t, output, "unstable preview APIs")
-	require.Contains(t, output, "users")
+	require.NotContains(t, resourcesOutput, "databases")
+
+	completionOutput, err := executeCommand(rootCmd, "__complete", "data")
+	require.NoError(t, err)
+	require.NotContains(t, completionOutput, "databases")
+
+	// An unrelated resource command still resolves and sends its request.
+	_, err = executeCommand(rootCmd, apiBase, apiKey, "customers", "list")
+	require.NoError(t, err)
+	require.Equal(t, int32(1), requestCount.Load())
 }
 
 func TestIsMorePermissionsRequiredError(t *testing.T) {
