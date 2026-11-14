@@ -337,7 +337,7 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 
 	claude := agentsetup.NewClaudeProvider(claudeMissingPluginScanner(t), claudeTestRunCommand(record, nil))
 	codex := codexMissingProvider(record)
-	openclaw := openclawMissingProvider(record)
+	openclaw := openclawMissingProvider(t, record)
 	grok := grokMissingProvider(record)
 
 	setup := testAgentSetupCmd()
@@ -428,7 +428,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 			name:         "openclaw",
 			displayName:  "OpenClaw",
 			agent:        "openclaw",
-			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return openclawMissingProvider(record) },
+			makeProvider: func(record agentsetup.RunCommandFunc) agentsetup.Provider { return openclawMissingProvider(t, record) },
 		},
 	}
 
@@ -548,21 +548,27 @@ func grokMissingProvider(record agentsetup.RunCommandFunc) agentsetup.GrokProvid
 	}
 }
 
-func openclawMissingProvider(record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
+func openclawMissingProvider(t *testing.T, record agentsetup.RunCommandFunc) agentsetup.OpenclawProvider {
+	t.Helper()
+	home := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(home, ".openclaw"), 0700))
 	return agentsetup.OpenclawProvider{
 		ProviderConfig: agentsetup.ProviderConfig{
-			Scanner:     agentsetup.Scanner{LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil }},
+			Scanner: agentsetup.Scanner{
+				LookPath: func(string) (string, error) { return "/usr/local/bin/openclaw", nil },
+				HomeDir:  func() (string, error) { return home, nil },
+			},
 			Client:      agentsetup.ClientOpenclaw,
 			BinaryName:  agentsetup.OpenclawBinaryName,
 			DisplayName: agentsetup.OpenclawDisplayName,
 			RunCommand: func(ctx context.Context, name string, args ...string) ([]byte, error) {
-				if args[1] == "install" || args[1] == "update" {
+				if name == "git" || args[1] == "install" {
 					if record != nil {
 						return record(ctx, name, args...)
 					}
 					return nil, nil
 				}
-				return []byte(`[]`), nil
+				return []byte(`{"plugins":[]}`), nil
 			},
 		},
 	}
