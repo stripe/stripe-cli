@@ -16,13 +16,14 @@ type PlaygroundContext struct {
 }
 
 // GetPlaygroundContext fetches the playground associated with the active OAuth context.
-func GetPlaygroundContext(ctx context.Context, apiBaseURL string, profile *config.Profile, creds stripe.Credentials, livemode bool) (PlaygroundContext, error) {
+func GetPlaygroundContext(ctx context.Context, apiBaseURL string, profile *config.Profile, creds stripe.Credentials, livemode bool, showHeaders bool) (PlaygroundContext, error) {
 	base := &Base{
 		Profile:        profile,
 		Method:         http.MethodGet,
 		SuppressOutput: true,
 		APIBaseURL:     apiBaseURL,
 		Livemode:       livemode,
+		ShowHeaders:    showHeaders,
 	}
 
 	resp, err := base.MakeRequest(ctx, creds, "/v1/stripecli/playground_context", &RequestParameters{}, nil, true, nil)

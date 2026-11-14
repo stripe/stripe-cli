@@ -149,8 +149,9 @@ type Base struct {
 
 	DryRun bool
 
+	ShowHeaders bool
+
 	autoConfirm bool
-	showHeaders bool
 }
 
 // DryRunDetails contains the details of a dry-run request.
@@ -231,7 +232,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
-	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
+	rb.Cmd.Flags().BoolVarP(&rb.ShowHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test). Requires that you're logged in to live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
 	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it")
@@ -303,7 +304,7 @@ func (rb *Base) MakeMultiPartRequestWithAdditionalParams(ctx context.Context, cr
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders,
+		Verbose:     rb.ShowHeaders,
 	}
 
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
@@ -319,7 +320,7 @@ func (rb *Base) MakeRequest(ctx context.Context, creds stripe.Credentials, path 
 	client := &stripe.Client{
 		BaseURL:     parsedBaseURL,
 		Credentials: creds,
-		Verbose:     rb.showHeaders,
+		Verbose:     rb.ShowHeaders,
 	}
 
 	return rb.MakeRequestWithClient(ctx, client, path, params, additionalParams, errOnStatus, additionalConfigure)

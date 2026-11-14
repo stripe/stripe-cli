@@ -32,7 +32,7 @@ func TestGetWorkspaceContext(t *testing.T) {
 	defer ts.Close()
 
 	creds := stripe.NewOAKCredentials("oak_test_123", "acct_123", true)
-	workspaceContext, err := GetWorkspaceContext(context.Background(), ts.URL, nil, creds, true)
+	workspaceContext, err := GetWorkspaceContext(context.Background(), ts.URL, nil, creds, true, false)
 	require.NoError(t, err)
 	require.Equal(t, WorkspaceContext{WorkspaceID: "wksp_live_123"}, workspaceContext)
 }
@@ -45,7 +45,7 @@ func TestGetWorkspaceContext_MalformedJSON(t *testing.T) {
 	defer ts.Close()
 
 	creds := stripe.NewOAKCredentials("oak_test_123", "acct_123", true)
-	_, err := GetWorkspaceContext(context.Background(), ts.URL, nil, creds, true)
+	_, err := GetWorkspaceContext(context.Background(), ts.URL, nil, creds, true, false)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "failed to decode workspace context response")
 }
@@ -58,7 +58,7 @@ func TestGetWorkspaceContext_Non2xx(t *testing.T) {
 	defer ts.Close()
 
 	creds := stripe.NewOAKCredentials("oak_test_123", "acct_123", true)
-	_, err := GetWorkspaceContext(context.Background(), ts.URL, nil, creds, true)
+	_, err := GetWorkspaceContext(context.Background(), ts.URL, nil, creds, true, false)
 	require.Error(t, err)
 
 	var requestErr RequestError

@@ -57,6 +57,7 @@ type sandboxCreateCmd struct {
 	nonInteractive bool
 	createBlank    bool
 	country        string
+	showHeaders    bool
 	baseURL        string
 	apiBaseURL     string
 	dashboardURL   string
@@ -128,6 +129,9 @@ If you have not logged in and this CLI profile has no API key, use --email or
 profile already has an API key, the command opens Dashboard instead. If anonymous
 provisioning fails, the command falls back to browser-based signup or login.
 
+Use --show-headers (-s) to inspect managed requests and --log-level=debug for
+request progress. --show-headers requires managed creation with a CLI login.
+
 For a claimable sandbox, keys are saved to the current CLI profile so
 subsequent stripe commands work immediately.`,
 		Example: `stripe sandboxes create "My sandbox"
@@ -156,6 +160,8 @@ subsequent stripe commands work immediately.`,
 	scc.cmd.Flags().StringVar(&scc.baseURL, "base-url", defaultSandboxBaseURL, "Sets the sandbox API base URL")
 	_ = scc.cmd.Flags().MarkHidden("base-url")
 
+	scc.cmd.Flags().BoolVarP(&scc.showHeaders, "show-headers", "s", false, "Show request and response headers for managed sandbox requests")
+
 	scc.cmd.Flags().StringVar(&scc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	_ = scc.cmd.Flags().MarkHidden("api-base")
 
@@ -183,7 +189,7 @@ func (scc *sandboxCreateCmd) runSandboxCreateCmd(cmd *cobra.Command, args []stri
 	if len(args) > 0 {
 		return errorcategory.New(errorcategory.UserInput, "sandbox name is only valid for managed creation with an active live account; remove the API key override or run `stripe login` first")
 	}
-	for _, flagName := range []string{"create-blank", "country"} {
+	for _, flagName := range []string{"create-blank", "country", "show-headers"} {
 		if cmd.Flags().Changed(flagName) {
 			return errorcategory.Errorf(errorcategory.UserInput, "--%s is only valid for managed creation with an active live account; remove the API key override or run `stripe login` first", flagName)
 		}
@@ -567,16 +573,18 @@ type sandboxDeleteClient interface {
 }
 
 type sandboxListCmd struct {
-	cmd     *cobra.Command
-	apiBase string
-	client  sandboxListClient
+	cmd         *cobra.Command
+	apiBase     string
+	client      sandboxListClient
+	showHeaders bool
 }
 
 type sandboxDeleteCmd struct {
-	cmd     *cobra.Command
-	confirm bool
-	apiBase string
-	client  sandboxDeleteClient
+	cmd         *cobra.Command
+	confirm     bool
+	apiBase     string
+	client      sandboxDeleteClient
+	showHeaders bool
 }
 
 func newSandboxClaimCmd() *sandboxClaimCmd {
@@ -658,7 +666,9 @@ func (scc *sandboxCreateCmd) runAuthenticatedSandboxCreateCmd(cmd *cobra.Command
 	sendSandboxCreateRouteEvent(cmd.Context(), sandboxCreateOAuthRoute)
 	client := scc.client
 	if client == nil {
-		client = sandbox.NewManagementClient(scc.apiBaseURL, Config.GetProfile())
+		management := sandbox.NewManagementClient(scc.apiBaseURL, Config.GetProfile())
+		management.ShowHeaders = scc.showHeaders
+		client = management
 	}
 	created, err := client.Create(cmd.Context(), sandbox.CreateOptions{
 		Name:    name,
@@ -805,6 +815,8 @@ The table on stdout includes each sandbox's name, account ID, and access setting
 		},
 	}
 
+	slc.cmd.Flags().BoolVarP(&slc.showHeaders, "show-headers", "s", false, "Show request and response headers for managed sandbox requests")
+
 	slc.cmd.Flags().StringVar(&slc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
 	_ = slc.cmd.Flags().MarkHidden("api-base")
 
@@ -814,7 +826,9 @@ The table on stdout includes each sandbox's name, account ID, and access setting
 func (slc *sandboxListCmd) runSandboxListCmd(cmd *cobra.Command, args []string) error {
 	client := slc.client
 	if client == nil {
-		client = sandbox.NewManagementClient(slc.apiBase, Config.GetProfile())
+		management := sandbox.NewManagementClient(slc.apiBase, Config.GetProfile())
+		management.ShowHeaders = slc.showHeaders
+		client = management
 	}
 
 	sandboxes, err := client.ListAccessible(cmd.Context())
@@ -889,6 +903,8 @@ func newSandboxDeleteCmd() *sandboxDeleteCmd {
 
 	sdc.cmd.Flags().BoolVarP(&sdc.confirm, "confirm", "c", false, "Skip the confirmation prompt")
 
+	sdc.cmd.Flags().BoolVarP(&sdc.showHeaders, "show-headers", "s", false, "Show request and response headers for managed sandbox requests")
+
 	sdc.cmd.Flags().StringVar(&sdc.apiBase, "api-base", stripe.DefaultAPIBaseURL, "Sets the Stripe API base URL")
 	_ = sdc.cmd.Flags().MarkHidden("api-base")
 
@@ -917,7 +933,9 @@ func (sdc *sandboxDeleteCmd) runSandboxDeleteCmd(cmd *cobra.Command, args []stri
 
 	client := sdc.client
 	if client == nil {
-		client = sandbox.NewManagementClient(sdc.apiBase, Config.GetProfile())
+		management := sandbox.NewManagementClient(sdc.apiBase, Config.GetProfile())
+		management.ShowHeaders = sdc.showHeaders
+		client = management
 	}
 	deleted, err := client.Delete(cmd.Context(), stripeAccount)
 	if err != nil {

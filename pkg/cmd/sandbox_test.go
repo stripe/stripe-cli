@@ -86,6 +86,7 @@ func resetSandboxCreateFlagsForTest(t *testing.T) {
 		"base-url",
 		"create-blank",
 		"country",
+		"show-headers",
 		"api-base",
 		"dashboard-base",
 		"email",
@@ -962,6 +963,7 @@ func TestSandboxCreateCmdSurfaceIncludesAuthenticatedCreation(t *testing.T) {
 		"from-git",
 		"full-name",
 		"non-interactive",
+		"show-headers",
 	}, flags)
 	for _, hidden := range []string{"api-base", "base-url", "dashboard-base"} {
 		require.True(t, command.cmd.Flags().Lookup(hidden).Hidden, hidden)
