@@ -105,6 +105,12 @@ func TestSelectShellAutoDetectsFish(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestZshCompletionInstructionsIncludeOhMyZshGuidance(t *testing.T) {
+	assert.Contains(t, zshCompletionInstructions, "Oh My Zsh")
+	assert.Contains(t, zshCompletionInstructions, "source $ZSH/oh-my-zsh.sh")
+	assert.Contains(t, zshCompletionInstructions, "Oh My Zsh runs `compinit` for you")
+}
+
 // runInTempDir executes fn in a temporary directory, restoring the original
 // working directory on cleanup.
 func runInTempDir(t *testing.T, fn func()) {
