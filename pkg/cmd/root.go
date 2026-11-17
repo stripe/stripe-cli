@@ -123,6 +123,7 @@ var rootCmd = &cobra.Command{
 			})
 			flagsStr := strings.Join(flags, ",")
 			telemetryMetadata.SetCommandFlags(flagsStr)
+			setPluginCommandTelemetryMetadata(cmd, args)
 		}
 
 		// plugins send their own telemetry due to having richer context than the CLI does
@@ -137,6 +138,12 @@ var rootCmd = &cobra.Command{
 func sendCommandInvocationEvent(ctx context.Context) {
 	telemetryClient := stripe.GetTelemetryClient(ctx)
 	if telemetryClient != nil {
+		// RunE may enrich the command's metadata while this request is pending.
+		// Keep the invocation's target fixed before starting the sender.
+		if metadata := stripe.GetEventMetadata(ctx); metadata != nil {
+			invocationMetadata := *metadata
+			ctx = stripe.WithEventMetadata(ctx, &invocationMetadata)
+		}
 		go telemetryClient.SendEvent(ctx, "Command Invoked", "Cobra")
 	}
 }
