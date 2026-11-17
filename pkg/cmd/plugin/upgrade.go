@@ -81,6 +81,10 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 		if err := plugins.PersistInstalledPluginState(uc.cfg, uc.fs, *plugin); err != nil {
 			return err
 		}
+		if resolvedPlugin.CachedMetadata {
+			fmt.Println(color.Yellow(fmt.Sprintf("⚠ Could not check for updates; v%s is installed (using cached plugin metadata).", version)))
+			return nil
+		}
 		fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
 		return nil
 	}

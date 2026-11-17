@@ -780,6 +780,7 @@ func TestResolvePluginForUpgradeUsesMetadataEndpointWhenAvailable(t *testing.T) 
 	require.Equal(t, "0.1.26", resolvedPlugin.Plugin.LookUpLatestVersion())
 	require.Equal(t, "0.1.26", resolvedPlugin.Version)
 	require.Equal(t, "https://example.test/docs/latest", resolvedPlugin.BinaryURL)
+	require.False(t, resolvedPlugin.CachedMetadata)
 	require.Len(t, resolvedPlugin.Plugin.Commands, 1)
 	require.Equal(t, "search", resolvedPlugin.Plugin.Commands[0].Name)
 	require.Equal(t, 1, metadataLookups)
@@ -895,6 +896,7 @@ func TestResolvePluginForUpgradeFallsBackToCachedMetadataWhenEndpointFails(t *te
 	require.Equal(t, localPlugin, *resolvedPlugin.Plugin)
 	require.Equal(t, "0.1.25", resolvedPlugin.Version)
 	require.Empty(t, resolvedPlugin.BinaryURL)
+	require.True(t, resolvedPlugin.CachedMetadata)
 	require.False(t, resolvedPlugin.AutoUpdateDefault)
 }
 

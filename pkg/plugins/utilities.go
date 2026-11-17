@@ -46,6 +46,9 @@ type ResolvedPluginVersion struct {
 	Plugin    *Plugin
 	Version   string
 	BinaryURL string
+	// CachedMetadata is true when the latest-version lookup failed and this
+	// version came from local metadata instead of Stripe's metadata endpoint.
+	CachedMetadata bool
 	// AutoInstall carries the backend's per-plugin setting for installing on first
 	// use without prompting. It is only ever true for a
 	// resolution that came from a live metadata response: a resolution that fell
@@ -653,8 +656,9 @@ func ResolvePluginForUpgrade(ctx context.Context, config config.IConfig, fs afer
 		}
 
 		return &ResolvedPluginVersion{
-			Plugin:  cachedPlugin,
-			Version: version,
+			Plugin:         cachedPlugin,
+			Version:        version,
+			CachedMetadata: true,
 		}, nil
 	}
 
