@@ -41,6 +41,7 @@ var feedbackFeatureAreas = []string{
 	"connect",
 	"crypto",
 	"dashboard",
+	"directory",
 	"docs",
 	"identity",
 	"invoicing",
