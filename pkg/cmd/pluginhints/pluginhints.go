@@ -129,7 +129,7 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 		directoryCmd := newPluginHintCmd(
 			cfg,
 			"directory",
-			"Find APIs and service providers for email, databases, hosting, and other app dependencies. Learn more: https://stripe.directory",
+			"Find APIs and service providers for email, databases, hosting, and other app dependencies, plus businesses that agents can transact with. Learn more: https://stripe.directory",
 			runPlugin,
 		).Command
 		// These aliases only make the command discoverable through a near miss; they
