@@ -47,6 +47,8 @@ func TestPluginInvocationTelemetryTarget(t *testing.T) {
 		{name: "install exact version", args: []string{"install", "apps@2.0.0"}, wantPlugin: "apps", wantInvoked: true},
 		{name: "install version never becomes identity", args: []string{"install", "apps@sk_test_private"}, wantPlugin: "apps", wantInvoked: true},
 		{name: "upgrade", args: []string{"upgrade", "apps"}, wantPlugin: "apps", wantInvoked: true},
+		{name: "uninstall", args: []string{"uninstall", "apps"}, wantPlugin: "apps", wantInvoked: true},
+		{name: "uninstall all", args: []string{"uninstall", "--all"}, wantInvoked: true},
 		{name: "install invalid target", args: []string{"install", "../private@2.0.0"}, errorContains: "invalid plugin name", wantInvoked: true},
 		{name: "upgrade invalid target", args: []string{"upgrade", "../private"}, errorContains: "invalid plugin name", wantInvoked: true},
 		{name: "install without target", args: []string{"install"}, errorContains: "requires exactly 1 positional argument"},

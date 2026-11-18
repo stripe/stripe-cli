@@ -36,8 +36,8 @@ func newPluginCmd() *pluginCmd {
 	return pc
 }
 
-// Stamp the validated install/upgrade target before the root starts invocation
-// telemetry. An install argument's version is never a plugin name.
+// Stamp the validated install, upgrade, or uninstall target before invocation
+// telemetry starts. An install argument's version is never a plugin name.
 func setPluginCommandTelemetryMetadata(cmd *cobra.Command, args []string) {
 	parent := cmd.Parent()
 	if parent == nil || parent.Name() != "plugin" || parent.Parent() != cmd.Root() || len(args) != 1 {
@@ -47,7 +47,7 @@ func setPluginCommandTelemetryMetadata(cmd *cobra.Command, args []string) {
 	switch cmd.Name() {
 	case "install":
 		name, _, _ = strings.Cut(name, "@")
-	case "upgrade":
+	case "upgrade", "uninstall":
 	default:
 		return
 	}
