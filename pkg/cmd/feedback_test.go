@@ -76,6 +76,7 @@ func TestFeedbackHelpCommunicatesParametersAndFeatureOptions(t *testing.T) {
 	assert.Contains(t, output, "Feature options:")
 	assert.Greater(t, strings.Index(output, "Feature options:"), strings.Index(output, "Flags:"))
 	assert.Contains(t, output, "apps")
+	assert.Contains(t, output, "directory")
 	assert.Contains(t, output, "skills")
 	assert.Regexp(t, `(?m)^  \S+\s{2,}\S+\s{2,}\S+$`, output)
 	assert.True(t, sort.StringsAreSorted(feedbackFeatureAreas))
@@ -235,7 +236,7 @@ func TestFeedbackSubmit(t *testing.T) {
 			name: "sends expected request",
 			setup: func() feedbackCase {
 				feedbackInput := validFeedbackCase()
-				feedbackInput.feature = "cli"
+				feedbackInput.feature = "directory"
 				feedbackInput.context = "testing the feedback command"
 				return feedbackInput
 			},
@@ -245,7 +246,7 @@ func TestFeedbackSubmit(t *testing.T) {
 				assert.Equal(t, "this is a test feedback message", request.FormValue("message"))
 				assert.Equal(t, "cli", request.FormValue("channel"))
 				assert.Equal(t, "human", request.FormValue("actor"))
-				assert.Equal(t, "cli", request.FormValue("feature_area"))
+				assert.Equal(t, "directory", request.FormValue("feature_area"))
 				assert.Equal(t, "testing the feedback command", request.FormValue("context"))
 				assert.Equal(t, "test-device", request.FormValue("device_name"))
 				assert.NotEmpty(t, request.FormValue("os"))
@@ -387,7 +388,7 @@ func TestFeedbackValidateSuppliedFields(t *testing.T) {
 	// checked separately by missingRequiredFields.
 	assert.NoError(t, feedbackCommand.validateSuppliedFields())
 
-	for _, feature := range []string{"apps", "skills"} {
+	for _, feature := range []string{"apps", "directory", "skills"} {
 		feedbackCommand.feature = feature
 		assert.NoError(t, feedbackCommand.validateSuppliedFields())
 	}
