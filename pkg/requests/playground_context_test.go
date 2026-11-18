@@ -32,7 +32,7 @@ func TestGetPlaygroundContext(t *testing.T) {
 	defer ts.Close()
 
 	creds := stripe.NewOAKCredentials("oak_test_123", "acct_123", true)
-	playgroundContext, err := GetPlaygroundContext(context.Background(), ts.URL, nil, creds, true)
+	playgroundContext, err := GetPlaygroundContext(context.Background(), ts.URL, nil, creds, true, false)
 	require.NoError(t, err)
 	require.Equal(t, PlaygroundContext{PlaygroundID: "play_live_123"}, playgroundContext)
 }
@@ -45,7 +45,7 @@ func TestGetPlaygroundContext_MalformedJSON(t *testing.T) {
 	defer ts.Close()
 
 	creds := stripe.NewOAKCredentials("oak_test_123", "acct_123", true)
-	_, err := GetPlaygroundContext(context.Background(), ts.URL, nil, creds, true)
+	_, err := GetPlaygroundContext(context.Background(), ts.URL, nil, creds, true, false)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "failed to decode playground context response")
 }
@@ -58,7 +58,7 @@ func TestGetPlaygroundContext_Non2xx(t *testing.T) {
 	defer ts.Close()
 
 	creds := stripe.NewOAKCredentials("oak_test_123", "acct_123", true)
-	_, err := GetPlaygroundContext(context.Background(), ts.URL, nil, creds, true)
+	_, err := GetPlaygroundContext(context.Background(), ts.URL, nil, creds, true, false)
 	require.Error(t, err)
 
 	var requestErr RequestError
