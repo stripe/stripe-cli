@@ -10,8 +10,9 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
-// configV2MinimumVersions maps a plugin shortname to the lowest released version
-// of that plugin which reads the v2 config layout.
+// configV2MinimumVersions maps a plugin shortname to a verified published version
+// that reads the v2 config layout. These conservative thresholds need not be the
+// earliest compatible releases.
 //
 // Plugins parse config.toml themselves rather than asking the CLI for it, and
 // plugin auto-update is off by default, so an installed plugin binary can be
@@ -27,20 +28,20 @@ import (
 // upgradePluginForConfigV2 cannot then satisfy it, so a user who has that plugin
 // installed is told to upgrade to a version that does not exist -- on every
 // command, indefinitely. That is strictly worse than leaving the map empty.
+//
+// These published binaries were tested with isolated v1/v2 configurations.
+// Legacy spec is absent from the current Plugin Hub inventory and has no verified
+// compatible release. It remains unmapped: installed copies prevent migration,
+// and execution against an already migrated configuration is refused.
 var configV2MinimumVersions = map[string]string{
-	// TODO(config-v2): uncomment once the apps release containing
-	// stripe/stripe-cli-apps-plugin#346 ships. 1.19.0 links stripe-cli v1.50.6,
-	// which has no v2 read path at all.
-	// "apps": "",
-
-	// 0.3.1 predates bootstrap 0.11.0 and has no v2 read path; 0.3.2 was built
-	// after it and does. Verified against the published binaries, since 0.3.2 was
-	// released out-of-band and has no version-bump commit on master.
-	"directory": "0.3.2",
-
-	"pay":      "0.4.3",
-	"projects": "0.37.0",
-	"tools":    "0.9.1",
+	"apps":      "1.24.0",
+	"atlas":     "0.0.11",
+	"directory": "0.3.5",
+	"generate":  "0.12.0",
+	"health":    "0.1.8",
+	"pay":       "0.4.3",
+	"projects":  "0.51.0",
+	"tools":     "0.18.0",
 }
 
 // ConfigV2Ready reports whether the CLI knows which plugin releases can read a

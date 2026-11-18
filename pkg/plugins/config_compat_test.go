@@ -45,6 +45,115 @@ func TestConfigV2MinimumVersionsAreResolvable(t *testing.T) {
 	}
 }
 
+// Keep this inventory in sync with the CLI hints and current Plugin Hub catalog,
+// including conditional plugins. A plugin installed after migration needs a
+// compatible release just as much as one already installed when migration runs.
+// Legacy spec is not in the current Hub inventory; its rejection is tested below.
+var supportedConfigV2Plugins = []string{
+	"apps", "atlas", "directory", "generate", "health", "pay", "projects", "tools",
+}
+
+func missingConfigV2MinimumVersions(versions map[string]string) []string {
+	if len(versions) == 0 {
+		// An intentionally empty map disables the rollout.
+		return nil
+	}
+
+	var missing []string
+	for _, name := range supportedConfigV2Plugins {
+		if versions[name] == "" {
+			missing = append(missing, name)
+		}
+	}
+	return missing
+}
+
+func TestConfigV2MinimumVersionsAreComplete(t *testing.T) {
+	require.Empty(t, missingConfigV2MinimumVersions(configV2MinimumVersions),
+		"migration must stay disabled until every supported plugin has a verified compatible release")
+}
+
+func TestConfigV2MinimumVersionsCompleteness(t *testing.T) {
+	require.Empty(t, missingConfigV2MinimumVersions(map[string]string{}))
+
+	complete := make(map[string]string, len(supportedConfigV2Plugins))
+	for _, name := range supportedConfigV2Plugins {
+		complete[name] = "1.0.0"
+	}
+	require.Empty(t, missingConfigV2MinimumVersions(complete))
+
+	for _, name := range supportedConfigV2Plugins {
+		t.Run(name, func(t *testing.T) {
+			delete(complete, name)
+			require.Equal(t, []string{name}, missingConfigV2MinimumVersions(complete))
+			complete[name] = ""
+			require.Equal(t, []string{name}, missingConfigV2MinimumVersions(complete))
+			complete[name] = "1.0.0"
+		})
+	}
+}
+
+func TestConfigV2OmittedPluginBeforeAndAfterMigration(t *testing.T) {
+	withConfigV2MinimumVersions(t, map[string]string{"known": "1.0.0"})
+	t.Cleanup(viper.Reset)
+	viper.Set(config.ConfigVersionName, config.ConfigVersionV2)
+
+	for _, name := range supportedConfigV2Plugins {
+		t.Run(name, func(t *testing.T) {
+			fs := afero.NewMemMapFs()
+			require.NoError(t, fs.MkdirAll("/plugins/"+name+"/9.9.9", 0755))
+			cfg := &TestConfig{}
+			cfg.InstalledPlugins = []string{name}
+
+			// Installed before migration: even a high version cannot satisfy an
+			// omitted threshold, so migration must wait.
+			incompatibilities, err := ConfigV2Incompatibilities(cfg, fs)
+			require.NoError(t, err)
+			require.Equal(t, []ConfigV2Incompatibility{{
+				Plugin: name, InstalledVersion: "9.9.9",
+			}}, incompatibilities)
+
+			// Installed after migration: execution remains guarded too.
+			plugin := Plugin{Shortname: name}
+			require.ErrorContains(t, plugin.refuseIfConfigTooNew("9.9.9"),
+				"stripe plugin upgrade "+name)
+		})
+	}
+}
+
+func TestConfigV2LegacySpecRemainsIncompatible(t *testing.T) {
+	// Use the shipped map: excluding spec from the active inventory must not
+	// accidentally admit its old, flat-layout binary.
+	require.NotContains(t, configV2MinimumVersions, "spec")
+	require.False(t, ReadsConfigV2("spec", "0.2.1"))
+
+	// Exercise an enabled rollout even when the shipped map is intentionally
+	// empty. The explicit disabled state must remain valid for the whole suite.
+	if !ConfigV2Ready() {
+		withConfigV2MinimumVersions(t, map[string]string{"apps": "1.24.0"})
+	}
+
+	fs := afero.NewMemMapFs()
+	require.NoError(t, fs.MkdirAll("/plugins/spec/0.2.1", 0755))
+	cfg := &TestConfig{}
+	cfg.InstalledPlugins = []string{"spec"}
+	incompatibilities, err := ConfigV2Incompatibilities(cfg, fs)
+	require.NoError(t, err)
+	require.Equal(t, []ConfigV2Incompatibility{{
+		Plugin: "spec", InstalledVersion: "0.2.1",
+	}}, incompatibilities)
+
+	t.Cleanup(viper.Reset)
+	viper.Set(config.ConfigVersionName, config.ConfigVersionV2)
+	plugin := Plugin{Shortname: "spec"}
+	require.ErrorContains(t, plugin.refuseIfConfigTooNew("0.2.1"),
+		"cannot read the new config file format")
+
+	// An old installation can still run while migration is deferred.
+	viper.Set(config.ConfigVersionName, nil)
+	require.NoError(t, plugin.refuseIfConfigTooNew("0.2.1"))
+}
+
 func TestReadsConfigV2(t *testing.T) {
 	withConfigV2MinimumVersions(t, map[string]string{
 		"apps":     "1.5.0",
