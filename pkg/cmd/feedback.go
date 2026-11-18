@@ -145,6 +145,7 @@ func validateFeedbackContext(s string) error {
 type feedbackCmd struct {
 	cmd *cobra.Command
 
+	features   []string
 	feature    string
 	sentiment  string
 	message    string
@@ -203,7 +204,9 @@ For help with your account or integration, use https://support.stripe.com`,
 	feedback.cmd.Flags().StringVar(&feedback.sentiment, "sentiment", "", fmt.Sprintf("Sentiment of the feedback (required; one of: %s)", strings.Join(feedbackSentiments, ", ")))
 	feedback.cmd.Flags().StringVar(&feedback.message, "message", "", "Your feedback message (required; 10-2000 characters)")
 	feedback.cmd.Flags().StringVar(&feedback.context, "context", "", "What you were trying to do (required; 10-2000 characters)")
-	feedback.cmd.Flags().StringVar(&feedback.feature, "feature", "", "Product area this feedback is about (optional; see feature options below)")
+	feedback.cmd.Flags().StringSliceVar(&feedback.features, "features", nil, "Product areas this feedback is about (optional; comma-separated or repeated; see feature options below)")
+	feedback.cmd.Flags().StringVar(&feedback.feature, "feature", "", "Product area this feedback is about")
+	feedback.cmd.Flags().MarkHidden("feature") // #nosec G104
 	feedback.cmd.Flags().StringVar(&feedback.actor, "actor", "", "Who is submitting this feedback: human or agent (optional; default: agent when run by a recognized coding agent, otherwise human)")
 	feedback.cmd.Flags().BoolVar(&feedback.jsonOutput, "json", false, "Output the result as JSON (optional; default: false)")
 
@@ -227,7 +230,7 @@ func (feedback *feedbackCmd) runFeedbackCmd(cmd *cobra.Command, args []string) e
 	}
 
 	// Whatever was already supplied via flags is validated up front,
-	// regardless of interactivity, so an invalid --feature/--sentiment/
+	// regardless of interactivity, so an invalid --features/--sentiment/
 	// --message/--context fails fast instead of silently falling through
 	// to a prompt that would ask the user for it again.
 	if err := feedback.validateSuppliedFields(); err != nil {
@@ -270,6 +273,11 @@ func (feedback *feedbackCmd) validateSuppliedFields() error {
 	if err := validators.CallNonEmpty(validators.OneOf(feedbackSentiments...), feedback.sentiment); err != nil {
 		return errorcategory.Errorf(errorcategory.UserInput, "--sentiment %w", err)
 	}
+	for _, feature := range feedback.features {
+		if err := validators.OneOf(feedbackFeatureAreas...)(feature); err != nil {
+			return errorcategory.Errorf(errorcategory.UserInput, "--features %w", err)
+		}
+	}
 	if err := validators.CallNonEmpty(validators.OneOf(feedbackFeatureAreas...), feedback.feature); err != nil {
 		return errorcategory.Errorf(errorcategory.UserInput, "--feature %w", err)
 	}
@@ -287,12 +295,12 @@ func (feedback *feedbackCmd) promptForFeedback(cmd *cobra.Command) error {
 	fmt.Fprintln(out, "For help with your account or integration, use: https://support.stripe.com")
 	fmt.Fprintln(out)
 
-	if feedback.feature == "" {
+	if len(feedback.features) == 0 && feedback.feature == "" {
 		feature, err := selectFeedbackEnum("Which area is this about? (type to filter)", feedbackFeatureAreas)
 		if err != nil {
 			return err
 		}
-		feedback.feature = feature
+		feedback.features = []string{feature}
 	}
 
 	if feedback.sentiment == "" {
@@ -389,8 +397,12 @@ func (feedback *feedbackCmd) submitFeedback(cmd *cobra.Command, creds stripe.Cre
 	form.Set("channel", "cli")
 	form.Set("actor", feedback.actor)
 
+	features := append([]string(nil), feedback.features...)
 	if feedback.feature != "" {
-		form.Set("feature_area", feedback.feature)
+		features = append(features, feedback.feature)
+	}
+	for index, feature := range features {
+		form.Set(fmt.Sprintf("feature_areas[%d]", index), feature)
 	}
 	form.Set("context", context)
 
