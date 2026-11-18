@@ -10,8 +10,9 @@ import (
 func PrintTips(out io.Writer, pluginName string) {
 	switch pluginName {
 	case "directory":
-		fmt.Fprintln(out, "Search:  stripe directory search \"your query here\"")
+		fmt.Fprintln(out, "Search:  stripe directory search \"transactional email\" --format json")
 		fmt.Fprintln(out, "Help:    stripe directory --help")
+		fmt.Fprintln(out, "More information: https://stripe.directory")
 		fmt.Fprintln(out, "Edit your profile: https://dashboard.stripe.com/settings/profile")
 		fmt.Fprintln(out, "If you have feedback about this early preview, email directory@stripe.com")
 	case "projects":
