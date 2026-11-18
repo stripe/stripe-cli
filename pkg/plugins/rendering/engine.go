@@ -56,9 +56,10 @@ type Engine struct {
 }
 
 type activeSpinner struct {
-	message string
+	message   string
+	transient bool
 	// s is nil when the target writer is not a terminal; in that case progress
-	// is rendered as plain lines instead of an animation.
+	// is rendered as plain lines unless the spinner is transient.
 	s *spinner.Spinner
 }
 
@@ -289,10 +290,17 @@ func (e *Engine) renderProgress(p *proto.ProgressBlock) {
 
 	switch p.GetType() {
 	case proto.ProgressType_SPINNER_START:
-		e.startSpinner(p.GetId(), p.GetMessage(), w)
+		e.startSpinner(p.GetId(), p.GetMessage(), p.GetTransient(), w)
 	case proto.ProgressType_SPINNER_UPDATE:
 		e.updateSpinner(p.GetId(), p.GetMessage(), w)
 	case proto.ProgressType_SPINNER_STOP:
+		if p.GetClear() {
+			if existing := e.spinners[p.GetId()]; existing != nil {
+				stopSpinner(existing.s)
+				delete(e.spinners, p.GetId())
+			}
+			return
+		}
 		e.stopSpinner(p.GetId(), p.GetMessage(), p.GetSuccess(), w)
 	case proto.ProgressType_STEP:
 		fmt.Fprintf(w, "%s %s\n", color.Green("✔"), faint(w, p.GetMessage()))
@@ -301,13 +309,19 @@ func (e *Engine) renderProgress(p *proto.ProgressBlock) {
 	}
 }
 
-func (e *Engine) startSpinner(id, msg string, w io.Writer) {
+func (e *Engine) startSpinner(id, msg string, transient bool, w io.Writer) {
 	// A repeated start for the same id is treated as an update so a plugin
 	// retry can't leave an orphaned animation running.
 	if existing, ok := e.spinners[id]; ok {
 		e.finishSpinner(id, existing, "", true, w)
 	}
-	e.spinners[id] = &activeSpinner{message: msg, s: ansi.StartNewSpinner(msg, w)}
+	active := &activeSpinner{message: msg, transient: transient}
+	if transient {
+		active.s = ansi.StartNewTransientSpinner(msg, w)
+	} else {
+		active.s = ansi.StartNewSpinner(msg, w)
+	}
+	e.spinners[id] = active
 }
 
 func (e *Engine) updateSpinner(id, msg string, w io.Writer) {
@@ -315,7 +329,7 @@ func (e *Engine) updateSpinner(id, msg string, w io.Writer) {
 	if !ok {
 		// Update without a start: render it as a fresh spinner rather than
 		// dropping the message.
-		e.startSpinner(id, msg, w)
+		e.startSpinner(id, msg, false, w)
 		return
 	}
 	existing.message = msg
@@ -323,7 +337,9 @@ func (e *Engine) updateSpinner(id, msg string, w io.Writer) {
 		ansi.StartSpinner(existing.s, msg, w)
 		return
 	}
-	fmt.Fprintln(w, msg)
+	if !existing.transient {
+		fmt.Fprintln(w, msg)
+	}
 }
 
 func (e *Engine) stopSpinner(id, msg string, success bool, w io.Writer) {

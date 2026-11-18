@@ -403,3 +403,16 @@ func TestEndToEndAgainstOldCore(t *testing.T) {
 	// The core rendered nothing, which is what makes local rendering safe.
 	require.Empty(t, stdout.String())
 }
+
+func TestTransientSpinnerLifecycle(t *testing.T) {
+	helper := &fakeHelper{}
+	spinner, err := New(helper).ProgressStartTransient("working")
+	require.NoError(t, err)
+	require.NoError(t, spinner.Clear())
+	blocks := helper.progress()
+	require.Len(t, blocks, 2)
+	require.True(t, blocks[0].GetTransient())
+	require.Equal(t, blocks[0].GetId(), blocks[1].GetId())
+	require.Equal(t, proto.ProgressType_SPINNER_STOP, blocks[1].GetType())
+	require.True(t, blocks[1].GetClear())
+}

@@ -354,6 +354,13 @@ message ProgressBlock {
   string message = 2;
   ProgressType type = 3;
   bool success = 4;              // relevant on SPINNER_STOP only
+
+  // Transient spinners animate only on terminals; redirected output stays quiet.
+  // Relevant on SPINNER_START only. Updates inherit the initial setting.
+  bool transient = 5;
+  // Stop without a final outcome line. Relevant on SPINNER_STOP only.
+  // Without this flag an empty message still reuses the current message.
+  bool clear = 6;
 }
 
 message SendCommandOutputRequest {
@@ -368,6 +375,9 @@ message SendCommandOutputRequest {
 }
 
 message SendCommandOutputResponse {
+  // Probe with an empty, non-final request before using transient/clear flags.
+  // Older hosts return false, so the caller can safely render locally.
+  bool supports_transient_spinners = 1;
 }
 
 message PromptRequest {
