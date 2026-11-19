@@ -25,6 +25,32 @@ func stripANSI(s string) string {
 }
 
 func TestSearchCommand(t *testing.T) {
+	// Exercise human-readable output regardless of the invoking environment.
+	for _, key := range []string{
+		"AI_AGENT",
+		"AGENT",
+		"ANTIGRAVITY_CLI_ALIAS",
+		"CLAUDECODE",
+		"CLAUDE_CODE_ENTRYPOINT",
+		"CLINE_ACTIVE",
+		"CODEX_CI",
+		"CODEX_INTERNAL_ORIGINATOR_OVERRIDE",
+		"CODEX_SANDBOX",
+		"CODEX_SANDBOX_NETWORK_DISABLED",
+		"CODEX_THREAD_ID",
+		"CURSOR_AGENT",
+		"GEMINI_CLI",
+		"GROK_AGENT",
+		"GROK_SESSION_ID",
+		"HERMES_AGENT",
+		"OPENCLAW_SHELL",
+		"OPENCODE",
+		"TERM_PROGRAM",
+		"KIRO_SESSION_ID",
+	} {
+		t.Setenv(key, "")
+	}
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/_endpoint/search", r.URL.Path)
 		assert.Equal(t, "payment methods", r.URL.Query().Get("query"))
