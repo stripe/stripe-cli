@@ -44,25 +44,20 @@ func TestExecutableResolverProjectExclusions(t *testing.T) {
 				executableFixture(t, dir, "claude")
 			}
 			global := executableFixture(t, globalBin, "claude")
-			unsafe := []string{"", ".", "tools", localBin, ancestorBin, projectBin, cwd}
-			for _, withGlobal := range []bool{false, true} {
-				entries := append([]string{}, unsafe...)
-				if withGlobal {
-					entries = append(entries, globalBin)
-				}
-				t.Setenv("PATH", strings.Join(entries, string(os.PathListSeparator)))
-				resolver := newExecutableResolver()
-				selected, err := resolver.lookPath("claude")
-				if withGlobal {
-					require.NoError(t, err)
-					require.Equal(t, global, selected)
-					require.Equal(t, []string{globalBin}, resolver.dirs)
-				} else {
-					require.Error(t, err)
-					require.Empty(t, selected)
-					require.Empty(t, resolver.dirs)
-				}
-			}
+			entries := []string{"", ".", "tools", localBin, ancestorBin, projectBin, cwd}
+			t.Setenv("PATH", strings.Join(entries, string(os.PathListSeparator)))
+			resolver := newExecutableResolver()
+			selected, err := resolver.lookPath("claude")
+			require.Error(t, err)
+			require.Empty(t, selected)
+			require.Empty(t, resolver.dirs)
+
+			t.Setenv("PATH", strings.Join(append(entries, globalBin), string(os.PathListSeparator)))
+			resolver = newExecutableResolver()
+			selected, err = resolver.lookPath("claude")
+			require.NoError(t, err)
+			require.Equal(t, global, selected)
+			require.Equal(t, []string{globalBin}, resolver.dirs)
 		})
 	}
 }
@@ -232,55 +227,50 @@ func TestProvidersUseSelectedExecutable(t *testing.T) {
 			projectBin := filepath.Join(project, "node_modules", ".bin")
 			executableFixture(t, projectBin, binary)
 			selected := executableFixture(t, globalBin, binary)
-			for _, withGlobal := range []bool{false, true} {
-				path := projectBin
-				if withGlobal {
-					path += string(os.PathListSeparator) + globalBin
+			calls := 0
+			installed := false
+			run := func(_ context.Context, name string, args ...string) ([]byte, error) {
+				calls++
+				switch name {
+				case "mkdir", "git", "rm":
+				default:
+					require.Equal(t, selected, name)
 				}
-				t.Setenv("PATH", path)
-				calls := 0
-				installed := false
-				run := func(_ context.Context, name string, args ...string) ([]byte, error) {
-					calls++
-					switch name {
-					case "mkdir", "git", "rm":
-					default:
-						require.Equal(t, selected, name)
-					}
-					if len(args) > 1 && args[1] == "marketplace" {
-						return []byte(codexTestMarketplaceList), nil
-					}
-					if len(args) > 1 && args[1] == "add" {
-						installed = true
-					}
-					if installed {
-						return []byte(`{"installed":[{"pluginId":"stripe@openai-curated"}]}`), nil
-					}
-					return []byte(`[]`), nil
+				if len(args) > 1 && args[1] == "marketplace" {
+					return []byte(codexTestMarketplaceList), nil
 				}
-				p := newProvider(DefaultScanner(), run)
-				s := p.Detect()
-				if !withGlobal {
-					require.False(t, s.Detected)
-					require.Empty(t, s.ExecutablePath)
-					require.Equal(t, ActionNone, p.Plan(s, true).Action)
-					require.Zero(t, calls)
-					continue
+				if len(args) > 1 && args[1] == "add" {
+					installed = true
 				}
-				require.True(t, s.Detected)
-				require.Equal(t, selected, s.ExecutablePath)
-				t.Setenv("PATH", projectBin)
-				plan := p.Plan(s, false)
-				require.Equal(t, ActionInstall, plan.Action)
-				for _, command := range plan.Commands {
-					if command[0] != "mkdir" && command[0] != "git" && command[0] != "rm" {
-						require.Equal(t, selected, command[0])
-					}
+				if installed {
+					return []byte(`{"installed":[{"pluginId":"stripe@openai-curated"}]}`), nil
 				}
-				require.NoError(t, p.Apply(context.Background(), nil, plan))
-				s.ExecutablePath = ""
-				require.Equal(t, ActionNone, p.Plan(s, false).Action)
+				return []byte(`[]`), nil
 			}
+			t.Setenv("PATH", projectBin)
+			p := newProvider(DefaultScanner(), run)
+			s := p.Detect()
+			require.False(t, s.Detected)
+			require.Empty(t, s.ExecutablePath)
+			require.Equal(t, ActionNone, p.Plan(s, true).Action)
+			require.Zero(t, calls)
+
+			t.Setenv("PATH", projectBin+string(os.PathListSeparator)+globalBin)
+			p = newProvider(DefaultScanner(), run)
+			s = p.Detect()
+			require.True(t, s.Detected)
+			require.Equal(t, selected, s.ExecutablePath)
+			t.Setenv("PATH", projectBin)
+			plan := p.Plan(s, false)
+			require.Equal(t, ActionInstall, plan.Action)
+			for _, command := range plan.Commands {
+				if command[0] != "mkdir" && command[0] != "git" && command[0] != "rm" {
+					require.Equal(t, selected, command[0])
+				}
+			}
+			require.NoError(t, p.Apply(context.Background(), nil, plan))
+			s.ExecutablePath = ""
+			require.Equal(t, ActionNone, p.Plan(s, false).Action)
 		})
 	}
 }

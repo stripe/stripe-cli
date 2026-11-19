@@ -110,7 +110,7 @@ func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 		return nil, nil
 	}
 	provider := NewClaudeProvider(Scanner{}, runCommand)
-	executable := executableFixture(t, t.TempDir(), "claude")
+	executable := "/usr/local/bin/claude"
 	plan := provider.Plan(Status{Detected: true, ExecutablePath: executable}, false)
 	t.Setenv("PATH", t.TempDir())
 
