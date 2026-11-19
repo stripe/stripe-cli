@@ -28,6 +28,13 @@ func (r stubInputReader) scanln(ch chan int) {
 }
 
 func TestLogin(t *testing.T) {
+	for _, key := range []string{"SSH_TTY", "SSH_CONNECTION", "SSH_CLIENT"} {
+		t.Setenv(key, "")
+	}
+	originalCanOpenBrowser := canOpenBrowser
+	canOpenBrowser = func() bool { return true }
+	t.Cleanup(func() { canOpenBrowser = originalCanOpenBrowser })
+
 	didOpenBrowser := false
 	openBrowser = func(string) error {
 		didOpenBrowser = true
