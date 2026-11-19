@@ -10,18 +10,39 @@ import (
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
-// configV2MinimumVersions maps a plugin shortname to the lowest released version
-// of that plugin which reads the v2 config layout.
+// configV2MinimumVersions maps a plugin shortname to a verified published version
+// that reads the v2 config layout. These conservative thresholds need not be the
+// earliest compatible releases.
 //
 // Plugins parse config.toml themselves rather than asking the CLI for it, and
 // plugin auto-update can be disabled, so an installed plugin binary can be
 // arbitrarily old. Migrating the config file out from under one that only knows
 // the flat layout would leave it unable to find any profile — hence the gate.
 //
-// The map is empty until those plugin releases exist. While it is empty the CLI
-// cannot tell a compatible plugin from an incompatible one, so ConfigV2Ready
-// reports false and the migration does not run at all.
-var configV2MinimumVersions = map[string]string{}
+// While the map is empty the CLI cannot tell a compatible plugin from an
+// incompatible one, so ConfigV2Ready reports false and the migration does not run
+// at all.
+//
+// Every installable plugin needs an entry before the map is populated at all.
+// readsConfigV2 reports false for an unmapped plugin, and
+// upgradePluginForConfigV2 cannot then satisfy it, so a user who has that plugin
+// installed is told to upgrade to a version that does not exist -- on every
+// command, indefinitely. That is strictly worse than leaving the map empty.
+//
+// These published binaries were tested with isolated v1/v2 configurations.
+// Legacy spec is absent from the current Plugin Hub inventory and has no verified
+// compatible release. It remains unmapped: installed copies prevent migration,
+// and execution against an already migrated configuration is refused.
+var configV2MinimumVersions = map[string]string{
+	"apps":      "1.24.0",
+	"atlas":     "0.0.11",
+	"directory": "0.3.5",
+	"generate":  "0.12.0",
+	"health":    "0.1.8",
+	"pay":       "0.4.3",
+	"projects":  "0.51.0",
+	"tools":     "0.18.0",
+}
 
 // ConfigV2Ready reports whether the CLI knows which plugin releases can read a
 // migrated config file. Until it does, migrating would break every installed
