@@ -204,7 +204,10 @@ func TestAgentCommandEnvironment(t *testing.T) {
 	require.NoError(t, err, string(out))
 	var got []string
 	require.NoError(t, json.Unmarshal(out, &got))
+	require.Len(t, got, 2)
 	cwd, err := filepath.EvalSymlinks(project)
+	require.NoError(t, err)
+	got[1], err = filepath.EvalSymlinks(got[1])
 	require.NoError(t, err)
 	require.Equal(t, []string{globalBin, cwd}, got)
 	_, err = p.RunCommand(context.Background(), filepath.Join(projectBin, filepath.Base(global)))
