@@ -8,6 +8,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	serveTestPluginIfRequested()
 	zkr.MockInit()
 	os.Exit(m.Run())
 }
