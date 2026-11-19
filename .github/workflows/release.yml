@@ -190,6 +190,7 @@ jobs:
 
   publish-npm:
     needs: [build-mac, build-linux, build-windows]
+    environment: release
     runs-on: ubuntu-latest
     permissions:
       contents: read # downloads release assets
