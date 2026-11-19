@@ -44,8 +44,9 @@ type Scanner struct {
 
 // DefaultScanner returns a Scanner backed by the real OS.
 func DefaultScanner() Scanner {
+	resolver := newExecutableResolver()
 	return Scanner{
-		LookPath: exec.LookPath,
+		LookPath: resolver.lookPath,
 		ReadFile: os.ReadFile,
 		HomeDir:  os.UserHomeDir,
 		WorkDir:  os.Getwd,
@@ -55,24 +56,23 @@ func DefaultScanner() Scanner {
 }
 
 func (s Scanner) withDefaults() Scanner {
-	defaults := DefaultScanner()
 	if s.LookPath == nil {
-		s.LookPath = defaults.LookPath
+		s.LookPath = newExecutableResolver().lookPath
 	}
 	if s.ReadFile == nil {
-		s.ReadFile = defaults.ReadFile
+		s.ReadFile = os.ReadFile
 	}
 	if s.HomeDir == nil {
-		s.HomeDir = defaults.HomeDir
+		s.HomeDir = os.UserHomeDir
 	}
 	if s.WorkDir == nil {
-		s.WorkDir = defaults.WorkDir
+		s.WorkDir = os.Getwd
 	}
 	if s.ReadDir == nil {
-		s.ReadDir = defaults.ReadDir
+		s.ReadDir = os.ReadDir
 	}
 	if s.Stat == nil {
-		s.Stat = defaults.Stat
+		s.Stat = os.Stat
 	}
 	return s
 }
@@ -81,7 +81,11 @@ func (s Scanner) withDefaults() Scanner {
 // installs run behind a spinner, so streaming subprocess stdio to the terminal
 // would interleave with our animation.
 func RunCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	out, err := exec.CommandContext(ctx, name, args...).Output()
+	return newExecutableResolver().run(ctx, name, args...)
+}
+
+func commandOutput(cmd *exec.Cmd) ([]byte, error) {
+	out, err := cmd.Output()
 	if err == nil {
 		return out, nil
 	}

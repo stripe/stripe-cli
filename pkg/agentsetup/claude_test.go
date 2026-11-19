@@ -47,7 +47,7 @@ func TestClaude_DetectedPluginMissing(t *testing.T) {
 	require.True(t, status.Detected)
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
-	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"claude", "plugin", "install", "stripe@anthropic-plugin-directory"}}}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"/usr/local/bin/claude", "plugin", "install", "stripe@anthropic-plugin-directory"}}}, provider.Plan(status, false))
 }
 
 func TestClaude_OfficialPluginInstalled(t *testing.T) {
@@ -67,7 +67,7 @@ func TestClaude_OfficialPluginInstalled(t *testing.T) {
 	require.Equal(t, "2.4.1", status.Plugin.Version)
 	require.Equal(t, "user", status.Plugin.Scope)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"claude", "plugin", "install", "stripe@anthropic-plugin-directory"}}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"/usr/local/bin/claude", "plugin", "install", "stripe@anthropic-plugin-directory"}}}, provider.Plan(status, true))
 }
 
 func TestClaude_MalformedJSON(t *testing.T) {
@@ -95,7 +95,7 @@ func TestClaude_OtherPluginsIgnored(t *testing.T) {
 
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
-	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"claude", "plugin", "install", "stripe@anthropic-plugin-directory"}}}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"/usr/local/bin/claude", "plugin", "install", "stripe@anthropic-plugin-directory"}}}, provider.Plan(status, false))
 }
 
 func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
@@ -110,15 +110,17 @@ func TestClaudeApply_RetriesAfterMarketplaceRefresh(t *testing.T) {
 		return nil, nil
 	}
 	provider := NewClaudeProvider(Scanner{}, runCommand)
-	plan := Plan{Action: ActionInstall, Commands: [][]string{{"claude", "plugin", "install", TargetClaudePlugin}}}
+	executable := executableFixture(t, t.TempDir(), "claude")
+	plan := provider.Plan(Status{Detected: true, ExecutablePath: executable}, false)
+	t.Setenv("PATH", t.TempDir())
 
 	err := provider.Apply(context.Background(), nil, plan)
 
 	require.NoError(t, err)
 	require.Equal(t, [][]string{
-		{"claude", "plugin", "install", TargetClaudePlugin},
-		{"claude", "plugin", "marketplace", "update", ClaudeMarketplace},
-		{"claude", "plugin", "install", TargetClaudePlugin},
+		{executable, "plugin", "install", TargetClaudePlugin},
+		{executable, "plugin", "marketplace", "update", ClaudeMarketplace},
+		{executable, "plugin", "install", TargetClaudePlugin},
 	}, calls)
 }
 

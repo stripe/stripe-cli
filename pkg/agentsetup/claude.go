@@ -59,7 +59,7 @@ func (p ClaudeProvider) Detect() Status {
 	ctx, cancel := context.WithTimeout(context.Background(), claudeListTimeout)
 	defer cancel()
 
-	pluginID, version, scope, ok, supportsPlugins := p.stripePluginStatus(ctx)
+	pluginID, version, scope, ok, supportsPlugins := p.stripePluginStatus(ctx, status.ExecutablePath)
 	if !supportsPlugins {
 		status.Error = "upgrade Claude Code to enable plugin support"
 		return status
@@ -76,7 +76,7 @@ func (p ClaudeProvider) Detect() Status {
 }
 
 func (p ClaudeProvider) Plan(status Status, force bool) Plan {
-	name, args := p.installCommand()
+	name, args := p.installCommand(status.ExecutablePath)
 	installOrReinstallCommand := [][]string{append([]string{name}, args...)}
 	return getPlanByStatus(status, force, installOrReinstallCommand, installOrReinstallCommand)
 }
@@ -96,7 +96,7 @@ func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error
 		return nil
 	}
 
-	updateName, updateArgs := p.marketplaceUpdateCommand()
+	updateName, updateArgs := p.marketplaceUpdateCommand(name)
 	if _, updateErr := p.RunCommand(ctx, updateName, updateArgs...); updateErr != nil {
 		return updateErr
 	}
@@ -107,12 +107,12 @@ func (p ClaudeProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error
 // stripePluginStatus runs `claude plugin list --json` and reports whether the
 // Stripe plugin is installed. When the command fails (e.g. old Claude version
 // without plugin support), supportsPlugins is false.
-func (p ClaudeProvider) stripePluginStatus(ctx context.Context) (id, version, scope string, installed bool, supportsPlugins bool) {
+func (p ClaudeProvider) stripePluginStatus(ctx context.Context, executablePath string) (id, version, scope string, installed bool, supportsPlugins bool) {
 	runCommand := p.RunCommand
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	out, err := runCommand(ctx, p.BinaryName, "plugin", "list", "--json")
+	out, err := runCommand(ctx, executablePath, "plugin", "list", "--json")
 	if err != nil {
 		return "", "", "", false, false
 	}
@@ -150,12 +150,12 @@ func claudePluginIsStripe(plugin claudeInstalledPlugin) bool {
 
 // installCommand returns the command used to install the Stripe Claude Code
 // plugin.
-func (p ClaudeProvider) installCommand() (string, []string) {
-	return p.BinaryName, []string{"plugin", "install", TargetClaudePlugin}
+func (p ClaudeProvider) installCommand(executablePath string) (string, []string) {
+	return executablePath, []string{"plugin", "install", TargetClaudePlugin}
 }
 
 // marketplaceUpdateCommand returns the command used to refresh Claude's
 // official plugin marketplace metadata.
-func (p ClaudeProvider) marketplaceUpdateCommand() (string, []string) {
-	return p.BinaryName, []string{"plugin", "marketplace", "update", ClaudeMarketplace}
+func (p ClaudeProvider) marketplaceUpdateCommand(executablePath string) (string, []string) {
+	return executablePath, []string{"plugin", "marketplace", "update", ClaudeMarketplace}
 }

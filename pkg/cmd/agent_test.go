@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -119,6 +120,67 @@ func (p delayedDetectProvider) Apply(context.Context, io.Writer, agentsetup.Plan
 	return nil
 }
 
+func TestAgentSetupStatusRejectsProjectExecutables(t *testing.T) {
+	for _, args := range [][]string{{"--status"}, {"--json"}, {"--status", "--json"}} {
+		t.Run(fmt.Sprint(args), func(t *testing.T) {
+			project := t.TempDir()
+			cwd := filepath.Join(project, "packages", "app")
+			bin := filepath.Join(project, "node_modules", ".bin")
+			require.NoError(t, os.MkdirAll(cwd, 0755))
+			require.NoError(t, os.MkdirAll(bin, 0755))
+			require.NoError(t, os.WriteFile(filepath.Join(project, "package.json"), nil, 0644))
+			for _, name := range []string{"claude", "codex", "grok", "openclaw"} {
+				if runtime.GOOS == "windows" {
+					name += ".cmd"
+				}
+				require.NoError(t, os.WriteFile(filepath.Join(bin, name), []byte("fixture"), 0755))
+			}
+			t.Chdir(cwd)
+			t.Setenv("PATH", bin)
+			var calls atomic.Int32
+			run := func(context.Context, string, ...string) ([]byte, error) {
+				calls.Add(1)
+				return nil, errors.New("unexpected agent execution")
+			}
+			scanner := agentsetup.DefaultScanner()
+			setup := testAgentSetupCmd()
+			setup.providers = map[string]agentsetup.Provider{}
+			for _, p := range []agentsetup.Provider{
+				agentsetup.NewClaudeProvider(scanner, run),
+				agentsetup.NewCodexProvider(scanner, run),
+				agentsetup.NewGrokProvider(scanner, run),
+				agentsetup.NewOpenclawProvider(scanner, run),
+			} {
+				setup.providers[p.ID()] = p
+			}
+			setup.callingAgent = func() string { return "" }
+			setup.skillsCheck = mockSkillsCheckCurrent
+			setup.cmd.SetContext(context.Background())
+
+			output, err := executeCommand(setup.cmd, args...)
+
+			require.NoError(t, err)
+			require.Zero(t, calls.Load())
+			if slices.Contains(args, "--json") {
+				var result agentSetupJSON
+				require.NoError(t, json.Unmarshal([]byte(output), &result))
+				require.Len(t, result.Clients, 4)
+				for _, client := range result.Clients {
+					require.False(t, client.Detected)
+					require.Empty(t, client.ExecutablePath)
+				}
+				require.Empty(t, result.Actions)
+			} else {
+				require.Contains(t, output, "No supported AI coding clients detected")
+			}
+			for _, p := range setup.providers {
+				require.Equal(t, agentsetup.ActionNone, p.Plan(p.Detect(), true).Action)
+			}
+			require.Zero(t, calls.Load())
+		})
+	}
+}
+
 func TestAgentSetupStatusDoesNotInstall(t *testing.T) {
 	setup := newTestAgentSetupCmd(t, claudeMissingPluginScanner(t), func(context.Context, string, ...string) ([]byte, error) {
 		t.Fatal("installer should not run in --status mode")
@@ -171,7 +233,7 @@ func TestAgentSetupJSONReportsActionWithoutInstalling(t *testing.T) {
 	require.False(t, result.Clients[0].Plugin.Installed)
 	require.Len(t, result.Actions, 1)
 	require.Equal(t, agentsetup.ActionInstall, result.Actions[0].Action)
-	require.Equal(t, [][]string{{"claude", "plugin", "install", agentsetup.TargetClaudePlugin}}, result.Actions[0].Commands)
+	require.Equal(t, [][]string{{"/usr/local/bin/claude", "plugin", "install", agentsetup.TargetClaudePlugin}}, result.Actions[0].Commands)
 	require.Nil(t, result.Skills)
 }
 
@@ -253,7 +315,7 @@ func TestAgentSetupForceYesInvokesInstallerWhenInstalled(t *testing.T) {
 	var called bool
 	setup := newTestAgentSetupCmdInstalled(t, func(ctx context.Context, name string, args ...string) ([]byte, error) {
 		called = true
-		require.Equal(t, "claude", name)
+		require.Equal(t, "/usr/local/bin/claude", name)
 		require.Equal(t, []string{"plugin", "install", agentsetup.TargetClaudePlugin}, args)
 		return nil, nil
 	})
@@ -286,9 +348,9 @@ func TestAgentSetupRetriesAfterMarketplaceUpdate(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, []string{
-		"claude plugin install " + agentsetup.TargetClaudePlugin,
-		"claude plugin marketplace update " + agentsetup.ClaudeMarketplace,
-		"claude plugin install " + agentsetup.TargetClaudePlugin,
+		"/usr/local/bin/claude plugin install " + agentsetup.TargetClaudePlugin,
+		"/usr/local/bin/claude plugin marketplace update " + agentsetup.ClaudeMarketplace,
+		"/usr/local/bin/claude plugin install " + agentsetup.TargetClaudePlugin,
 	}, calls)
 	require.Contains(t, output, "done")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
@@ -326,7 +388,7 @@ func TestAgentSetupNoClaudeDoesNotFail(t *testing.T) {
 }
 
 func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
-	agentNames := []string{"claude", "codex", "openclaw", "grok"}
+	agentNames := []string{"/usr/local/bin/claude", "/usr/local/bin/codex", "/usr/local/bin/openclaw", "/usr/local/bin/grok"}
 	var installed []string
 	record := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		if slices.Contains(agentNames, name) {
@@ -349,7 +411,7 @@ func TestAgentSetupInstallsAllDetectedClients(t *testing.T) {
 	output, err := executeCommand(setup.cmd)
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"claude", "codex", "openclaw", "grok"}, installed)
+	require.ElementsMatch(t, agentNames, installed)
 	require.Contains(t, output, "Claude Code")
 	require.Contains(t, output, "Codex CLI")
 	require.Contains(t, output, "OpenClaw")
@@ -375,7 +437,7 @@ func TestAgentSetupClientFlagLimitsToOne(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--client", "codex")
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"codex"}, installed)
+	require.Equal(t, []string{"/usr/local/bin/codex"}, installed)
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
 
@@ -401,7 +463,7 @@ func TestAgentSetupClientFlagDoesNotCheckSkills(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--client", "codex")
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"codex"}, installed)
+	require.Equal(t, []string{"/usr/local/bin/codex"}, installed)
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
 
@@ -434,9 +496,9 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 
 	var agentNames []string
 	for _, a := range callingAgents {
-		agentNames = append(agentNames, a.agent)
+		agentNames = append(agentNames, "/usr/local/bin/"+a.agent)
 	}
-	agentNames = append(agentNames, "claude")
+	agentNames = append(agentNames, "/usr/local/bin/claude")
 
 	for _, agent := range callingAgents {
 		t.Run(agent.name, func(t *testing.T) {
@@ -461,7 +523,7 @@ func TestAgentSetupAutoInstallsForCallingAgent(t *testing.T) {
 			output, err := executeCommand(setup.cmd)
 
 			require.NoError(t, err)
-			require.Equal(t, []string{agent.agent}, installedAgents) // Claude NOT installed
+			require.Equal(t, []string{"/usr/local/bin/" + agent.agent}, installedAgents) // Claude NOT installed
 			require.Contains(t, output, fmt.Sprintf("Detected %s — setting up its Stripe plugin.", agent.displayName))
 			require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 		})
@@ -490,7 +552,7 @@ func TestAgentSetupCallingAgentDoesNotCheckSkills(t *testing.T) {
 	output, err := executeCommand(setup.cmd)
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"codex"}, installed)
+	require.Equal(t, []string{"/usr/local/bin/codex"}, installed)
 	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 }
 
@@ -671,7 +733,7 @@ func TestAgentSetupAgentScopingWinsOverYes(t *testing.T) {
 	output, err := executeCommand(setup.cmd, "--yes")
 
 	require.NoError(t, err)
-	require.Equal(t, []string{"codex"}, installed) // only codex, despite --yes and Claude detected
+	require.Equal(t, []string{"/usr/local/bin/codex"}, installed) // only codex, despite --yes and Claude detected
 	require.Contains(t, output, "Detected Codex CLI — setting up its Stripe plugin.")
 	require.Contains(t, output, "1 installed, 0 updated, 0 skipped, 0 errors")
 }
@@ -694,7 +756,7 @@ func TestAgentSetupYesInstallsAllWhenNoAgent(t *testing.T) {
 	_, err := executeCommand(setup.cmd, "--yes")
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"claude", "codex"}, installed)
+	require.ElementsMatch(t, []string{"/usr/local/bin/claude", "/usr/local/bin/codex"}, installed)
 }
 
 func TestAgentSetupAgentNeverUsesInteractivePicker(t *testing.T) {

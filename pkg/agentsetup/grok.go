@@ -54,7 +54,7 @@ func (p GrokProvider) Detect() Status {
 	ctx, cancel := context.WithTimeout(context.Background(), grokListTimeout)
 	defer cancel()
 
-	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx)
+	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx, status.ExecutablePath)
 	if !supportsPlugins {
 		status.Error = "upgrade Grok Build to enable plugin support"
 		return status
@@ -73,12 +73,12 @@ func (p GrokProvider) Detect() Status {
 // stripePluginStatus runs `grok plugin list --json` and reports whether the
 // Stripe plugin is installed. When the command fails (e.g. an old Grok
 // version without plugin support), supportsPlugins is false.
-func (p GrokProvider) stripePluginStatus(ctx context.Context) (plugin grokInstalledPlugin, installed bool, supportsPlugins bool) {
+func (p GrokProvider) stripePluginStatus(ctx context.Context, executablePath string) (plugin grokInstalledPlugin, installed bool, supportsPlugins bool) {
 	runCommand := p.RunCommand
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	out, err := runCommand(ctx, p.BinaryName, "plugin", "list", "--json")
+	out, err := runCommand(ctx, executablePath, "plugin", "list", "--json")
 	if err != nil {
 		return grokInstalledPlugin{}, false, false
 	}
@@ -118,12 +118,12 @@ func grokPluginIsStripe(plugin grokInstalledPlugin) bool {
 }
 
 func (p GrokProvider) Plan(status Status, force bool) Plan {
-	installCommand := [][]string{{p.BinaryName, "plugin", "install", GrokPluginName, "--trust"}}
+	installCommand := [][]string{{status.ExecutablePath, "plugin", "install", GrokPluginName, "--trust"}}
 	// `grok plugin install` is idempotent when already installed — it prints
 	// "Plugin stripe is already installed ... Run `grok plugin update stripe`
 	// to update it" rather than reinstalling, so a forced refresh has to go
 	// through `update` instead.
-	reinstallCommand := [][]string{{p.BinaryName, "plugin", "update", GrokPluginName}}
+	reinstallCommand := [][]string{{status.ExecutablePath, "plugin", "update", GrokPluginName}}
 	return getPlanByStatus(status, force, installCommand, reinstallCommand)
 }
 
