@@ -4848,6 +4848,14 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "A list of the types of payment methods (e.g., `card`) this Checkout Session can accept",
 		},
+		"automatic_tax.address_collection_precision": {
+			Type:             "string",
+			ShortDescription: "Controls how much address information Checkout collects when [automatic_tax](https://stripe.com/docs/api/checkout/sessions/object#checkout_session_object-automatic_tax-enabled) is enabled",
+			Enum: []resource.EnumSpec{
+				{Value: "full"},
+				{Value: "minimal"},
+			},
+		},
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to [calculate tax automatically](https://docs.stripe.com/tax) using the customer's location",
@@ -7214,7 +7222,7 @@ var V1CouponsCreate = resource.OperationSpec{
 		},
 		"applies_to.products": {
 			Type:             "array",
-			ShortDescription: "An array of Product IDs that this Coupon will apply to",
+			ShortDescription: "An array of up to 100 Product IDs that this Coupon will apply to",
 		},
 		"currency": {
 			Type:             "string",
@@ -22087,6 +22095,15 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The account on behalf of which to charge",
 		},
+		"payment_intent_data.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds will be captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "automatic_async"},
+				{Value: "manual"},
+			},
+		},
 		"payment_intent_data.description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
@@ -27462,6 +27479,10 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 				{Value: "transfer_reversal"},
 				{Value: "unreconciled_customer_funds"},
 			},
+		},
+		"parameters.tax_invoice_month": {
+			Type:             "string",
+			ShortDescription: "The tax invoice month in YYYY-MM format",
 		},
 		"parameters.timezone": {
 			Type:             "string",
@@ -34665,6 +34686,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
+		"country_options.es.igic.place_of_supply_scheme": {
+			Type:             "string",
+			ShortDescription: "Place of supply scheme used in an IGIC registration",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
 		"country_options.es.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
@@ -34678,6 +34707,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in ES",
 			Enum: []resource.EnumSpec{
+				{Value: "igic"},
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
 				{Value: "oss_union"},
@@ -37076,13 +37106,18 @@ var V1TerminalReadersList = resource.OperationSpec{
 				{Value: "simulated_wisepos_e"},
 				{Value: "stripe_m2"},
 				{Value: "stripe_s700"},
+				{Value: "stripe_s700_devkit"},
 				{Value: "stripe_s710"},
+				{Value: "stripe_s710_devkit"},
 				{Value: "stripe_t600"},
+				{Value: "stripe_t600_devkit"},
 				{Value: "verifone_P400"},
 				{Value: "verifone_m425"},
 				{Value: "verifone_p630"},
 				{Value: "verifone_ux700"},
+				{Value: "verifone_ux700_devkit"},
 				{Value: "verifone_v660p"},
+				{Value: "verifone_v660p_devkit"},
 			},
 		},
 		"ending_before": {
@@ -39987,6 +40022,17 @@ var V1TestHelpersTreasuryInboundTransfersFail = resource.OperationSpec{
 				{Value: "other"},
 			},
 		},
+		"failure_details.network_details.ach.return_code": {
+			Type:             "string",
+			ShortDescription: "NACHA ACH return code",
+		},
+		"failure_details.network_details.type": {
+			Type:             "string",
+			ShortDescription: "The network used to transfer funds",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+			},
+		},
 	},
 }
 
@@ -39994,6 +40040,38 @@ var V1TestHelpersTreasuryInboundTransfersReturnInboundTransfer = resource.Operat
 	Name:   "return_inbound_transfer",
 	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"failure_details.code": {
+			Type:             "string",
+			ShortDescription: "Reason for the failure",
+			Enum: []resource.EnumSpec{
+				{Value: "account_closed"},
+				{Value: "account_frozen"},
+				{Value: "bank_account_restricted"},
+				{Value: "bank_ownership_changed"},
+				{Value: "debit_not_authorized"},
+				{Value: "incorrect_account_holder_address"},
+				{Value: "incorrect_account_holder_name"},
+				{Value: "incorrect_account_holder_tax_id"},
+				{Value: "insufficient_funds"},
+				{Value: "invalid_account_number"},
+				{Value: "invalid_currency"},
+				{Value: "no_account"},
+				{Value: "other"},
+			},
+		},
+		"failure_details.network_details.ach.return_code": {
+			Type:             "string",
+			ShortDescription: "NACHA ACH return code",
+		},
+		"failure_details.network_details.type": {
+			Type:             "string",
+			ShortDescription: "The network used to transfer funds",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+			},
+		},
+	},
 }
 
 var V1TestHelpersTreasuryInboundTransfersSucceed = resource.OperationSpec{
@@ -42385,6 +42463,17 @@ var V1TreasuryInboundTransfersTestHelpersFail = resource.OperationSpec{
 				{Value: "other"},
 			},
 		},
+		"failure_details.network_details.ach.return_code": {
+			Type:             "string",
+			ShortDescription: "NACHA ACH return code",
+		},
+		"failure_details.network_details.type": {
+			Type:             "string",
+			ShortDescription: "The network used to transfer funds",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+			},
+		},
 	},
 }
 
@@ -42392,6 +42481,38 @@ var V1TreasuryInboundTransfersTestHelpersReturnInboundTransfer = resource.Operat
 	Name:   "return_inbound_transfer",
 	Path:   "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"failure_details.code": {
+			Type:             "string",
+			ShortDescription: "Reason for the failure",
+			Enum: []resource.EnumSpec{
+				{Value: "account_closed"},
+				{Value: "account_frozen"},
+				{Value: "bank_account_restricted"},
+				{Value: "bank_ownership_changed"},
+				{Value: "debit_not_authorized"},
+				{Value: "incorrect_account_holder_address"},
+				{Value: "incorrect_account_holder_name"},
+				{Value: "incorrect_account_holder_tax_id"},
+				{Value: "insufficient_funds"},
+				{Value: "invalid_account_number"},
+				{Value: "invalid_currency"},
+				{Value: "no_account"},
+				{Value: "other"},
+			},
+		},
+		"failure_details.network_details.ach.return_code": {
+			Type:             "string",
+			ShortDescription: "NACHA ACH return code",
+		},
+		"failure_details.network_details.type": {
+			Type:             "string",
+			ShortDescription: "The network used to transfer funds",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+			},
+		},
+	},
 }
 
 var V1TreasuryInboundTransfersTestHelpersSucceed = resource.OperationSpec{
@@ -43290,6 +43411,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 				{Value: "2026-08-26.dahlia"},
 				{Value: "2026-09-30.endive"},
 				{Value: "2026-10-28.endive"},
+				{Value: "2026-11-18.endive"},
 			},
 		},
 		"connect": {
@@ -43535,6 +43657,10 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 			ShortDescription: "The ID of the Account to create link for",
 			Required:         true,
 		},
+		"use_case.account_dashboard.refresh_url": {
+			Type:             "string",
+			ShortDescription: "The URL to redirect to if the Account Link has expired or has already\nbeen used",
+		},
 		"use_case.account_onboarding.collection_options.fields": {
 			Type:             "string",
 			ShortDescription: "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`)",
@@ -43588,6 +43714,7 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 			ShortDescription: "Open Enum",
 			Required:         true,
 			Enum: []resource.EnumSpec{
+				{Value: "account_dashboard"},
 				{Value: "account_onboarding"},
 				{Value: "account_update"},
 			},
@@ -45172,6 +45299,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.billie_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -45244,6 +45375,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.mb_way_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -45257,6 +45392,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.nz_bank_account_becs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -45277,6 +45416,14 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.paypay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.pix_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -45336,6 +45483,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether Stripe automatically declines charges with an incorrect CVC",
 		},
+		"configuration.merchant.konbini_payments.additional_material": {
+			Type:             "string",
+			ShortDescription: "Information provided to support the onboarding process for Konbini payments",
+		},
 		"configuration.merchant.konbini_payments.support.email": {
 			Type:             "string",
 			ShortDescription: "Support email address for Konbini payments",
@@ -45355,6 +45506,43 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.mcc": {
 			Type:             "string",
 			ShortDescription: "The Merchant Category Code (MCC) for the Merchant Configuration",
+		},
+		"configuration.merchant.paypay_payments.additional_files": {
+			Type:             "array",
+			ShortDescription: "Additional files supporting PayPay payments configuration",
+		},
+		"configuration.merchant.paypay_payments.goods_type": {
+			Type:             "string",
+			ShortDescription: "The type of goods sold by the merchant for PayPay payments",
+			Enum: []resource.EnumSpec{
+				{Value: "digital_content"},
+				{Value: "other"},
+			},
+		},
+		"configuration.merchant.paypay_payments.site.in_development.password": {
+			Type:             "string",
+			ShortDescription: "The password needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.in_development.username": {
+			Type:             "string",
+			ShortDescription: "The username needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.restricted.payment_flow_file": {
+			Type:             "string",
+			ShortDescription: "The file explaining the payment flow for the business",
+		},
+		"configuration.merchant.paypay_payments.site.type": {
+			Type:             "string",
+			ShortDescription: "The status of the business's website",
+			Enum: []resource.EnumSpec{
+				{Value: "accessible"},
+				{Value: "in_development"},
+				{Value: "restricted"},
+			},
+		},
+		"configuration.merchant.paypay_payments.specified_commercial_transactions_act_url": {
+			Type:             "string",
+			ShortDescription: "URL to the Specified Commercial Transactions Act page for PayPay payments",
 		},
 		"configuration.merchant.script_statement_descriptor.kana.descriptor": {
 			Type:             "string",
@@ -45470,7 +45658,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"dashboard": {
 			Type:             "string",
-			ShortDescription: "A value indicating the Stripe dashboard this Account has access to",
+			ShortDescription: "Specifies the account's Stripe-hosted Dashboard access",
 			Enum: []resource.EnumSpec{
 				{Value: "express"},
 				{Value: "full"},
@@ -45499,7 +45687,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
+			ShortDescription: "Controls who pays Stripe fees for direct charges and other pricing-control-eligible Stripe products",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -45509,7 +45697,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
+			ShortDescription: "Controls who is responsible for payment-related negative balances on this account",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -46334,6 +46522,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.billie_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -46406,6 +46598,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.mb_way_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -46419,6 +46615,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.nz_bank_account_becs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -46439,6 +46639,14 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.paypay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.pix_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -46498,6 +46706,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether Stripe automatically declines charges with an incorrect CVC",
 		},
+		"configuration.merchant.konbini_payments.additional_material": {
+			Type:             "string",
+			ShortDescription: "Information provided to support the onboarding process for Konbini payments",
+		},
 		"configuration.merchant.konbini_payments.support.email": {
 			Type:             "string",
 			ShortDescription: "Support email address for Konbini payments",
@@ -46517,6 +46729,43 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"configuration.merchant.mcc": {
 			Type:             "string",
 			ShortDescription: "The Merchant Category Code (MCC) for the merchant",
+		},
+		"configuration.merchant.paypay_payments.additional_files": {
+			Type:             "array",
+			ShortDescription: "Additional files supporting PayPay payments configuration",
+		},
+		"configuration.merchant.paypay_payments.goods_type": {
+			Type:             "string",
+			ShortDescription: "The type of goods sold by the merchant for PayPay payments",
+			Enum: []resource.EnumSpec{
+				{Value: "digital_content"},
+				{Value: "other"},
+			},
+		},
+		"configuration.merchant.paypay_payments.site.in_development.password": {
+			Type:             "string",
+			ShortDescription: "The password needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.in_development.username": {
+			Type:             "string",
+			ShortDescription: "The username needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.restricted.payment_flow_file": {
+			Type:             "string",
+			ShortDescription: "The file explaining the payment flow for the business",
+		},
+		"configuration.merchant.paypay_payments.site.type": {
+			Type:             "string",
+			ShortDescription: "The status of the business's website",
+			Enum: []resource.EnumSpec{
+				{Value: "accessible"},
+				{Value: "in_development"},
+				{Value: "restricted"},
+			},
+		},
+		"configuration.merchant.paypay_payments.specified_commercial_transactions_act_url": {
+			Type:             "string",
+			ShortDescription: "URL to the Specified Commercial Transactions Act page for PayPay payments",
 		},
 		"configuration.merchant.script_statement_descriptor.kana.descriptor": {
 			Type:             "string",
@@ -46636,7 +46885,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"dashboard": {
 			Type:             "string",
-			ShortDescription: "A value indicating the Stripe dashboard this Account has access to",
+			ShortDescription: "Specifies the account's Stripe-hosted Dashboard access",
 			Enum: []resource.EnumSpec{
 				{Value: "express"},
 				{Value: "full"},
@@ -46665,7 +46914,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
+			ShortDescription: "Controls who pays Stripe fees for direct charges and other pricing-control-eligible Stripe products",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -46675,7 +46924,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
+			ShortDescription: "Controls who is responsible for payment-related negative balances on this account",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -47327,6 +47576,78 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 	},
 }
 
+var V2CoreClaimableSandboxsCreate = resource.OperationSpec{
+	Name:   "create",
+	Path:   "/v2/core/claimable_sandboxes",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"channel": {
+			Type:             "string",
+			ShortDescription: "The distribution channel used to pre-install your Stripe App on the claimable sandbox",
+			Enum: []resource.EnumSpec{
+				{Value: "public"},
+				{Value: "testing"},
+			},
+		},
+		"enable_mcp_access": {
+			Type:             "boolean",
+			ShortDescription: "If true, returns a key that can be used with [Stripe's MCP server](https://docs.stripe.com/mcp)",
+			Required:         true,
+		},
+		"onboarding_link_details.refresh_url": {
+			Type:             "string",
+			ShortDescription: "The URL the user will be redirected to if the onboarding link is expired or invalid",
+			Required:         true,
+		},
+		"onboarding_link_details.return_url": {
+			Type:             "string",
+			ShortDescription: "The URL offered to the user as a way back to your app after they claim the sandbox",
+		},
+		"prefill.country": {
+			Type:             "string",
+			ShortDescription: "Country in which the account holder resides, or in which the business is legally established",
+			Required:         true,
+		},
+		"prefill.email": {
+			Type:             "string",
+			ShortDescription: "Email address of the user who will claim the sandbox",
+			Required:         true,
+		},
+		"prefill.name": {
+			Type:             "string",
+			ShortDescription: "Name for the sandbox",
+		},
+	},
+}
+
+var V2CoreClaimableSandboxsRenewOnboardingLink = resource.OperationSpec{
+	Name:   "renew_onboarding_link",
+	Path:   "/v2/core/claimable_sandboxes/{id}/renew_onboarding_link",
+	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"onboarding_link_details.refresh_url": {
+			Type:             "string",
+			ShortDescription: "The URL the user will be redirected to if the onboarding link is expired or invalid",
+		},
+		"onboarding_link_details.return_url": {
+			Type:             "string",
+			ShortDescription: "The URL offered to the user as a way back to your app after they claim the sandbox",
+		},
+	},
+}
+
+var V2CoreClaimableSandboxsRetrieve = resource.OperationSpec{
+	Name:   "retrieve",
+	Path:   "/v2/core/claimable_sandboxes/{id}",
+	Method: "GET",
+	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:             "array",
+			ShortDescription: "Additional fields to include in the response",
+		},
+	},
+}
+
 var V2CoreEventDestinationsCreate = resource.OperationSpec{
 	Name:   "create",
 	Path:   "/v2/core/event_destinations",
@@ -47738,7 +48059,7 @@ var V2MoneyManagementFinancialAccountsList = resource.OperationSpec{
 		},
 		"limit": {
 			Type:             "integer",
-			ShortDescription: "The page limit",
+			ShortDescription: "Maximum number of results to return",
 		},
 		"page": {
 			Type:             "string",
@@ -47817,7 +48138,7 @@ var V2MoneyManagementFinancialAddresssCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"bank_account.country": {
 			Type:             "string",
-			ShortDescription: "The country for the bank account",
+			ShortDescription: "The country where Stripe provisions the bank account",
 		},
 		"bank_account.currency": {
 			Type:             "string",
@@ -48726,169 +49047,6 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingCadencesCancel = resource.OperationSpec{
-	Name:      "cancel",
-	Path:      "/v2/billing/cadences/{id}/cancel",
-	Method:    "POST",
-	IsPreview: true,
-}
-
-var V2PreviewBillingCadencesCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/cadences",
-	Method:    "POST",
-	IsPreview: true,
-	Params: map[string]*resource.ParamSpec{
-		"billing_cycle.day.time.hour": {
-			Type:             "integer",
-			ShortDescription: "The hour at which the billing cycle ends",
-		},
-		"billing_cycle.day.time.minute": {
-			Type:             "integer",
-			ShortDescription: "The minute at which the billing cycle ends",
-		},
-		"billing_cycle.day.time.second": {
-			Type:             "integer",
-			ShortDescription: "The second at which the billing cycle ends",
-		},
-		"billing_cycle.interval_count": {
-			Type:             "integer",
-			ShortDescription: "The number of intervals (specified in the interval attribute) between\ncadence billings",
-		},
-		"billing_cycle.month.day_of_month": {
-			Type:             "integer",
-			ShortDescription: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31",
-		},
-		"billing_cycle.month.month_of_year": {
-			Type:             "integer",
-			ShortDescription: "The month to anchor the billing on for a type=\"month\" billing cycle from\n1-12",
-		},
-		"billing_cycle.month.time.hour": {
-			Type:             "integer",
-			ShortDescription: "The hour at which the billing cycle ends",
-		},
-		"billing_cycle.month.time.minute": {
-			Type:             "integer",
-			ShortDescription: "The minute at which the billing cycle ends",
-		},
-		"billing_cycle.month.time.second": {
-			Type:             "integer",
-			ShortDescription: "The second at which the billing cycle ends",
-		},
-		"billing_cycle.type": {
-			Type:             "string",
-			ShortDescription: "The frequency at which a cadence bills",
-			Required:         true,
-			Enum: []resource.EnumSpec{
-				{Value: "day"},
-				{Value: "month"},
-				{Value: "week"},
-				{Value: "year"},
-			},
-		},
-		"billing_cycle.week.day_of_week": {
-			Type:             "integer",
-			ShortDescription: "The day of the week to bill the type=week billing cycle on",
-		},
-		"billing_cycle.week.time.hour": {
-			Type:             "integer",
-			ShortDescription: "The hour at which the billing cycle ends",
-		},
-		"billing_cycle.week.time.minute": {
-			Type:             "integer",
-			ShortDescription: "The minute at which the billing cycle ends",
-		},
-		"billing_cycle.week.time.second": {
-			Type:             "integer",
-			ShortDescription: "The second at which the billing cycle ends",
-		},
-		"billing_cycle.year.day_of_month": {
-			Type:             "integer",
-			ShortDescription: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31",
-		},
-		"billing_cycle.year.month_of_year": {
-			Type:             "integer",
-			ShortDescription: "The month to bill on from 1-12",
-		},
-		"billing_cycle.year.time.hour": {
-			Type:             "integer",
-			ShortDescription: "The hour at which the billing cycle ends",
-		},
-		"billing_cycle.year.time.minute": {
-			Type:             "integer",
-			ShortDescription: "The minute at which the billing cycle ends",
-		},
-		"billing_cycle.year.time.second": {
-			Type:             "integer",
-			ShortDescription: "The second at which the billing cycle ends",
-		},
-		"lookup_key": {
-			Type:             "string",
-			ShortDescription: "A lookup key used to retrieve cadences dynamically from a static string",
-		},
-		"payer.billing_profile": {
-			Type:             "string",
-			ShortDescription: "The ID of the Billing Profile object which determines how a bill is paid",
-			Required:         true,
-		},
-	},
-}
-
-var V2PreviewBillingCadencesList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/billing/cadences",
-	Method:    "GET",
-	IsPreview: true,
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:             "array",
-			ShortDescription: "Additional resource to include in the response",
-		},
-		"limit": {
-			Type:             "integer",
-			ShortDescription: "Optionally set the maximum number of results per page",
-		},
-		"lookup_keys": {
-			Type:             "array",
-			ShortDescription: "Only return the cadences with these lookup_keys, if any exist",
-		},
-		"page": {
-			Type:             "string",
-			ShortDescription: "Opaque page token",
-		},
-		"test_clock": {
-			Type:             "string",
-			ShortDescription: "If provided, only cadences that specifically reference the provided test clock ID (via the\ncustomer's test clock) will be returned",
-		},
-	},
-}
-
-var V2PreviewBillingCadencesRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/billing/cadences/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:             "array",
-			ShortDescription: "Additional resource to include in the response",
-		},
-	},
-}
-
-var V2PreviewBillingCadencesUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/cadences/{id}",
-	Method:    "POST",
-	IsPreview: true,
-	Params: map[string]*resource.ParamSpec{
-		"lookup_key": {
-			Type:             "string",
-			ShortDescription: "A lookup key used to retrieve cadences dynamically from a static string",
-		},
-	},
-}
-
 var V2PreviewBillingCollectionSettingVersionsList = resource.OperationSpec{
 	Name:      "list",
 	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions",
@@ -49494,6 +49652,10 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 			ShortDescription: "The ID of the Account to create link for",
 			Required:         true,
 		},
+		"use_case.account_dashboard.refresh_url": {
+			Type:             "string",
+			ShortDescription: "The URL to redirect to if the Account Link has expired or has already\nbeen used",
+		},
 		"use_case.account_onboarding.collection_options.fields": {
 			Type:             "string",
 			ShortDescription: "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`)",
@@ -49547,6 +49709,7 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 			ShortDescription: "Open Enum",
 			Required:         true,
 			Enum: []resource.EnumSpec{
+				{Value: "account_dashboard"},
 				{Value: "account_onboarding"},
 				{Value: "account_update"},
 			},
@@ -51167,6 +51330,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.billie_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -51239,6 +51406,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.mb_way_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -51252,6 +51423,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.nz_bank_account_becs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -51272,6 +51447,14 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.paypay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.pix_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -51331,6 +51514,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether Stripe automatically declines charges with an incorrect CVC",
 		},
+		"configuration.merchant.konbini_payments.additional_material": {
+			Type:             "string",
+			ShortDescription: "Information provided to support the onboarding process for Konbini payments",
+		},
 		"configuration.merchant.konbini_payments.support.email": {
 			Type:             "string",
 			ShortDescription: "Support email address for Konbini payments",
@@ -51350,6 +51537,43 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.mcc": {
 			Type:             "string",
 			ShortDescription: "The Merchant Category Code (MCC) for the Merchant Configuration",
+		},
+		"configuration.merchant.paypay_payments.additional_files": {
+			Type:             "array",
+			ShortDescription: "Additional files supporting PayPay payments configuration",
+		},
+		"configuration.merchant.paypay_payments.goods_type": {
+			Type:             "string",
+			ShortDescription: "The type of goods sold by the merchant for PayPay payments",
+			Enum: []resource.EnumSpec{
+				{Value: "digital_content"},
+				{Value: "other"},
+			},
+		},
+		"configuration.merchant.paypay_payments.site.in_development.password": {
+			Type:             "string",
+			ShortDescription: "The password needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.in_development.username": {
+			Type:             "string",
+			ShortDescription: "The username needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.restricted.payment_flow_file": {
+			Type:             "string",
+			ShortDescription: "The file explaining the payment flow for the business",
+		},
+		"configuration.merchant.paypay_payments.site.type": {
+			Type:             "string",
+			ShortDescription: "The status of the business's website",
+			Enum: []resource.EnumSpec{
+				{Value: "accessible"},
+				{Value: "in_development"},
+				{Value: "restricted"},
+			},
+		},
+		"configuration.merchant.paypay_payments.specified_commercial_transactions_act_url": {
+			Type:             "string",
+			ShortDescription: "URL to the Specified Commercial Transactions Act page for PayPay payments",
 		},
 		"configuration.merchant.script_statement_descriptor.kana.descriptor": {
 			Type:             "string",
@@ -51550,7 +51774,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"dashboard": {
 			Type:             "string",
-			ShortDescription: "A value indicating the Stripe dashboard this Account has access to",
+			ShortDescription: "Specifies the account's Stripe-hosted Dashboard access",
 			Enum: []resource.EnumSpec{
 				{Value: "express"},
 				{Value: "full"},
@@ -51579,7 +51803,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
+			ShortDescription: "Controls who pays Stripe fees for direct charges and other pricing-control-eligible Stripe products",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -51589,7 +51813,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
+			ShortDescription: "Controls who is responsible for payment-related negative balances on this account",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -52455,6 +52679,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.billie_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -52527,6 +52755,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
+		"configuration.merchant.capabilities.mb_way_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
@@ -52540,6 +52772,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.nz_bank_account_becs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -52560,6 +52796,14 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.paypay_payments.requested": {
+			Type:             "boolean",
+			ShortDescription: "To request a new Capability for an account, pass true",
+		},
+		"configuration.merchant.capabilities.pix_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
 		},
@@ -52619,6 +52863,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether Stripe automatically declines charges with an incorrect CVC",
 		},
+		"configuration.merchant.konbini_payments.additional_material": {
+			Type:             "string",
+			ShortDescription: "Information provided to support the onboarding process for Konbini payments",
+		},
 		"configuration.merchant.konbini_payments.support.email": {
 			Type:             "string",
 			ShortDescription: "Support email address for Konbini payments",
@@ -52638,6 +52886,43 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"configuration.merchant.mcc": {
 			Type:             "string",
 			ShortDescription: "The Merchant Category Code (MCC) for the merchant",
+		},
+		"configuration.merchant.paypay_payments.additional_files": {
+			Type:             "array",
+			ShortDescription: "Additional files supporting PayPay payments configuration",
+		},
+		"configuration.merchant.paypay_payments.goods_type": {
+			Type:             "string",
+			ShortDescription: "The type of goods sold by the merchant for PayPay payments",
+			Enum: []resource.EnumSpec{
+				{Value: "digital_content"},
+				{Value: "other"},
+			},
+		},
+		"configuration.merchant.paypay_payments.site.in_development.password": {
+			Type:             "string",
+			ShortDescription: "The password needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.in_development.username": {
+			Type:             "string",
+			ShortDescription: "The username needed to access the business's website",
+		},
+		"configuration.merchant.paypay_payments.site.restricted.payment_flow_file": {
+			Type:             "string",
+			ShortDescription: "The file explaining the payment flow for the business",
+		},
+		"configuration.merchant.paypay_payments.site.type": {
+			Type:             "string",
+			ShortDescription: "The status of the business's website",
+			Enum: []resource.EnumSpec{
+				{Value: "accessible"},
+				{Value: "in_development"},
+				{Value: "restricted"},
+			},
+		},
+		"configuration.merchant.paypay_payments.specified_commercial_transactions_act_url": {
+			Type:             "string",
+			ShortDescription: "URL to the Specified Commercial Transactions Act page for PayPay payments",
 		},
 		"configuration.merchant.script_statement_descriptor.kana.descriptor": {
 			Type:             "string",
@@ -52846,7 +53131,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"dashboard": {
 			Type:             "string",
-			ShortDescription: "A value indicating the Stripe dashboard this Account has access to",
+			ShortDescription: "Specifies the account's Stripe-hosted Dashboard access",
 			Enum: []resource.EnumSpec{
 				{Value: "express"},
 				{Value: "full"},
@@ -52875,7 +53160,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
+			ShortDescription: "Controls who pays Stripe fees for direct charges and other pricing-control-eligible Stripe products",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -52885,7 +53170,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
-			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
+			ShortDescription: "Controls who is responsible for payment-related negative balances on this account",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -53654,6 +53939,81 @@ var V2PreviewCoreBatchJobsRetrieve = resource.OperationSpec{
 	IsPreview: true,
 }
 
+var V2PreviewCoreClaimableSandboxsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/core/claimable_sandboxes",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"channel": {
+			Type:             "string",
+			ShortDescription: "The distribution channel used to pre-install your Stripe App on the claimable sandbox",
+			Enum: []resource.EnumSpec{
+				{Value: "public"},
+				{Value: "testing"},
+			},
+		},
+		"enable_mcp_access": {
+			Type:             "boolean",
+			ShortDescription: "If true, returns a key that can be used with [Stripe's MCP server](https://docs.stripe.com/mcp)",
+			Required:         true,
+		},
+		"onboarding_link_details.refresh_url": {
+			Type:             "string",
+			ShortDescription: "The URL the user will be redirected to if the onboarding link is expired or invalid",
+			Required:         true,
+		},
+		"onboarding_link_details.return_url": {
+			Type:             "string",
+			ShortDescription: "The URL offered to the user as a way back to your app after they claim the sandbox",
+		},
+		"prefill.country": {
+			Type:             "string",
+			ShortDescription: "Country in which the account holder resides, or in which the business is legally established",
+			Required:         true,
+		},
+		"prefill.email": {
+			Type:             "string",
+			ShortDescription: "Email address of the user who will claim the sandbox",
+			Required:         true,
+		},
+		"prefill.name": {
+			Type:             "string",
+			ShortDescription: "Name for the sandbox",
+		},
+	},
+}
+
+var V2PreviewCoreClaimableSandboxsRenewOnboardingLink = resource.OperationSpec{
+	Name:      "renew_onboarding_link",
+	Path:      "/v2/core/claimable_sandboxes/{id}/renew_onboarding_link",
+	Method:    "POST",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"onboarding_link_details.refresh_url": {
+			Type:             "string",
+			ShortDescription: "The URL the user will be redirected to if the onboarding link is expired or invalid",
+		},
+		"onboarding_link_details.return_url": {
+			Type:             "string",
+			ShortDescription: "The URL offered to the user as a way back to your app after they claim the sandbox",
+		},
+	},
+}
+
+var V2PreviewCoreClaimableSandboxsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/claimable_sandboxes/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:             "array",
+			ShortDescription: "Additional fields to include in the response",
+		},
+	},
+}
+
 var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 	Name:      "create",
 	Path:      "/v2/core/event_destinations",
@@ -54350,6 +54710,10 @@ var V2PreviewIamActivityLogsList = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Maximum number of results to return per page",
 		},
+		"logs_from": {
+			Type:             "array",
+			ShortDescription: "Controls which activity logs an organization-level request returns",
+		},
 		"page": {
 			Type:             "string",
 			ShortDescription: "Pagination token from a previous request",
@@ -54446,7 +54810,7 @@ var V2PreviewMoneyManagementFinancialAccountsList = resource.OperationSpec{
 		},
 		"limit": {
 			Type:             "integer",
-			ShortDescription: "The page limit",
+			ShortDescription: "Maximum number of results to return",
 		},
 		"page": {
 			Type:             "string",
@@ -54537,7 +54901,7 @@ var V2PreviewMoneyManagementFinancialAddresssCreate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"bank_account.country": {
 			Type:             "string",
-			ShortDescription: "The country for the bank account",
+			ShortDescription: "The country where Stripe provisions the bank account",
 		},
 		"bank_account.currency": {
 			Type:             "string",
@@ -54881,6 +55245,14 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "If provided, the existing payout method resource to link to this setup intent",
 		},
+		"payout_method_data.apple_pay.pk_token": {
+			Type:             "string",
+			ShortDescription: "The paymentData property of the Apple-provided PKPaymentToken (or ApplePayPaymentToken, for Apple Pay on the Web) as a UTF-8 encoded serialization of a JSON dictionary",
+		},
+		"payout_method_data.apple_pay.pk_token_display_name": {
+			Type:             "string",
+			ShortDescription: "The paymentMethod.displayName property of the Apple-provided PKPaymentToken (or ApplePayPaymentToken, for Apple Pay on the Web), e.g. \"Visa 1234\"",
+		},
 		"payout_method_data.bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number or IBAN of the bank account",
@@ -54958,6 +55330,7 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Open Enum",
 			Enum: []resource.EnumSpec{
+				{Value: "apple_pay"},
 				{Value: "bank_account"},
 				{Value: "card"},
 				{Value: "crypto_wallet"},
@@ -55062,6 +55435,7 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Open Enum",
 			Enum: []resource.EnumSpec{
+				{Value: "apple_pay"},
 				{Value: "bank_account"},
 				{Value: "card"},
 				{Value: "crypto_wallet"},
