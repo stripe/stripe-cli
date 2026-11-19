@@ -44,15 +44,7 @@ type Scanner struct {
 
 // DefaultScanner returns a Scanner backed by the real OS.
 func DefaultScanner() Scanner {
-	resolver := newExecutableResolver()
-	return Scanner{
-		LookPath: resolver.lookPath,
-		ReadFile: os.ReadFile,
-		HomeDir:  os.UserHomeDir,
-		WorkDir:  os.Getwd,
-		ReadDir:  os.ReadDir,
-		Stat:     os.Stat,
-	}
+	return Scanner{}.withDefaults()
 }
 
 func (s Scanner) withDefaults() Scanner {

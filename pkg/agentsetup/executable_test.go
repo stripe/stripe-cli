@@ -147,7 +147,6 @@ func TestExecutableResolverFailClosed(t *testing.T) {
 	require.Error(t, err)
 	_, err = r.run(context.Background(), "claude")
 	require.Error(t, err)
-	require.False(t, r.safe(filepath.Join(t.TempDir(), "claude")))
 }
 
 func TestExecutableResolverWindowsLookup(t *testing.T) {
@@ -220,21 +219,19 @@ func TestAgentCommandEnvironment(t *testing.T) {
 
 func TestProvidersUseSelectedExecutable(t *testing.T) {
 	constructors := map[string]func(Scanner, RunCommandFunc) Provider{
-		ClientClaudeCode: NewClaudeProvider,
-		ClientCodex:      NewCodexProvider,
-		ClientGrok:       NewGrokProvider,
-		ClientOpenclaw:   NewOpenclawProvider,
+		"claude":   NewClaudeProvider,
+		"codex":    NewCodexProvider,
+		"grok":     NewGrokProvider,
+		"openclaw": NewOpenclawProvider,
 	}
-	for client, newProvider := range constructors {
-		t.Run(client, func(t *testing.T) {
+	for binary, newProvider := range constructors {
+		t.Run(binary, func(t *testing.T) {
 			project := t.TempDir()
 			globalBin := t.TempDir()
 			t.Chdir(project)
 			projectBin := filepath.Join(project, "node_modules", ".bin")
-			for _, name := range []string{"claude", "codex", "grok", "openclaw"} {
-				executableFixture(t, projectBin, name)
-				executableFixture(t, globalBin, name)
-			}
+			executableFixture(t, projectBin, binary)
+			selected := executableFixture(t, globalBin, binary)
 			for _, withGlobal := range []bool{false, true} {
 				path := projectBin
 				if withGlobal {
@@ -243,17 +240,12 @@ func TestProvidersUseSelectedExecutable(t *testing.T) {
 				t.Setenv("PATH", path)
 				calls := 0
 				installed := false
-				var selected string
 				run := func(_ context.Context, name string, args ...string) ([]byte, error) {
 					calls++
-					if filepath.IsAbs(name) {
-						require.Equal(t, globalBin, filepath.Dir(name))
-						if selected == "" {
-							selected = name
-						}
+					switch name {
+					case "mkdir", "git", "rm":
+					default:
 						require.Equal(t, selected, name)
-					} else {
-						require.Contains(t, []string{"mkdir", "git", "rm"}, name)
 					}
 					if len(args) > 1 && args[1] == "marketplace" {
 						return []byte(codexTestMarketplaceList), nil

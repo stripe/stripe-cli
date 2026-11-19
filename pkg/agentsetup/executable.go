@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 )
 
@@ -33,7 +34,7 @@ func newExecutableResolver() *executableResolver {
 		r.err = err
 		return r
 	}
-	for _, start := range []string{r.cwd, resolved} {
+	for _, start := range slices.Compact([]string{r.cwd, resolved}) {
 		if !comparableAbsolutePath(start) {
 			r.err = &exec.Error{Name: start, Err: exec.ErrNotFound}
 			return r
@@ -48,7 +49,10 @@ func newExecutableResolver() *executableResolver {
 						r.err = err
 						return r
 					}
-					r.roots = append(r.roots, target)
+					if target != dir {
+						r.roots = append(r.roots, target)
+					}
+					break
 				} else if !os.IsNotExist(err) {
 					r.err = err
 					return r
@@ -60,11 +64,14 @@ func newExecutableResolver() *executableResolver {
 		}
 	}
 	var path, pathExt string
+	filtered := make([]string, 0, len(r.env)+1)
 	for _, entry := range r.env {
 		key, value, _ := strings.Cut(entry, "=")
-		if pathKey(key) {
+		if key == "PATH" || runtime.GOOS == "windows" && strings.EqualFold(key, "PATH") {
 			path = value
+			continue
 		}
+		filtered = append(filtered, entry)
 		if strings.EqualFold(key, "PATHEXT") {
 			pathExt = value
 		}
@@ -84,20 +91,9 @@ func newExecutableResolver() *executableResolver {
 			r.dirs = append(r.dirs, filepath.Clean(dir))
 		}
 	}
-	filtered := make([]string, 0, len(r.env)+1)
-	for _, entry := range r.env {
-		key, _, _ := strings.Cut(entry, "=")
-		if !pathKey(key) {
-			filtered = append(filtered, entry)
-		}
-	}
 	filtered = append(filtered, "PATH="+strings.Join(r.dirs, string(os.PathListSeparator)))
 	r.env = filtered
 	return r
-}
-
-func pathKey(key string) bool {
-	return key == "PATH" || runtime.GOOS == "windows" && strings.EqualFold(key, "PATH")
 }
 
 func pathContains(root, path string) bool {
@@ -135,8 +131,8 @@ func comparableAbsolutePath(path string) bool {
 	if runtime.GOOS == "windows" {
 		// Fail closed on device namespaces that cannot be compared with normal
 		// drive-letter or UNC project roots.
-		path = strings.ReplaceAll(path, "/", `\`)
-		return !strings.HasPrefix(path, `\\.\`) && filepath.IsAbs(windowsComparisonPath(path))
+		path = windowsComparisonPath(path)
+		return !strings.HasPrefix(path, `\\.\`) && filepath.IsAbs(path)
 	}
 	return true
 }
