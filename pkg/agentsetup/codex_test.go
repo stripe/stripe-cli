@@ -167,17 +167,13 @@ func TestCodexSetup_AvailableMarketplaces(t *testing.T) {
 			var queried, attempts []string
 			discoveries := 0
 			installed := ""
-			install := func(_ context.Context, name string, args ...string) ([]byte, error) {
-				require.Equal(t, "/usr/local/bin/codex", name)
-				require.Equal(t, []string{"plugin", "add"}, args[:2])
-				attempts = append(attempts, args[2])
-				installed = args[2]
-				return nil, nil
-			}
 			provider := codexTestProviderWithCustomRun(func(ctx context.Context, name string, args ...string) ([]byte, error) {
 				require.Equal(t, "/usr/local/bin/codex", name)
 				if args[1] == "add" {
-					return install(ctx, name, args...)
+					require.Equal(t, []string{"plugin", "add"}, args[:2])
+					attempts = append(attempts, args[2])
+					installed = args[2]
+					return nil, nil
 				}
 				require.NoError(t, ctx.Err())
 				if args[1] == "marketplace" {

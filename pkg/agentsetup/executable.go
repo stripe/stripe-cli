@@ -2,12 +2,15 @@ package agentsetup
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // executableResolver excludes project-controlled locations, not arbitrary
@@ -200,5 +203,18 @@ func (r *executableResolver) run(ctx context.Context, name string, args ...strin
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = r.env
 	cmd.Dir = r.cwd
-	return commandOutput(cmd)
+	out, err := cmd.Output()
+	if err == nil {
+		return out, nil
+	}
+	// Prefer stderr for a process that started, otherwise use the output.
+	stderr := out
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		stderr = exitErr.Stderr
+	}
+	if msg := errorFromOutput(stderr); msg != "" {
+		return out, errorcategory.New(errorcategory.Internal, msg)
+	}
+	return out, err
 }
