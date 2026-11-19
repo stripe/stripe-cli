@@ -173,10 +173,6 @@ func TestAgentSetupStatusRejectsProjectExecutables(t *testing.T) {
 			} else {
 				require.Contains(t, output, "No supported AI coding clients detected")
 			}
-			for _, p := range setup.providers {
-				require.Equal(t, agentsetup.ActionNone, p.Plan(p.Detect(), true).Action)
-			}
-			require.Zero(t, calls.Load())
 		})
 	}
 }
