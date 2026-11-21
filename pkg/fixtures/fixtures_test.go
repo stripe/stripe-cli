@@ -311,6 +311,58 @@ func TestAccountScopeHeadersMayReferenceEarlierResponses(t *testing.T) {
 	})
 }
 
+func TestProtectedHeaderReferencesBindToOneStep(t *testing.T) {
+	var authorizations, accounts []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorizations = append(authorizations, r.Header.Get("Authorization"))
+		accounts = append(accounts, r.Header.Get("Stripe-Account"))
+		if r.URL.Path == meterEventSessionPath {
+			w.Write([]byte(`{"id":"dummy-session","authentication_token":"dummy-session-token"}`))
+			return
+		}
+		// Stands in for any response whose fields the fixture author controls.
+		w.Write([]byte(`{"id":"dummy-other","authentication_token":"sk_test_dummy_other","metadata":{"chosen_key":"sk_test_dummy_other"}}`))
+	}))
+	defer server.Close()
+
+	session := FixtureRequest{Name: "auth_source", Path: meterEventSessionPath, Method: "post"}
+	overwrite := FixtureRequest{Name: "auth_source", Path: customersPath, Method: "post"}
+	stream := func(header, value string) FixtureRequest {
+		return FixtureRequest{Name: "stream", Path: "/v2/billing/meter_event_stream", Method: "post", Headers: map[string]string{header: value}}
+	}
+	run := func(steps ...FixtureRequest) error {
+		authorizations, accounts = nil, nil
+		fxt := &Fixture{Credentials: stripe.NewAPIKeyCredentials(apiKey), BaseURL: server.URL,
+			Responses: make(map[string]gjson.Result), FixtureData: FixtureData{Requests: steps}}
+		_, err := fxt.Execute(context.Background(), "")
+		return err
+	}
+
+	require.NoError(t, run(session, stream("Authorization", "Bearer ${auth_source:authentication_token}")))
+	assert.Equal(t, []string{"Bearer " + apiKey, "Bearer dummy-session-token"}, authorizations)
+	require.NoError(t, run(overwrite, stream("Stripe-Account", "${auth_source:id}")))
+	assert.Equal(t, []string{"", "dummy-other"}, accounts)
+
+	for name, steps := range map[string][]FixtureRequest{
+		"source name reused before the step":       {session, overwrite, stream("Authorization", "Bearer ${auth_source:authentication_token}")},
+		"source name reused, other field":          {session, overwrite, stream("Authorization", "Bearer ${auth_source:metadata.chosen_key}")},
+		"source name reused after the step":        {session, stream("Authorization", "Bearer ${auth_source:authentication_token}"), overwrite},
+		"step name reused before the source":       {stream("X-Custom", "dummy"), session, overwrite, stream("Authorization", "Bearer ${auth_source:authentication_token}")},
+		"account source name reused":               {overwrite, overwrite, stream("Stripe-Account", "${auth_source:id}")},
+		"session field other than the token":       {session, stream("Authorization", "Bearer ${auth_source:id}")},
+		"literal in place of the token field":      {session, stream("Authorization", `Bearer ${auth_source:!"sk_test_dummy_other"}`)},
+		"modifier appended to the token field":     {session, stream("Authorization", "Bearer ${auth_source:authentication_token.@this}")},
+		"token field of a non-session response":    {overwrite, stream("Authorization", "Bearer ${auth_source:authentication_token}")},
+		"session step that is not in this fixture": {stream("Authorization", "Bearer ${auth_source:authentication_token}")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := run(steps...)
+			assert.ErrorContains(t, err, "protected header")
+			assert.Empty(t, authorizations)
+		})
+	}
+}
+
 func TestFixtureHeaderValidationBeforeEnvironmentParameters(t *testing.T) {
 	t.Setenv("FIXTURE_PROCESS_SENTINEL", "dummy-process-value")
 	dir := t.TempDir()
