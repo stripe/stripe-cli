@@ -180,6 +180,33 @@ func TestExecutableResolverHomeDirectory(t *testing.T) {
 	}
 }
 
+func TestExecutableResolverCleanedPathEntry(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "project")
+	projectBin := filepath.Join(project, "tools")
+	executableFixture(t, projectBin, "claude")
+	require.NoError(t, os.WriteFile(filepath.Join(project, ".git"), nil, 0644))
+	safe := filepath.Join(root, "safe")
+	safeBin := filepath.Join(safe, "b")
+	executableFixture(t, safeBin, "claude")
+	ext := filepath.Join(root, "ext")
+	require.NoError(t, os.MkdirAll(ext, 0755))
+	if err := os.Symlink(filepath.Join(safe, "x"), filepath.Join(ext, "a")); err != nil {
+		t.Skip("symlinks unavailable")
+	}
+	require.NoError(t, os.MkdirAll(filepath.Join(safe, "x"), 0755))
+	require.NoError(t, os.Symlink(projectBin, filepath.Join(ext, "b")))
+	t.Chdir(project)
+	// Unresolved, this names safe/b; cleaned, it names ext/b, the project bin.
+	sep := string(filepath.Separator)
+	// Build the entry by hand: filepath.Join would clean away the "..".
+	t.Setenv("PATH", ext+sep+"a"+sep+".."+sep+"b")
+	r := newExecutableResolver()
+	require.Empty(t, r.dirs)
+	_, err := r.lookPath("claude")
+	require.Error(t, err)
+}
+
 func TestExecutableResolverFailClosed(t *testing.T) {
 	r := &executableResolver{err: errors.New("cannot inspect project")}
 	_, err := r.lookPath("claude")

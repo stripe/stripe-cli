@@ -118,8 +118,10 @@ func newExecutableResolver() *executableResolver {
 		}
 	}
 	for _, dir := range filepath.SplitList(path) {
-		if r.safe(dir) {
-			r.dirs = append(r.dirs, filepath.Clean(dir))
+		// Validate the exported spelling: cleaning "link/.." can change the
+		// directory it names.
+		if dir = filepath.Clean(dir); r.safe(dir) {
+			r.dirs = append(r.dirs, dir)
 		}
 	}
 	filtered = append(filtered, "PATH="+strings.Join(r.dirs, string(os.PathListSeparator)))
