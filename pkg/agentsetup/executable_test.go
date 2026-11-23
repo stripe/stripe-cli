@@ -136,6 +136,50 @@ func TestExecutableResolverWorkingDirectoryAlias(t *testing.T) {
 	require.Equal(t, global, selected)
 }
 
+func TestExecutableResolverCaseAlias(t *testing.T) {
+	root := t.TempDir()
+	project := filepath.Join(root, "Project")
+	projectBin := filepath.Join(project, "tools")
+	executableFixture(t, projectBin, "claude")
+	require.NoError(t, os.WriteFile(filepath.Join(project, ".git"), nil, 0644))
+	upper := filepath.Join(root, "PROJECT")
+	info, err := os.Stat(project)
+	require.NoError(t, err)
+	if aliasInfo, err := os.Stat(upper); err != nil || !os.SameFile(info, aliasInfo) {
+		t.Skip("filesystem is case-sensitive")
+	}
+	t.Chdir(project)
+	t.Setenv("PATH", filepath.Join(upper, "tools"))
+	_, err = newExecutableResolver().lookPath("claude")
+	require.Error(t, err)
+}
+
+func TestExecutableResolverHomeDirectory(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	userBin := filepath.Join(home, ".local", "bin")
+	user := executableFixture(t, userBin, "claude")
+	project := filepath.Join(home, "code", "project")
+	projectBin := filepath.Join(project, "bin")
+	executableFixture(t, projectBin, "claude")
+	require.NoError(t, os.WriteFile(filepath.Join(project, "go.mod"), nil, 0644))
+
+	// Home is not a project root, even when it is a dotfiles repository.
+	for _, marker := range []string{"", ".git"} {
+		if marker != "" {
+			require.NoError(t, os.WriteFile(filepath.Join(home, marker), nil, 0644))
+		}
+		for cwd, path := range map[string][]string{home: {userBin}, project: {projectBin, userBin}} {
+			t.Chdir(cwd)
+			t.Setenv("PATH", strings.Join(path, string(os.PathListSeparator)))
+			selected, err := newExecutableResolver().lookPath("claude")
+			require.NoError(t, err)
+			require.Equal(t, user, selected)
+		}
+	}
+}
+
 func TestExecutableResolverFailClosed(t *testing.T) {
 	r := &executableResolver{err: errors.New("cannot inspect project")}
 	_, err := r.lookPath("claude")

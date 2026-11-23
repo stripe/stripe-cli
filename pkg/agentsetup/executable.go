@@ -19,6 +19,7 @@ import (
 type executableResolver struct {
 	dirs       []string
 	roots      []string
+	rootInfos  []os.FileInfo
 	extensions []string
 	env        []string
 	cwd        string
@@ -37,23 +38,24 @@ func newExecutableResolver() *executableResolver {
 		r.err = err
 		return r
 	}
+	var candidates []string
 	for _, start := range slices.Compact([]string{r.cwd, resolved}) {
 		if !comparableAbsolutePath(start) {
 			r.err = &exec.Error{Name: start, Err: exec.ErrNotFound}
 			return r
 		}
-		r.roots = append(r.roots, start)
+		candidates = append(candidates, start)
 		for dir := start; ; dir = filepath.Dir(dir) {
 			for _, marker := range []string{".git", ".hg", "package.json", "go.mod", "Cargo.toml", "pyproject.toml"} {
 				if _, err := os.Lstat(filepath.Join(dir, marker)); err == nil {
-					r.roots = append(r.roots, dir)
+					candidates = append(candidates, dir)
 					target, err := filepath.EvalSymlinks(dir)
 					if err != nil {
 						r.err = err
 						return r
 					}
 					if target != dir {
-						r.roots = append(r.roots, target)
+						candidates = append(candidates, target)
 					}
 					break
 				} else if !os.IsNotExist(err) {
@@ -65,6 +67,32 @@ func newExecutableResolver() *executableResolver {
 				break
 			}
 		}
+	}
+	// The home directory and its ancestors hold user-level installations such
+	// as ~/.local/bin, so they are never treated as project roots, even when
+	// they contain a marker such as a dotfiles repository.
+	home, err := os.UserHomeDir()
+	if err != nil || !comparableAbsolutePath(home) {
+		home = ""
+	}
+	for _, root := range candidates {
+		info, err := os.Stat(root)
+		if err != nil {
+			r.err = err
+			return r
+		}
+		if home != "" {
+			containsHome, err := underAny(home, []os.FileInfo{info})
+			if err != nil {
+				r.err = err
+				return r
+			}
+			if containsHome {
+				continue
+			}
+		}
+		r.roots = append(r.roots, root)
+		r.rootInfos = append(r.rootInfos, info)
 	}
 	var path, pathExt string
 	filtered := make([]string, 0, len(r.env)+1)
@@ -105,6 +133,27 @@ func pathContains(root, path string) bool {
 	}
 	rel, err := filepath.Rel(root, path)
 	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+}
+
+// underAny reports whether path or one of its ancestors is the same file as
+// any of roots. Unlike a lexical comparison, this recognizes alternate
+// spellings such as case aliases on case-insensitive filesystems.
+func underAny(path string, roots []os.FileInfo) (bool, error) {
+	for dir := filepath.Clean(path); ; dir = filepath.Dir(dir) {
+		info, err := os.Stat(dir)
+		if err == nil {
+			for _, root := range roots {
+				if os.SameFile(info, root) {
+					return true, nil
+				}
+			}
+		} else if !os.IsNotExist(err) {
+			return false, err
+		}
+		if filepath.Dir(dir) == dir {
+			return false, nil
+		}
+	}
 }
 
 func windowsComparisonPath(path string) string {
@@ -150,6 +199,11 @@ func (r *executableResolver) safe(path string) bool {
 	}
 	for _, root := range r.roots {
 		if pathContains(root, path) || pathContains(root, target) {
+			return false
+		}
+	}
+	for _, p := range []string{path, target} {
+		if under, err := underAny(p, r.rootInfos); err != nil || under {
 			return false
 		}
 	}
