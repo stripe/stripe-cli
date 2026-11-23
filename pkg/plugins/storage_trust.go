@@ -37,7 +37,8 @@ func IsUnsafePluginStorage(err error) bool {
 // override directory. Missing paths are allowed so a safe first install works.
 func checkPluginStorage(cfg config.IConfig, fs afero.Fs, paths ...string) error {
 	configDir := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	for _, root := range []string{configDir, getPluginsDir(cfg), getLocalPluginMetadataDir(cfg)} {
+	pluginsDir := getPluginsDir(cfg)
+	for _, root := range []string{configDir, pluginsDir, getLocalPluginMetadataDir(cfg)} {
 		if err := checkPluginPath(fs, root, root); err != nil {
 			return err
 		}
@@ -51,7 +52,7 @@ func checkPluginStorage(cfg config.IConfig, fs afero.Fs, paths ...string) error 
 	}
 	for _, path := range paths {
 		root := path
-		for _, store := range []string{configDir, getPluginsDir(cfg)} {
+		for _, store := range []string{configDir, pluginsDir} {
 			if pluginPathWithin(path, store) {
 				root = store
 				break

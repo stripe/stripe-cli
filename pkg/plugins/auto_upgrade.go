@@ -51,7 +51,7 @@ var autoUpgradeResolveTimeout = 3 * time.Second
 // two plugins at the same instant.
 //
 // What does deserve locking is the install itself, which is a separate and older
-// problem: cleanUpPluginPath deletes every version directory but the one it just
+// problem: CleanupOtherVersions deletes every version directory but the one it just
 // wrote, so any two processes installing at once can pull a binary out from under a
 // third, whether or not an auto-upgrade check is what set them off.
 var autoUpgradeCheckInterval = 4 * time.Hour

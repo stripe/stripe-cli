@@ -240,6 +240,9 @@ func rollbackInstalledPluginState(config config.IConfig, fs afero.Fs, pluginName
 }
 
 func restoreLocalPluginMetadata(config config.IConfig, fs afero.Fs, pluginName string, snapshot installedPluginStateSnapshot) error {
+	if !snapshot.hasLocalMetadata {
+		return removeLocalPluginMetadata(config, fs, pluginName)
+	}
 	metadataPath, err := getLocalPluginMetadataPath(config, pluginName)
 	if err != nil {
 		return err
@@ -247,11 +250,7 @@ func restoreLocalPluginMetadata(config config.IConfig, fs afero.Fs, pluginName s
 	if err := checkPluginStorage(config, fs, metadataPath); err != nil {
 		return err
 	}
-	if snapshot.hasLocalMetadata {
-		return afero.WriteFile(fs, metadataPath, snapshot.localMetadata, 0644)
-	}
-
-	return removeLocalPluginMetadata(config, fs, pluginName)
+	return afero.WriteFile(fs, metadataPath, snapshot.localMetadata, 0644)
 }
 
 func restoreInstalledPluginList(config config.IConfig, installedPlugins []string) error {
@@ -371,17 +370,11 @@ func RemoveInstalledPlugin(config config.IConfig, pluginName string) error {
 // PersistInstalledPluginState ensures local metadata and installed_plugins are
 // both updated for a locally installed plugin.
 func PersistInstalledPluginState(config config.IConfig, fs afero.Fs, plugin Plugin) error {
-	if err := checkPluginStorage(config, fs); err != nil {
-		return err
-	}
 	pluginDir, err := plugin.getPluginInstallPath(config, "")
 	if err != nil {
 		return err
 	}
 	if err := checkPluginStorage(config, fs, pluginDir); err != nil {
-		return err
-	}
-	if err := ValidatePluginShortname(plugin.Shortname); err != nil {
 		return err
 	}
 

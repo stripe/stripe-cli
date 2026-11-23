@@ -75,24 +75,16 @@ func newInstallablePluginRegistryServers(t *testing.T, binaryContent []byte) *pl
 }
 
 type cleanupFailureFs struct {
-	afero.Fs
+	*afero.OsFs
 	path string
 	err  error
-}
-
-func (fs cleanupFailureFs) LstatIfPossible(path string) (os.FileInfo, bool, error) {
-	return fs.Fs.(afero.Lstater).LstatIfPossible(path)
-}
-
-func (fs cleanupFailureFs) ReadlinkIfPossible(path string) (string, error) {
-	return fs.Fs.(afero.LinkReader).ReadlinkIfPossible(path)
 }
 
 func (fs cleanupFailureFs) RemoveAll(path string) error {
 	if path == fs.path {
 		return fs.err
 	}
-	return fs.Fs.RemoveAll(path)
+	return fs.OsFs.RemoveAll(path)
 }
 
 func TestRunInstallCmdCleanupFailureDoesNotReportSuccessOrRunHook(t *testing.T) {
@@ -105,12 +97,12 @@ func TestRunInstallCmdCleanupFailureDoesNotReportSuccessOrRunHook(t *testing.T) 
 	payload := []byte(fmt.Sprintf("#!/bin/sh\nprintf unused > %q\n", marker))
 	servers := newInstallablePluginRegistryServers(t, payload)
 	defer servers.Close()
-	base := afero.NewOsFs()
+	base := &afero.OsFs{}
 	old := filepath.Join(cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "plugins", "appA", "local.build.dev")
 	require.NoError(t, base.MkdirAll(old, 0755))
 	cleanupErr := errors.New("cleanup removal failed")
 	ic := NewInstallCmd(cfg)
-	ic.fs = cleanupFailureFs{Fs: base, path: old, err: cleanupErr}
+	ic.fs = cleanupFailureFs{OsFs: base, path: old, err: cleanupErr}
 	ic.apiBaseURL = servers.stripe.URL
 	ic.Cmd.SetContext(context.Background())
 

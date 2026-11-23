@@ -152,23 +152,10 @@ func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (str
 	return filepath.Base(existingLocalPlugin[0]), nil
 }
 
-// CleanupOtherVersions removes obsolete versions after an already-installed
-// release has been selected by an explicit install or upgrade.
-func (p *Plugin) CleanupOtherVersions(config config.IConfig, fs afero.Fs, version string) error {
-	pluginDir, err := p.getPluginInstallPath(config, version)
-	if err != nil {
-		return err
-	}
-	if err := checkPluginStorage(config, fs, filepath.Join(pluginDir, p.Binary)+GetBinaryExtension()); err != nil {
-		return err
-	}
-	return p.cleanUpPluginPath(config, fs, version)
-}
-
-// cleanUpPluginPath empties the plugin folder except for the version specified
-func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionToKeep string) error {
+// CleanupOtherVersions removes all plugin versions except the selected release.
+func (p *Plugin) CleanupOtherVersions(config config.IConfig, fs afero.Fs, versionToKeep string) error {
 	logger := log.WithFields(log.Fields{
-		"prefix": "plugins.plugin.cleanUpPluginPath",
+		"prefix": "plugins.plugin.CleanupOtherVersions",
 	})
 	logger.Debug("Cleaning up other plugin versions...")
 
@@ -181,7 +168,7 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 		return err
 	}
 
-	if err := checkPluginStorage(config, fs, pluginPath); err != nil {
+	if err := checkPluginStorage(config, fs, pluginPath, filepath.Join(versionPathToKeep, p.Binary)+GetBinaryExtension()); err != nil {
 		return err
 	}
 	// Walk does not descend through a symlink root, and a symlink for the
@@ -458,7 +445,7 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
-	if err := p.cleanUpPluginPath(cfg, fs, version); err != nil {
+	if err := p.CleanupOtherVersions(cfg, fs, version); err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stderr)
 		return err
 	}
@@ -750,10 +737,18 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, launchFS := range []afero.Fs{fs, afero.NewOsFs()} {
-		// exec.Command uses the OS filesystem even when a caller supplied an
-		// in-memory filesystem for metadata or installation tests.
-		if err := checkPluginStorage(config, launchFS, pluginBinaryPath, metadataPath); err != nil {
+	launchFilesystems := []afero.Fs{fs}
+	// exec.Command always uses the OS filesystem. Check it separately only when
+	// the supplied filesystem is a different view (such as a test filesystem).
+	if _, isOS := fs.(*afero.OsFs); !isOS {
+		launchFilesystems = append(launchFilesystems, afero.NewOsFs())
+	}
+	for _, launchFS := range launchFilesystems {
+		paths := []string{pluginBinaryPath, metadataPath}
+		if _, err := launchFS.Stat(metadataPath); os.IsNotExist(err) {
+			paths = append(paths, getCachedPluginManifestPath(config))
+		}
+		if err := checkPluginStorage(config, launchFS, paths...); err != nil {
 			return nil, nil, err
 		}
 		info, err := launchFS.Stat(pluginBinaryPath)
@@ -762,11 +757,6 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		}
 		if !info.Mode().IsRegular() {
 			return nil, nil, unsafePluginPath(pluginBinaryPath, "executable is not a regular file")
-		}
-		if _, err := launchFS.Stat(metadataPath); os.IsNotExist(err) {
-			if err := checkPluginStorage(config, launchFS, getCachedPluginManifestPath(config)); err != nil {
-				return nil, nil, err
-			}
 		}
 	}
 

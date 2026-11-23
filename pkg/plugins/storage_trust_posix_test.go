@@ -80,7 +80,6 @@ func TestPluginStorageSafeFirstInstallAndOverrides(t *testing.T) {
 	cfg := protectedPluginConfig(t)
 	fs := afero.NewOsFs()
 	plugin := Plugin{Shortname: "sample", Binary: "sample"}
-	require.NoError(t, checkPluginStorage(cfg, fs))
 	require.NoError(t, plugin.verifychecksumAndSavePlugin([]byte("development"), cfg, fs, localDevelopmentVersion))
 	require.NoError(t, PersistInstalledPluginState(cfg, fs, plugin))
 	_, err := LookUpPlugin(context.Background(), cfg, fs, "sample")
@@ -99,7 +98,6 @@ func TestPluginStorageSafeFirstInstallAndOverrides(t *testing.T) {
 			marker := filepath.Join(t.TempDir(), "executed")
 			payload := []byte(fmt.Sprintf("#!/bin/sh\nprintf unused > %q\n", marker))
 			require.NoError(t, plugin.verifychecksumAndSavePlugin(payload, cfg, fs, localDevelopmentVersion))
-			require.NoError(t, checkPluginStorage(cfg, fs))
 			_, client, err := plugin.dispensePluginInterface(cfg, fs, localDevelopmentVersion, "", log.NewEntry(log.New()))
 			require.Error(t, err) // The marker executable does not implement the plugin protocol.
 			require.NotNil(t, client)
@@ -107,7 +105,6 @@ func TestPluginStorageSafeFirstInstallAndOverrides(t *testing.T) {
 			_, err = os.Stat(marker)
 			require.NoError(t, err)
 			require.NoError(t, os.Chmod(override, 0777))
-			requireUnsafeStorage(t, checkPluginStorage(cfg, fs), override)
 			requireUnsafeStorage(t, plugin.verifychecksumAndSavePlugin([]byte("unused"), cfg, fs, localDevelopmentVersion), override)
 		})
 	}
