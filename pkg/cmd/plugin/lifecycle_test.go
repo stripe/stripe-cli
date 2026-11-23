@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -70,6 +72,87 @@ func newInstallablePluginRegistryServers(t *testing.T, binaryContent []byte) *pl
 	}))
 
 	return &pluginRegistryServers{artifactory: artifactoryServer, stripe: stripeServer}
+}
+
+type cleanupFailureFs struct {
+	afero.Fs
+	path string
+	err  error
+}
+
+func (fs cleanupFailureFs) LstatIfPossible(path string) (os.FileInfo, bool, error) {
+	return fs.Fs.(afero.Lstater).LstatIfPossible(path)
+}
+
+func (fs cleanupFailureFs) ReadlinkIfPossible(path string) (string, error) {
+	return fs.Fs.(afero.LinkReader).ReadlinkIfPossible(path)
+}
+
+func (fs cleanupFailureFs) RemoveAll(path string) error {
+	if path == fs.path {
+		return fs.err
+	}
+	return fs.Fs.RemoveAll(path)
+}
+
+func TestRunInstallCmdCleanupFailureDoesNotReportSuccessOrRunHook(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a harmless POSIX executable marker")
+	}
+	cfg, _, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+	marker := filepath.Join(t.TempDir(), "hook-executed")
+	payload := []byte(fmt.Sprintf("#!/bin/sh\nprintf unused > %q\n", marker))
+	servers := newInstallablePluginRegistryServers(t, payload)
+	defer servers.Close()
+	base := afero.NewOsFs()
+	old := filepath.Join(cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "plugins", "appA", "local.build.dev")
+	require.NoError(t, base.MkdirAll(old, 0755))
+	cleanupErr := errors.New("cleanup removal failed")
+	ic := NewInstallCmd(cfg)
+	ic.fs = cleanupFailureFs{Fs: base, path: old, err: cleanupErr}
+	ic.apiBaseURL = servers.stripe.URL
+	ic.Cmd.SetContext(context.Background())
+
+	reader, writer, err := os.Pipe()
+	require.NoError(t, err)
+	previousStdout := os.Stdout
+	os.Stdout = writer
+	defer func() { os.Stdout = previousStdout }()
+	runErr := ic.runInstallCmd(ic.Cmd, []string{"appA@2.0.1"})
+	os.Stdout = previousStdout
+	require.NoError(t, writer.Close())
+	output, err := io.ReadAll(reader)
+	require.NoError(t, reader.Close())
+	require.NoError(t, err)
+	require.ErrorIs(t, runErr, cleanupErr)
+	require.NotContains(t, string(output), "✔")
+	_, err = os.Stat(marker)
+	require.ErrorIs(t, err, os.ErrNotExist)
+	_, err = base.Stat(filepath.Join(filepath.Dir(old), "2.0.1", "stripe-cli-app-a"))
+	require.NoError(t, err)
+}
+
+func TestRunInstallCmdAlreadyInstalledRemovesStaleDevelopmentVersion(t *testing.T) {
+	cfg, fs, cleanup := setupPluginCommandTest(t)
+	defer cleanup()
+	servers := newInstallablePluginRegistryServers(t, installablePluginBinaryContent)
+	defer servers.Close()
+	root := filepath.Join(cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "plugins", "appA")
+	for _, version := range []string{"local.build.dev", "2.0.1"} {
+		dir := filepath.Join(root, version)
+		require.NoError(t, fs.MkdirAll(dir, 0755))
+		require.NoError(t, afero.WriteFile(fs, filepath.Join(dir, "stripe-cli-app-a")+plugins.GetBinaryExtension(), installablePluginBinaryContent, 0755))
+	}
+	ic := NewInstallCmd(cfg)
+	ic.fs = fs
+	ic.apiBaseURL = servers.stripe.URL
+	ic.Cmd.SetContext(context.Background())
+	require.NoError(t, ic.runInstallCmd(ic.Cmd, []string{"appA@2.0.1"}))
+	_, err := fs.Stat(filepath.Join(root, "local.build.dev"))
+	require.True(t, os.IsNotExist(err))
+	_, err = fs.Stat(filepath.Join(root, "2.0.1"))
+	require.NoError(t, err)
 }
 
 func TestRunInstallCmdSucceedsWhenPostInstallHookFails(t *testing.T) {

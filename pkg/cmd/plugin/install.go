@@ -144,6 +144,9 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		if err := plugins.PersistInstalledPluginState(ic.cfg, ic.fs, *plugin); err != nil {
 			return err
 		}
+		if err := plugin.CleanupOtherVersions(ic.cfg, ic.fs, version); err != nil {
+			return err
+		}
 		if isLatest {
 			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
 		} else {

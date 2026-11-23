@@ -129,6 +129,9 @@ func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (str
 	if err != nil {
 		return "", err
 	}
+	if err := checkPluginStorage(config, fs, localDevPath); err != nil {
+		return "", err
+	}
 	localDevExists, err := afero.DirExists(fs, localDevPath)
 	if err != nil {
 		return "", err
@@ -149,6 +152,19 @@ func (p *Plugin) lookUpInstalledVersion(config config.IConfig, fs afero.Fs) (str
 	return filepath.Base(existingLocalPlugin[0]), nil
 }
 
+// CleanupOtherVersions removes obsolete versions after an already-installed
+// release has been selected by an explicit install or upgrade.
+func (p *Plugin) CleanupOtherVersions(config config.IConfig, fs afero.Fs, version string) error {
+	pluginDir, err := p.getPluginInstallPath(config, version)
+	if err != nil {
+		return err
+	}
+	if err := checkPluginStorage(config, fs, filepath.Join(pluginDir, p.Binary)+GetBinaryExtension()); err != nil {
+		return err
+	}
+	return p.cleanUpPluginPath(config, fs, version)
+}
+
 // cleanUpPluginPath empties the plugin folder except for the version specified
 func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionToKeep string) error {
 	logger := log.WithFields(log.Fields{
@@ -165,7 +181,15 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 		return err
 	}
 
-	afero.Walk(fs, pluginPath, filepath.WalkFunc(func(path string, info os.FileInfo, err error) error {
+	if err := checkPluginStorage(config, fs, pluginPath); err != nil {
+		return err
+	}
+	// Walk does not descend through a symlink root, and a symlink for the
+	// retained version must not be mistaken for an obsolete file and removed.
+	if err := fsutil.RefuseWriteThroughSymlink(fs, versionPathToKeep, pluginPath, p.Shortname); err != nil {
+		return err
+	}
+	return errorcategory.With(afero.Walk(fs, pluginPath, filepath.WalkFunc(func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -180,12 +204,15 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 			return filepath.SkipDir
 		default:
 			logger.Debugf("Removing old plugin: %s", path)
-			fs.RemoveAll(path)
+			if err := fs.RemoveAll(path); err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
 			return nil
 		}
-	}))
-
-	return nil
+	})), errorcategory.Filesystem)
 }
 
 // getChecksum does what it says on the tin - it returns the checksum for a specific plugin version
@@ -273,6 +300,9 @@ func (p *Plugin) IsVersionInstalled(config config.IConfig, fs afero.Fs, version 
 		return false
 	}
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary) + GetBinaryExtension()
+	if err := checkPluginStorage(config, fs, pluginBinaryPath); err != nil {
+		return false
+	}
 	_, err = fs.Stat(pluginBinaryPath)
 	return err == nil
 }
@@ -313,6 +343,9 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 // dependency installs thread the enclosing chain through, which is both the
 // cycle guard and where their hooks defer. See installPluginDependencies.
 func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, apiBaseURL, dashboardBaseURL, resolvedBinaryURL string, skipMetadataLookup bool, chain *installChain) error {
+	if err := checkPluginStorage(cfg, fs); err != nil {
+		return err
+	}
 	chain.inFlight[p.Shortname] = version
 	// Removed on the way out so the map describes the live call chain, not every
 	// install this operation has already finished: a later sibling that declares
@@ -425,7 +458,10 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
-	p.cleanUpPluginPath(cfg, fs, version)
+	if err := p.cleanUpPluginPath(cfg, fs, version); err != nil {
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stderr)
+		return err
+	}
 
 	ansi.StopSpinner(spinner, "", os.Stderr)
 
@@ -434,6 +470,9 @@ func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 // Uninstall removes a plugin from the disk and from the config's installed plugins list
 func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.Fs) error {
+	if err := checkPluginStorage(config, fs); err != nil {
+		return err
+	}
 	pluginList := config.GetInstalledPlugins()
 	pluginIdx := -1
 
@@ -528,6 +567,9 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 	pluginFilePath := filepath.Join(pluginDir, p.Binary)
 	pluginFilePath += GetBinaryExtension()
 
+	if err := checkPluginStorage(config, fs, pluginFilePath); err != nil {
+		return err
+	}
 	logger.Debugf("installing %s to %s...", p.Shortname, pluginFilePath)
 
 	reader := bytes.NewReader(pluginData)
@@ -548,6 +590,9 @@ func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IC
 		return err
 	}
 
+	if err := checkPluginStorage(config, fs, pluginFilePath); err != nil {
+		return err
+	}
 	err = afero.WriteFile(fs, pluginFilePath, pluginData, 0755)
 	if err != nil {
 		logger.Debug("could not save plugin to disk")
@@ -647,6 +692,12 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 	}
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
+	// Resolve relative overrides before applying the plugin's working directory,
+	// so the executable launched is the same path the storage guard inspects.
+	pluginBinaryPath, err = filepath.Abs(pluginBinaryPath)
+	if err != nil {
+		return nil, nil, unsafePluginPath(pluginBinaryPath, err.Error())
+	}
 
 	cmd := exec.Command(pluginBinaryPath)
 
@@ -690,6 +741,32 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		clientConfig.SecureConfig = &hcplugin.SecureConfig{
 			Checksum: sum,
 			Hash:     sha256.New(),
+		}
+	}
+
+	// Recheck at the shared launch boundary, including explicit versions, peer
+	// plugins and lifecycle hooks. A checksum beside an unsafe binary is not trust.
+	metadataPath, err := getLocalPluginMetadataPath(config, p.Shortname)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, launchFS := range []afero.Fs{fs, afero.NewOsFs()} {
+		// exec.Command uses the OS filesystem even when a caller supplied an
+		// in-memory filesystem for metadata or installation tests.
+		if err := checkPluginStorage(config, launchFS, pluginBinaryPath, metadataPath); err != nil {
+			return nil, nil, err
+		}
+		info, err := launchFS.Stat(pluginBinaryPath)
+		if err != nil {
+			return nil, nil, unsafePluginPath(pluginBinaryPath, fmt.Sprintf("cannot inspect executable: %v", err))
+		}
+		if !info.Mode().IsRegular() {
+			return nil, nil, unsafePluginPath(pluginBinaryPath, "executable is not a regular file")
+		}
+		if _, err := launchFS.Stat(metadataPath); os.IsNotExist(err) {
+			if err := checkPluginStorage(config, launchFS, getCachedPluginManifestPath(config)); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -755,6 +832,9 @@ func (p *Plugin) RunWithoutAutoUpgrade(ctx context.Context, config *config.Confi
 // gain from it can leave it out. See CoreCLIHelper.RunPeerPlugin and
 // RunWithoutAutoUpgrade.
 func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, args []string, cwd string, versionOverride string, apiBaseURL, dashboardBaseURL, accessBaseURL string, allowAutoUpgrade bool) error {
+	if err := checkPluginStorage(config, fs); err != nil {
+		return err
+	}
 	p.autoUpgradeCheck = nil
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Run",
@@ -765,6 +845,13 @@ func (p *Plugin) run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	switch {
 	case versionOverride != "":
 		version = versionOverride
+		pluginDir, err := p.getPluginInstallPath(config, version)
+		if err != nil {
+			return err
+		}
+		if err := checkPluginStorage(config, fs, filepath.Join(pluginDir, p.Binary)+GetBinaryExtension()); err != nil {
+			return err
+		}
 		if !p.IsVersionInstalled(config, fs, version) {
 			installed := p.InstalledVersion(config, fs)
 			hint := ""

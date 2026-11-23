@@ -735,6 +735,9 @@ func (h *coreCLIHelper) ensurePeerPluginMinimumVersion(peerName string) error {
 // the calling plugin declared. Categorized as user input because the actionable part
 // belongs to the user: install the peer themselves and rerun.
 func peerMinimumVersionError(callerName, peerName, minimum, installedVersion string, cause error) error {
+	if IsUnsafePluginStorage(cause) {
+		return cause
+	}
 	installed := "none"
 	if installedVersion != "" {
 		installed = installedVersion
