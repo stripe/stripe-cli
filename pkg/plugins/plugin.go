@@ -676,6 +676,7 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		// pluginEnv already includes the host environment. Skipping go-plugin's own copy keeps
 		// it from being appended after (and overriding) the CLI metadata variables.
 		SkipHostEnv: true,
+		AutoMTLS:    true,
 		AllowedProtocols: []hcplugin.Protocol{
 			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
 		},
@@ -703,6 +704,21 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 		return nil, client, err
 	}
 
+	// go-plugin only fills in RootCAs when the plugin answers the handshake with its own
+	// certificate. A plugin built before AutoMTLS ignores the client certificate and keeps
+	// serving plaintext, and go-plugin doesn't treat that as an error: the handshake and
+	// Dispense both succeed, and the first RPC then fails its TLS handshake. That failure
+	// happens inside RunCommand, where it would be taken for an error the plugin already
+	// printed and the command would fail silently, so catch it here instead.
+	if clientConfig.TLSConfig == nil || clientConfig.TLSConfig.RootCAs == nil {
+		logger.Debug("Plugin did not negotiate AutoMTLS")
+		// The caller kills the plugin after this, and since its graceful shutdown goes over the
+		// same unusable connection, go-plugin falls back to SIGKILL and logs that as an error.
+		// The error returned here already explains the failure, so keep that noise out of it.
+		pluginLogger.SetLevel(hclog.Off)
+		return nil, client, p.autoMTLSUnsupportedError(version)
+	}
+
 	// Request the plugin's main interface
 	raw, err := rpcClient.Dispense("main")
 	if err != nil {
@@ -711,6 +727,19 @@ func (p *Plugin) dispensePluginInterface(config config.IConfig, fs afero.Fs, ver
 	}
 
 	return raw, client, nil
+}
+
+// autoMTLSUnsupportedError is returned when the plugin at version is too old to connect
+// over AutoMTLS, which the CLI requires. A local development build can't be upgraded, so it
+// is pointed at a rebuild instead.
+func (p *Plugin) autoMTLSUnsupportedError(version string) error {
+	if isLocalDevelopmentVersion(version) {
+		return errorcategory.Errorf(errorcategory.UserInput,
+			"The local development build of the %s plugin doesn't support the secure connection this version of the Stripe CLI requires. Rebuild it against the latest plugin SDK", p.Shortname)
+	}
+
+	return errorcategory.Errorf(errorcategory.UserInput,
+		"The %s plugin (v%s) is too old to connect to this version of the Stripe CLI. Run `stripe plugin upgrade %s` to update it", p.Shortname, version, p.Shortname)
 }
 
 // Run boots up the binary and then sends the command to it via RPC.
