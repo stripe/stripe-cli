@@ -159,13 +159,13 @@ func gqlErrorMessages(errs gqlerror.List) string {
 
 func renderIntegHlthAlerts(w io.Writer, alerts []integHlthAlert) {
 	if len(alerts) == 0 {
-		fmt.Fprintln(w, "No integration health alerts. Your integration looks healthy.")
+		fmt.Fprintln(w, "There are no recommended actions for your integration right now.")
 		return
 	}
 
-	header := fmt.Sprintf("%d recommended actions:", len(alerts))
+	header := fmt.Sprintf("We recommend these %d actions to keep your integration healthy:", len(alerts))
 	if len(alerts) == 1 {
-		header = "1 recommended action:"
+		header = "We recommend this action to keep your integration healthy:"
 	}
 	fmt.Fprintln(w, ansi.Bold(header))
 	for i, a := range alerts {

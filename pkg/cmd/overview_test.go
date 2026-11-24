@@ -53,7 +53,7 @@ func TestOverviewCmd_PrintsDefaultAPIVersion(t *testing.T) {
 	require.NoError(t, oc.cmd.Execute())
 
 	assert.Equal(t, "Your account's default API version is 2024-06-20.\n\n"+
-		"1 recommended action:\n1. Use dynamic payment methods. Run `stripe doctor dpm` for more information.\n", out.String())
+		"We recommend this action to keep your integration healthy:\n1. Use dynamic payment methods. Run `stripe doctor dpm` for more information.\n", out.String())
 }
 
 func TestOverviewCmd_PrintsDefaultAPIVersionWhenAlertsFail(t *testing.T) {
@@ -150,7 +150,7 @@ func TestRenderIntegHlthAlerts_PointsToDoctorWhenTopicSet(t *testing.T) {
 	var buf bytes.Buffer
 	renderIntegHlthAlerts(&buf, resp.Alerts)
 
-	assert.Equal(t, "1 recommended action:\n1. Use dynamic payment methods. Run `stripe doctor dpm` for more information.\n", buf.String())
+	assert.Equal(t, "We recommend this action to keep your integration healthy:\n1. Use dynamic payment methods. Run `stripe doctor dpm` for more information.\n", buf.String())
 }
 
 func TestRenderIntegHlthAlerts_PointsToHealthWithoutDoctorTopic(t *testing.T) {
@@ -161,7 +161,7 @@ func TestRenderIntegHlthAlerts_PointsToHealthWithoutDoctorTopic(t *testing.T) {
 		{HealthInsightID: "heins_456", PredicateName: "SOME_PREDICATE"},
 	})
 
-	assert.Equal(t, "2 recommended actions:\n1. Add the Stripe-Version header to your requests. Run `stripe health heins_123` for more information.\n"+
+	assert.Equal(t, "We recommend these 2 actions to keep your integration healthy:\n1. Add the Stripe-Version header to your requests. Run `stripe health heins_123` for more information.\n"+
 		"2. SOME_PREDICATE. Run `stripe health heins_456` for more information.\n", buf.String())
 }
 
@@ -169,5 +169,5 @@ func TestRenderIntegHlthAlerts_Empty(t *testing.T) {
 	var buf bytes.Buffer
 	renderIntegHlthAlerts(&buf, nil)
 
-	assert.Contains(t, buf.String(), "No integration health alerts")
+	assert.Equal(t, "There are no recommended actions for your integration right now.\n", buf.String())
 }
