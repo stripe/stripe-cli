@@ -24,6 +24,13 @@ const v2TestmodeUnsupportedCode = "v2_api_not_supported_in_testmode"
 
 var newOverviewGraphQLClient = graphql.NewClient
 
+// overviewJSON is the --format json output: the account's default API version
+// alongside the integration health alerts.
+type overviewJSON struct {
+	DefaultAPIVersion string `json:"default_api_version,omitempty"`
+	*integHlthAlertsResponse
+}
+
 type overviewCmd struct {
 	cmd        *cobra.Command
 	format     string
@@ -80,6 +87,8 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 		livemode = creds.Livemode()
 	}
 
+	versionCh := startOverviewDefaultAPIVersion(cmd.Context(), Config.GetProfile(), oc.apiBaseURL, livemode)
+
 	client, err := newOverviewGraphQLClient(cmd.Context(), graphql.Options{
 		Profile:       Config.GetProfile(),
 		Livemode:      livemode,
@@ -91,15 +100,21 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	resp, err := fetchIntegHlthAlerts(cmd.Context(), client, oc.limit)
-	if err != nil {
-		return err
-	}
+	version := <-versionCh
 
 	out := cmd.OutOrStdout()
 	if oc.format == "json" {
+		if err != nil {
+			return err
+		}
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
-		return enc.Encode(resp)
+		return enc.Encode(overviewJSON{DefaultAPIVersion: version, integHlthAlertsResponse: resp})
+	}
+
+	renderDefaultAPIVersion(out, version)
+	if err != nil {
+		return err
 	}
 	renderIntegHlthAlerts(out, resp.Alerts)
 	return nil
