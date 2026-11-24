@@ -51,35 +51,10 @@ func newExecutableResolver() *executableResolver {
 		r.err = err
 		return r
 	}
-	var candidates []string
-	for _, start := range slices.Compact([]string{r.cwd, resolved}) {
-		if !comparableAbsolutePath(start) {
-			r.err = &exec.Error{Name: start, Err: exec.ErrNotFound}
-			return r
-		}
-		candidates = append(candidates, start)
-		for dir := start; ; dir = filepath.Dir(dir) {
-			for _, marker := range []string{".git", ".hg", "package.json", "go.mod", "Cargo.toml", "pyproject.toml"} {
-				if _, err := os.Lstat(filepath.Join(dir, marker)); err == nil {
-					candidates = append(candidates, dir)
-					target, err := filepath.EvalSymlinks(dir)
-					if err != nil {
-						r.err = err
-						return r
-					}
-					if target != dir {
-						candidates = append(candidates, target)
-					}
-					break
-				} else if !os.IsNotExist(err) {
-					r.err = err
-					return r
-				}
-			}
-			if filepath.Dir(dir) == dir {
-				break
-			}
-		}
+	candidates, err := projectRootCandidates(slices.Compact([]string{r.cwd, resolved}))
+	if err != nil {
+		r.err = err
+		return r
 	}
 	// The home directory and its ancestors hold user-level installations such
 	// as ~/.local/bin, so they are never treated as project roots, even when
@@ -145,6 +120,39 @@ candidates:
 	filtered = append(filtered, "PATH="+joinPathList(r.dirs))
 	r.env = filtered
 	return r
+}
+
+// projectRootCandidates returns each start directory and every ancestor that
+// contains a project marker, along with the symlink targets of those ancestors.
+func projectRootCandidates(starts []string) ([]string, error) {
+	var candidates []string
+	for _, start := range starts {
+		if !comparableAbsolutePath(start) {
+			return nil, &exec.Error{Name: start, Err: exec.ErrNotFound}
+		}
+		candidates = append(candidates, start)
+		for dir := start; ; dir = filepath.Dir(dir) {
+			for _, marker := range []string{".git", ".hg", "package.json", "go.mod", "Cargo.toml", "pyproject.toml"} {
+				if _, err := os.Lstat(filepath.Join(dir, marker)); err == nil {
+					candidates = append(candidates, dir)
+					target, err := filepath.EvalSymlinks(dir)
+					if err != nil {
+						return nil, err
+					}
+					if target != dir {
+						candidates = append(candidates, target)
+					}
+					break
+				} else if !os.IsNotExist(err) {
+					return nil, err
+				}
+			}
+			if filepath.Dir(dir) == dir {
+				break
+			}
+		}
+	}
+	return candidates, nil
 }
 
 // joinPathList reverses filepath.SplitList. On Windows, SplitList unquotes
