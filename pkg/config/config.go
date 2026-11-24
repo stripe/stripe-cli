@@ -461,6 +461,7 @@ func (c *Config) RemoveProfile(profileName string) error {
 		}
 
 		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
+		(&Profile{ProfileName: entry.name}).deleteOAuthSessionKeys()
 	}
 
 	// A top-level profile is only found above when isProfile recognizes it, which
@@ -483,6 +484,7 @@ func (c *Config) RemoveProfile(profileName string) error {
 			}
 
 			deleteLivemodeKey(LiveModeAPIKeyName, profileName)
+			(&Profile{ProfileName: profileName}).deleteOAuthSessionKeys()
 
 			break
 		}
@@ -580,18 +582,25 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 func (c *Config) RemoveAllAuthFields() error {
 	runtimeViper := viper.GetViper()
 
-	for _, entry := range listProfileEntries(runtimeViper) {
-		p := &Profile{ProfileName: entry.name}
+	// Keyring entries are keyed by profile name whether or not the config file
+	// has a table for that name, and a session can exist before any table is
+	// written. The default and current profiles are the two such names known
+	// here, so they are cleared even when the enumeration does not find them.
+	names := append(listAddressableProfileNames(runtimeViper), "default", c.Profile.ProfileName)
+	cleared := make(map[string]bool, len(names))
+
+	for _, name := range names {
+		if name == "" || cleared[name] {
+			continue
+		}
+
+		cleared[name] = true
+
+		p := &Profile{ProfileName: name}
 		runtimeViper = p.deleteAuthFields(runtimeViper)
-		deleteLivemodeKey(LiveModeAPIKeyName, entry.name)
+		deleteLivemodeKey(LiveModeAPIKeyName, name)
 		p.deleteOAuthSessionKeys()
 	}
-
-	// The "default" profile's OAuth session keys are unscoped (see
-	// Profile.KeyringKey), so they're covered above only when a "default"
-	// entry actually exists in the config file. Clear them unconditionally
-	// too, since a session can exist without any config file entries yet.
-	(&Profile{}).deleteOAuthSessionKeys()
 
 	// TODO: remove with legacy RAK/OIDC flow.
 	if runtimeViper.IsSet(UserInfoName) {
@@ -756,6 +765,63 @@ func listProfileEntries(v *viper.Viper) []profileEntry {
 	sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
 
 	return entries
+}
+
+// listAddressableProfileNames returns every name that resolves to a table of
+// fields in the config file, in either layout, and so every name a command can
+// read credentials from when given --project-name.
+//
+// This is deliberately wider than listProfileEntries, which answers "what
+// should be shown or removed as a profile" and so must not over-match. Logging
+// out of everything must not under-match instead: listProfileEntries cannot see
+// a legacy profile whose name contains a period, because viper reads ["a.b"]
+// back as a -> b, nor a top-level profile with no display_name, yet reads
+// against both work. Walking into nested tables recovers the dotted names.
+//
+// A table nested inside a profile, such as its docs preferences, is returned as
+// well, since it cannot be told apart from a dotted profile. Callers must only
+// do with these names what is harmless for such a table.
+func listAddressableProfileNames(v *viper.Viper) []string {
+	var names []string
+
+	var walk func(name string, value interface{})
+	walk = func(name string, value interface{}) {
+		table, ok := toStringMap(value)
+		if !ok {
+			return
+		}
+
+		if holdsProfileFields(table) {
+			names = append(names, name)
+		}
+
+		for key, nested := range table {
+			walk(name+"."+key, nested)
+		}
+	}
+
+	for name, value := range v.AllSettings() {
+		if name == ProfilesTableName {
+			nested, _ := toStringMap(value)
+			for nestedName, nestedValue := range nested {
+				walk(nestedName, nestedValue)
+			}
+
+			continue
+		}
+
+		if reservedTopLevelKeys[name] {
+			continue
+		}
+
+		walk(name, value)
+	}
+
+	// AllSettings returns a map, so sort for stable ordering of the writes that
+	// follow.
+	sort.Strings(names)
+
+	return names
 }
 
 // holdsProfileFields reports whether a table inside the profiles table is a
