@@ -45,7 +45,7 @@ func DefaultScanner() Scanner {
 
 func (s Scanner) withDefaults() Scanner {
 	if s.LookPath == nil {
-		s.LookPath = newExecutableResolver().lookPath
+		s.LookPath, _ = lazyExecutableResolver()
 	}
 	if s.ReadFile == nil {
 		s.ReadFile = os.ReadFile

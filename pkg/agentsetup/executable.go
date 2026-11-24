@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
@@ -24,6 +25,18 @@ type executableResolver struct {
 	env        []string
 	cwd        string
 	err        error
+}
+
+// lazyExecutableResolver defers working-directory and PATH probing until the
+// first lookup, so commands unrelated to agent setup never touch PATH entries
+// such as unavailable network mounts.
+func lazyExecutableResolver() (func(string) (string, error), RunCommandFunc) {
+	get := sync.OnceValue(newExecutableResolver)
+	lookPath := func(name string) (string, error) { return get().lookPath(name) }
+	run := func(ctx context.Context, name string, args ...string) ([]byte, error) {
+		return get().run(ctx, name, args...)
+	}
+	return lookPath, run
 }
 
 func newExecutableResolver() *executableResolver {
@@ -71,24 +84,29 @@ func newExecutableResolver() *executableResolver {
 	// The home directory and its ancestors hold user-level installations such
 	// as ~/.local/bin, so they are never treated as project roots, even when
 	// they contain a marker such as a dotfiles repository.
-	home, err := os.UserHomeDir()
-	if err != nil || !comparableAbsolutePath(home) {
-		home = ""
+	// Check both spellings: a symlinked home has different lexical ancestors.
+	var homes []string
+	if home, err := os.UserHomeDir(); err == nil && comparableAbsolutePath(home) {
+		homes = append(homes, home)
+		if resolved, err := filepath.EvalSymlinks(home); err == nil && resolved != home {
+			homes = append(homes, resolved)
+		}
 	}
+candidates:
 	for _, root := range candidates {
 		info, err := os.Stat(root)
 		if err != nil {
 			r.err = err
 			return r
 		}
-		if home != "" {
+		for _, home := range homes {
 			containsHome, err := underAny(home, []os.FileInfo{info})
 			if err != nil {
 				r.err = err
 				return r
 			}
 			if containsHome {
-				continue
+				continue candidates
 			}
 		}
 		r.roots = append(r.roots, root)
@@ -124,9 +142,22 @@ func newExecutableResolver() *executableResolver {
 			r.dirs = append(r.dirs, dir)
 		}
 	}
-	filtered = append(filtered, "PATH="+strings.Join(r.dirs, string(os.PathListSeparator)))
+	filtered = append(filtered, "PATH="+joinPathList(r.dirs))
 	r.env = filtered
 	return r
+}
+
+// joinPathList reverses filepath.SplitList. On Windows, SplitList unquotes
+// entries containing ";", so they must be quoted again to stay one entry.
+func joinPathList(dirs []string) string {
+	quoted := make([]string, len(dirs))
+	for i, dir := range dirs {
+		if strings.Contains(dir, string(os.PathListSeparator)) {
+			dir = `"` + dir + `"`
+		}
+		quoted[i] = dir
+	}
+	return strings.Join(quoted, string(os.PathListSeparator))
 }
 
 func pathContains(root, path string) bool {

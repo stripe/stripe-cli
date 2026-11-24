@@ -207,6 +207,61 @@ func TestExecutableResolverCleanedPathEntry(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestExecutableResolverSymlinkedHome(t *testing.T) {
+	root := t.TempDir()
+	users := filepath.Join(root, "data", "users")
+	physical := filepath.Join(users, "me")
+	user := executableFixture(t, filepath.Join(physical, ".local", "bin"), "claude")
+	require.NoError(t, os.WriteFile(filepath.Join(users, "package.json"), nil, 0644))
+	home := filepath.Join(root, "home", "me")
+	require.NoError(t, os.MkdirAll(filepath.Dir(home), 0755))
+	if err := os.Symlink(physical, home); err != nil {
+		t.Skip("symlinks unavailable")
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Chdir(home)
+	t.Setenv("PATH", filepath.Join(home, ".local", "bin"))
+	selected, err := newExecutableResolver().lookPath("claude")
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(home, ".local", "bin", filepath.Base(user)), selected)
+}
+
+func TestDefaultProvidersResolveLazily(t *testing.T) {
+	globalBin := t.TempDir()
+	global := executableFixture(t, globalBin, "claude")
+	t.Chdir(t.TempDir())
+	t.Setenv("PATH", "")
+	providers := DefaultProviders()
+	// PATH is first inspected when detection runs, not when providers are built.
+	t.Setenv("PATH", globalBin)
+	s := providers[ClientClaudeCode].Detect()
+	require.True(t, s.Detected)
+	require.Equal(t, global, s.ExecutablePath)
+}
+
+func TestExecutableResolverQuotedWindowsPathEntry(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("only Windows PATH entries can contain the list separator")
+	}
+	root := t.TempDir()
+	t.Chdir(t.TempDir())
+	tools := filepath.Join(root, "Tools;cache", "bin")
+	executableFixture(t, tools, "claude")
+	other := filepath.Join(root, "other")
+	require.NoError(t, os.MkdirAll(other, 0755))
+	t.Setenv("PATH", `"`+tools+`";`+other)
+	r := newExecutableResolver()
+	require.Equal(t, []string{tools, other}, r.dirs)
+	var path string
+	for _, entry := range r.env {
+		if key, value, _ := strings.Cut(entry, "="); strings.EqualFold(key, "PATH") {
+			path = value
+		}
+	}
+	require.Equal(t, []string{tools, other}, filepath.SplitList(path))
+}
+
 func TestExecutableResolverFailClosed(t *testing.T) {
 	r := &executableResolver{err: errors.New("cannot inspect project")}
 	_, err := r.lookPath("claude")
