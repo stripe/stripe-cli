@@ -59,9 +59,10 @@ func TestInstallCleanupErrorsAndObsoleteVersions(t *testing.T) {
 			payload := []byte("release binary")
 			sum := sha256.Sum256(payload)
 			plugin := Plugin{Shortname: "sample", Binary: "sample", Releases: []Release{{Version: "1.0.0", OS: runtime.GOOS, Arch: runtime.GOARCH, Sum: fmt.Sprintf("%x", sum)}}}
+			binary := plugin.Binary + GetBinaryExtension()
 			for _, version := range []string{"0.9.0", localDevelopmentVersion} {
 				require.NoError(t, base.MkdirAll(filepath.Join("/plugins/sample", version), 0755))
-				require.NoError(t, afero.WriteFile(base, filepath.Join("/plugins/sample", version, "sample"), []byte("obsolete"), 0755))
+				require.NoError(t, afero.WriteFile(base, filepath.Join("/plugins/sample", version, binary), []byte("obsolete"), 0755))
 			}
 			cleanupErr := errors.New("cleanup failed")
 			fs := base
@@ -90,7 +91,7 @@ func TestInstallCleanupErrorsAndObsoleteVersions(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, "1.0.0", version)
 			}
-			body, err := afero.ReadFile(base, "/plugins/sample/1.0.0/sample")
+			body, err := afero.ReadFile(base, filepath.Join("/plugins/sample/1.0.0", binary))
 			require.NoError(t, err)
 			require.Equal(t, payload, body)
 		})
