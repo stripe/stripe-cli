@@ -76,7 +76,7 @@ func installTestPlugin(t *testing.T, mode string) {
 
 func TestDispensePluginInterfaceWithAutoMTLS(t *testing.T) {
 	installTestPlugin(t, testPluginServeMTLS)
-	cfg := &TestConfig{}
+	cfg := &TestConfig{ConfigFolder: t.TempDir()}
 	cfg.InitConfig()
 
 	raw, client, err := testServedPlugin.dispensePluginInterface(cfg, afero.NewOsFs(), localDevelopmentVersion, "", log.WithField("prefix", "test"))
@@ -92,7 +92,7 @@ func TestDispensePluginInterfaceWithAutoMTLS(t *testing.T) {
 
 func TestDispensePluginInterfaceWithoutAutoMTLSAsksToUpgrade(t *testing.T) {
 	installTestPlugin(t, testPluginServeNoMTLS)
-	cfg := &TestConfig{}
+	cfg := &TestConfig{ConfigFolder: t.TempDir()}
 	cfg.InitConfig()
 
 	_, client, err := testServedPlugin.dispensePluginInterface(cfg, afero.NewOsFs(), localDevelopmentVersion, "", log.WithField("prefix", "test"))
