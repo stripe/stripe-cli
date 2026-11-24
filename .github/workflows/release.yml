@@ -8,6 +8,9 @@ on:
 # No workflow-wide permissions: each job below opts in to only what it needs.
 # `contents: write` is limited to the three GoReleaser jobs that publish the
 # release, and `id-token: write` to the single job that publishes to npm.
+#
+# Every job that publishes uses the `release` environment and starts as soon as
+# canary-tests passes, so a release needs one approval.
 permissions: {}
 
 jobs:
@@ -189,13 +192,45 @@ jobs:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
   publish-npm:
-    needs: [build-mac, build-linux, build-windows]
+    # This job runs in the `release` environment so the npm OIDC token carries
+    # the environment claim. GitHub asks for approval on each job that uses a
+    # protected environment, and only groups jobs into one approval when they
+    # are pending at the same moment. So this job needs only canary-tests,
+    # which puts it in the same approval as the build jobs, and its first step
+    # waits for the builds instead of declaring them in `needs`.
+    needs: [canary-tests]
     environment: release
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     permissions:
+      actions: read # polls this run's build jobs
       contents: read # downloads release assets
       id-token: write # required for OIDC to npm
     steps:
+      - name: Wait for build jobs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          while true; do
+            # filter=latest returns the newest attempt of each job, so re-runs
+            # of failed builds are picked up.
+            if ! statuses=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" \
+                --jq '.jobs[] | select(.name | test("^build-(mac|linux|windows)$")) | "\(.name) \(.status) \(.conclusion)"'); then
+              echo "Failed to list jobs; retrying"
+              sleep 30
+              continue
+            fi
+            echo "$statuses"
+            if echo "$statuses" | awk '$2 == "completed" && $3 != "success" { found = 1 } END { exit !found }'; then
+              echo "::error::A build job did not succeed; not publishing to npm"
+              exit 1
+            fi
+            if [ "$(echo "$statuses" | awk '$2 == "completed" && $3 == "success"' | wc -l)" -eq 3 ]; then
+              break
+            fi
+            sleep 30
+          done
+
       - name: Code checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
