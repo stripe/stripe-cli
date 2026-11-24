@@ -23,6 +23,9 @@ type SecureStore interface {
 	Get(key string) ([]byte, error)
 	Set(key string, data []byte, description string) error
 	Remove(key string) error
+	// RemoveAll clears the entire store, including entries whose names are no
+	// longer present in the config file. An empty store is a successful no-op.
+	RemoveAll() error
 }
 
 // NewSecureStore returns a store that prefers the OS keyring and falls back to
@@ -63,6 +66,7 @@ type zalandoStore struct {
 	get     func(string, string) (string, error)
 	set     func(string, string, string) error
 	del     func(string, string) error
+	delAll  func(string) error
 }
 
 func newZalandoStore(service string) *zalandoStore {
@@ -72,6 +76,7 @@ func newZalandoStore(service string) *zalandoStore {
 		get:     zkr.Get,
 		set:     zkr.Set,
 		del:     zkr.Delete,
+		delAll:  zkr.DeleteAll,
 	}
 }
 
@@ -125,6 +130,22 @@ func (s *zalandoStore) Remove(key string) error {
 	}
 }
 
+func (s *zalandoStore) RemoveAll() error {
+	ch := make(chan error, 1)
+	go func() {
+		ch <- s.delAll(s.service)
+	}()
+	select {
+	case err := <-ch:
+		if err == nil || errors.Is(err, zkr.ErrNotFound) {
+			return nil
+		}
+		return errorcategory.Errorf(errorcategory.Filesystem, "keyring: could not clear stored credentials: %w", err)
+	case <-time.After(s.timeout):
+		return errorcategory.New(errorcategory.Filesystem, "keyring: timed out clearing stored credentials")
+	}
+}
+
 // fallbackStore tries primary for every operation and silently retries against
 // fallback whenever primary returns an error. This mirrors the GitHub CLI
 // pattern: prefer the OS keyring, but write to a plain file when unavailable.
@@ -171,6 +192,15 @@ func (s *fallbackStore) Remove(key string) error {
 		logger.WithError(primaryErr).Debug("credential store unavailable during remove")
 	}
 	return nil
+}
+
+func (s *fallbackStore) RemoveAll() error {
+	// Always attempt both stores: a credential may have been written to either
+	// one by an earlier invocation. Do not report a complete logout if either
+	// backend could not be cleared, even when the other backend succeeded.
+	primaryErr := s.primary.RemoveAll()
+	fallbackErr := s.fallback.RemoveAll()
+	return errors.Join(primaryErr, fallbackErr)
 }
 
 // fileStore persists credentials as a JSON object in a 0600-permissioned file.
@@ -235,4 +265,13 @@ func (s *fileStore) Remove(key string) error {
 	}
 	delete(m, key)
 	return s.save(m)
+}
+
+func (s *fileStore) RemoveAll() error {
+	// Removing the file also works when its contents cannot be decoded.
+	err := os.Remove(s.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
 }

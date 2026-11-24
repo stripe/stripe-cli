@@ -582,24 +582,26 @@ func (c *Config) RemoveAuthFields(profileName string) error {
 func (c *Config) RemoveAllAuthFields() error {
 	runtimeViper := viper.GetViper()
 
-	// Keyring entries are keyed by profile name whether or not the config file
-	// has a table for that name, and a session can exist before any table is
-	// written. The default and current profiles are the two such names known
-	// here, so they are cleared even when the enumeration does not find them.
-	names := append(listAddressableProfileNames(runtimeViper), "default", c.Profile.ProfileName)
-	cleared := make(map[string]bool, len(names))
+	// Credential IDs preserve the original profile name, while Viper lowercases
+	// it and splits periods into nested tables. Clear the StripeCLI credential
+	// store independently of config enumeration, including orphaned sessions.
+	var credentialErr error
+	if KeyRing != nil {
+		credentialErr = KeyRing.RemoveAll()
+	}
 
-	for _, name := range names {
-		if name == "" || cleared[name] {
-			continue
+	for _, tableKey := range listAuthProfileKeys(runtimeViper) {
+		for _, field := range authFieldNames {
+			key := tableKey + "." + field
+			if !runtimeViper.IsSet(key) {
+				continue
+			}
+			var err error
+			runtimeViper, err = removeKey(runtimeViper, key)
+			if err != nil {
+				return errors.Join(credentialErr, err)
+			}
 		}
-
-		cleared[name] = true
-
-		p := &Profile{ProfileName: name}
-		runtimeViper = p.deleteAuthFields(runtimeViper)
-		deleteLivemodeKey(LiveModeAPIKeyName, name)
-		p.deleteOAuthSessionKeys()
 	}
 
 	// TODO: remove with legacy RAK/OIDC flow.
@@ -607,7 +609,9 @@ func (c *Config) RemoveAllAuthFields() error {
 		runtimeViper, _ = removeKey(runtimeViper, UserInfoName)
 	}
 
-	return writeConfig(runtimeViper)
+	// Still clear the config when a credential backend fails, but do not let
+	// logout report success while that backend may retain a usable session.
+	return errors.Join(credentialErr, writeConfig(runtimeViper))
 }
 
 func deleteLivemodeKey(key string, profile string) error {
@@ -767,61 +771,52 @@ func listProfileEntries(v *viper.Viper) []profileEntry {
 	return entries
 }
 
-// listAddressableProfileNames returns every name that resolves to a table of
-// fields in the config file, in either layout, and so every name a command can
-// read credentials from when given --project-name.
-//
-// This is deliberately wider than listProfileEntries, which answers "what
-// should be shown or removed as a profile" and so must not over-match. Logging
-// out of everything must not under-match instead: listProfileEntries cannot see
-// a legacy profile whose name contains a period, because viper reads ["a.b"]
-// back as a -> b, nor a top-level profile with no display_name, yet reads
-// against both work. Walking into nested tables recovers the dotted names.
-//
-// A table nested inside a profile, such as its docs preferences, is returned as
-// well, since it cannot be told apart from a dotted profile. Callers must only
-// do with these names what is harmless for such a table.
-func listAddressableProfileNames(v *viper.Viper) []string {
-	var names []string
+// listAuthProfileKeys returns config table paths whose auth fields should be
+// cleared by all-project logout. Walking nested tables covers legacy dotted
+// names in both layouts. Paths, rather than profile names, ensure deleting a v2
+// profile does not also delete fields from a same-named machine settings table.
+func listAuthProfileKeys(v *viper.Viper) []string {
+	var keys []string
 
-	var walk func(name string, value interface{})
-	walk = func(name string, value interface{}) {
+	var walk func(key string, value interface{}, profileSpace bool)
+	walk = func(key string, value interface{}, profileSpace bool) {
 		table, ok := toStringMap(value)
 		if !ok {
 			return
 		}
 
-		if holdsProfileFields(table) {
-			names = append(names, name)
+		if holdsProfileFields(table) && (profileSpace || hasProfileAuthFields(table)) {
+			keys = append(keys, key)
 		}
 
-		for key, nested := range table {
-			walk(name+"."+key, nested)
+		for nestedKey, nested := range table {
+			// The profiles table may itself be a legacy profile, but its
+			// children are also where v2 profiles live.
+			walk(key+"."+nestedKey, nested, profileSpace || key == ProfilesTableName)
 		}
 	}
 
-	for name, value := range v.AllSettings() {
-		if name == ProfilesTableName {
-			nested, _ := toStringMap(value)
-			for nestedName, nestedValue := range nested {
-				walk(nestedName, nestedValue)
-			}
-
-			continue
-		}
-
-		if reservedTopLevelKeys[name] {
-			continue
-		}
-
-		walk(name, value)
+	for key, value := range v.AllSettings() {
+		walk(key, value, !reservedTopLevelKeys[key])
 	}
 
-	// AllSettings returns a map, so sort for stable ordering of the writes that
-	// follow.
-	sort.Strings(names)
+	sort.Strings(keys)
+	return keys
+}
 
-	return names
+// Reserved settings tables can also contain legacy profiles. A display name or
+// an API key identifies their auth fields without treating an unrelated plugin
+// preference such as account_id as a profile.
+func hasProfileAuthFields(table map[string]interface{}) bool {
+	if isProfile(table) {
+		return true
+	}
+	for _, field := range []string{TestModeAPIKeyName, LiveModeAPIKeyName, "secret_key", "api_key"} {
+		if value, ok := table[field].(string); ok && value != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // holdsProfileFields reports whether a table inside the profiles table is a

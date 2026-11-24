@@ -77,6 +77,10 @@ func (f *fakeKeyring) Remove(key string) error {
 	return f.removeErr
 }
 
+func (f *fakeKeyring) RemoveAll() error {
+	return f.removeErr
+}
+
 func (f *fakeKeyring) Keys() ([]string, error) {
 	return f.keys, nil
 }

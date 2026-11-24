@@ -106,6 +106,43 @@ func TestZalandoStoreRemoveReturnsErrNotFoundFromBackend(t *testing.T) {
 	assert.Equal(t, ErrKeyNotFound, err)
 }
 
+func TestZalandoStoreRemoveAllIsScopedToService(t *testing.T) {
+	store := newZalandoStore(t.Name())
+	other := newZalandoStore(t.Name() + "-other")
+	keys := []string{"uat", "uat:Example.Project", "orphan.live_mode_api_key"}
+	for _, key := range keys {
+		require.NoError(t, store.Set(key, []byte("synthetic"), ""))
+	}
+	require.NoError(t, other.Set("uat", []byte("other-service"), ""))
+	t.Cleanup(func() { _ = other.RemoveAll() })
+
+	require.NoError(t, store.RemoveAll())
+	for _, key := range keys {
+		_, err := store.Get(key)
+		require.ErrorIs(t, err, ErrKeyNotFound)
+	}
+	value, err := other.Get("uat")
+	require.NoError(t, err)
+	require.Equal(t, "other-service", string(value))
+	require.NoError(t, store.RemoveAll(), "an empty store should be a no-op")
+}
+
+func TestZalandoStoreRemoveAllTimeout(t *testing.T) {
+	block := make(chan struct{})
+	defer close(block)
+	store := newZalandoStore(t.Name())
+	store.timeout = 10 * time.Millisecond
+	store.delAll = func(_ string) error { <-block; return nil }
+
+	require.ErrorContains(t, store.RemoveAll(), "timed out")
+}
+
+func TestZalandoStoreRemoveAllNotFound(t *testing.T) {
+	store := newZalandoStore(t.Name())
+	store.delAll = func(_ string) error { return zkr.ErrNotFound }
+	require.NoError(t, store.RemoveAll())
+}
+
 func newTestFileStore(t *testing.T) *fileStore {
 	t.Helper()
 	return &fileStore{path: filepath.Join(t.TempDir(), "credentials.json")}
@@ -136,6 +173,24 @@ func TestFileStoreRemoveNotFound(t *testing.T) {
 	assert.Equal(t, ErrKeyNotFound, err)
 }
 
+func TestFileStoreRemoveAll(t *testing.T) {
+	for _, contents := range []string{`{"uat:Example.Project":"synthetic"}`, "invalid JSON"} {
+		t.Run(contents, func(t *testing.T) {
+			store := newTestFileStore(t)
+			require.NoError(t, os.WriteFile(store.path, []byte(contents), 0600))
+			unrelated := filepath.Join(filepath.Dir(store.path), "config.toml")
+			require.NoError(t, os.WriteFile(unrelated, []byte("color = 'on'"), 0600))
+
+			require.NoError(t, store.RemoveAll())
+			_, err := os.Stat(store.path)
+			require.ErrorIs(t, err, os.ErrNotExist)
+			_, err = os.Stat(unrelated)
+			require.NoError(t, err)
+			require.NoError(t, store.RemoveAll(), "a missing file should be a no-op")
+		})
+	}
+}
+
 func TestFileStorePermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix permission bits are not meaningful on Windows")
@@ -154,6 +209,43 @@ type failStore struct{ err error }
 func (f *failStore) Get(_ string) ([]byte, error)           { return nil, f.err }
 func (f *failStore) Set(_ string, _ []byte, _ string) error { return f.err }
 func (f *failStore) Remove(_ string) error                  { return f.err }
+func (f *failStore) RemoveAll() error                       { return f.err }
+
+func TestFallbackStoreRemoveAllAttemptsBothBackends(t *testing.T) {
+	for _, failingBackend := range []string{"neither", "primary", "fallback", "both"} {
+		t.Run(failingBackend, func(t *testing.T) {
+			primary := NewMemoryStore(map[string][]byte{"uat:Example.Project": []byte("primary")})
+			fallback := newTestFileStore(t)
+			require.NoError(t, fallback.Set("uat:orphan", []byte("fallback"), ""))
+			store := &fallbackStore{primary: primary, fallback: fallback}
+			primaryErr := fmt.Errorf("primary deletion failed")
+			fallbackErr := fmt.Errorf("fallback deletion failed")
+			if failingBackend == "primary" || failingBackend == "both" {
+				store.primary = &failStore{primaryErr}
+			}
+			if failingBackend == "fallback" || failingBackend == "both" {
+				store.fallback = &failStore{fallbackErr}
+			}
+
+			err := store.RemoveAll()
+			if failingBackend == "neither" {
+				require.NoError(t, err)
+			}
+			if failingBackend == "primary" || failingBackend == "both" {
+				require.ErrorIs(t, err, primaryErr)
+			} else {
+				_, getErr := primary.Get("uat:Example.Project")
+				require.ErrorIs(t, getErr, ErrKeyNotFound)
+			}
+			if failingBackend == "fallback" || failingBackend == "both" {
+				require.ErrorIs(t, err, fallbackErr)
+			} else {
+				_, getErr := fallback.Get("uat:orphan")
+				require.ErrorIs(t, getErr, ErrKeyNotFound)
+			}
+		})
+	}
+}
 
 func TestFallbackStoreGetFallsBackOnPrimaryError(t *testing.T) {
 	fb := newTestFileStore(t)
