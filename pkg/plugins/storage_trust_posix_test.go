@@ -204,6 +204,12 @@ func TestPluginStorageSystemAlias(t *testing.T) {
 	fs := pluginInspectionFs{Fs: afero.NewOsFs(), path: alias, info: pluginOwnershipInfo{FileInfo: info, metadata: &syscall.Stat_t{Uid: 0}}}
 	store := filepath.Join(alias, "user", "config")
 	require.NoError(t, checkPluginPath(fs, filepath.Join(store, "metadata.toml"), store))
+
+	link := filepath.Join(store, "link")
+	require.NoError(t, os.Symlink(link, link))
+	err = checkPluginPath(fs, link, store)
+	requireUnsafeStorage(t, err, link)
+	require.Contains(t, err.Error(), "symbolic link cycle")
 }
 
 func TestPluginStorageSystemAncestors(t *testing.T) {

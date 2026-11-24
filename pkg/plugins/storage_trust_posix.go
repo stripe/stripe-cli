@@ -30,11 +30,16 @@ func checkPluginPath(fs afero.Fs, path, store string) error {
 	if err != nil {
 		return unsafePluginPath(store, err.Error())
 	}
-	links := 0
+	links := pluginSymlinkWalk{active: make(map[string]bool)}
 	return inspectPluginPath(fs, absolute, root, &links)
 }
 
-func inspectPluginPath(fs afero.Fs, path, store string, links *int) error {
+type pluginSymlinkWalk struct {
+	total  int
+	active map[string]bool // Links whose targets are still being inspected.
+}
+
+func inspectPluginPath(fs afero.Fs, path, store string, links *pluginSymlinkWalk) error {
 	parent := filepath.Dir(path)
 	if parent != path {
 		if err := inspectPluginPath(fs, parent, store, links); err != nil {
@@ -79,10 +84,15 @@ func inspectPluginPath(fs afero.Fs, path, store string, links *int) error {
 	}
 
 	if info.Mode()&os.ModeSymlink != 0 {
-		*links++
-		if *links > 40 {
+		if links.active[path] {
+			return unsafePluginPath(path, "symbolic link cycle")
+		}
+		links.total++
+		if links.total > 40 {
 			return unsafePluginPath(path, "too many symbolic links")
 		}
+		links.active[path] = true
+		defer delete(links.active, path)
 		reader, ok := fs.(afero.LinkReader)
 		if !ok {
 			return unsafePluginPath(path, "cannot read symbolic link")
