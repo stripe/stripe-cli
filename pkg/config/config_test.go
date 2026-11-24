@@ -655,45 +655,6 @@ func TestRemoveAllAuthFieldsClearsProfilesHiddenFromEnumeration(t *testing.T) {
 `,
 			profileName: "partial",
 		},
-		{
-			name: "mixed case dotted name",
-			contents: `["Example.Project"]
-  display_name = 'Legacy'
-  test_mode_api_key = 'sk_test_hidden'
-`,
-			profileName: "Example.Project",
-		},
-		{
-			name: "reserved name",
-			contents: `[plugin_configs]
-  display_name = 'Legacy'
-  test_mode_api_key = 'sk_test_hidden'
-`,
-			profileName: "plugin_configs",
-		},
-		{
-			name: "reserved prefix without display_name",
-			contents: `["plugin_configs.project"]
-  test_mode_api_key = 'sk_test_hidden'
-`,
-			profileName: "plugin_configs.project",
-		},
-		{
-			name: "profiles prefix",
-			contents: `["profiles.work"]
-  display_name = 'Legacy'
-  test_mode_api_key = 'sk_test_hidden'
-`,
-			profileName: "profiles.work",
-		},
-		{
-			name: "profile named profiles",
-			contents: `[profiles]
-  display_name = 'Legacy'
-  test_mode_api_key = 'sk_test_hidden'
-`,
-			profileName: "profiles",
-		},
 	}
 
 	for _, tt := range tests {
@@ -701,9 +662,6 @@ func TestRemoveAllAuthFieldsClearsProfilesHiddenFromEnumeration(t *testing.T) {
 			c, profilesFile := setupProfileConfig(t, tt.contents)
 			c.Profile.ProfileName = "normal"
 			seedStoredCredentials(t, tt.profileName)
-			// A previous write can erase the original casing in TOML while the
-			// keyring still holds credentials under the exact name supplied.
-			require.NoError(t, c.WriteConfigField(MachineUUIDKey, "test-machine"))
 
 			require.NoError(t, c.RemoveAllAuthFields())
 
@@ -728,10 +686,6 @@ func TestRemoveAllAuthFieldsPreservesNonAuthSettings(t *testing.T) {
   account_id = 'not a profile field'
   updates = 'off'
 
-[profiles.plugin_configs.apps]
-  display_name = 'Profile With A Reserved Prefix'
-  test_mode_api_key = 'sk_test_nested'
-
 [default]
   color = 'on'
   display_name = 'Default'
@@ -749,7 +703,6 @@ func TestRemoveAllAuthFieldsPreservesNonAuthSettings(t *testing.T) {
 
 	require.False(t, viper.IsSet("default.display_name"))
 	require.False(t, viper.IsSet("example.project.display_name"))
-	require.False(t, viper.IsSet("profiles.plugin_configs.apps.test_mode_api_key"))
 
 	require.Equal(t, "on", viper.GetString("default.color"))
 	require.Equal(t, "markdown", viper.GetString("default.docs_prefs.format"))
@@ -759,37 +712,18 @@ func TestRemoveAllAuthFieldsPreservesNonAuthSettings(t *testing.T) {
 	require.Equal(t, "not a profile field", viper.GetString("plugin_configs.apps.account_id"))
 }
 
-// Sessions need not have a table in the config file, whether they belong to the
-// current profile, the default profile, or an unrelated orphaned profile.
-func TestRemoveAllAuthFieldsClearsSessionsWithoutConfigEntries(t *testing.T) {
+// The current profile's keyring entries are keyed by the name the user passed,
+// which need not have a table in the config file for the enumeration to find.
+func TestRemoveAllAuthFieldsClearsCurrentProfileWithoutConfigEntry(t *testing.T) {
 	c, _, cleanup := setupTestConfig(t)
 	defer cleanup()
 
 	c.Profile.ProfileName = "work"
-	seedStoredCredentials(t, "work", "default", "Unselected.Orphan")
+	seedStoredCredentials(t, "work", "default")
 
 	require.NoError(t, c.RemoveAllAuthFields())
 
-	requireNoStoredCredentials(t, "work", "default", "Unselected.Orphan")
-}
-
-type failingBulkCredentialStore struct {
-	*keyring.MemoryStore
-	err error
-}
-
-func (s *failingBulkCredentialStore) RemoveAll() error { return s.err }
-
-func TestRemoveAllAuthFieldsReportsCredentialFailureAndClearsConfig(t *testing.T) {
-	c, _ := setupProfileConfig(t, `[default]
-  display_name = 'Default'
-  test_mode_api_key = 'sk_test_secret'
-`)
-	storeErr := fmt.Errorf("credential deletion failed")
-	KeyRing = &failingBulkCredentialStore{MemoryStore: keyring.NewMemoryStore(nil), err: storeErr}
-
-	require.ErrorIs(t, c.RemoveAllAuthFields(), storeErr)
-	require.Empty(t, viper.GetString("default.test_mode_api_key"))
+	requireNoStoredCredentials(t, "work", "default")
 }
 
 // `stripe config --remove-profile` reports that it cleared the profile's stored

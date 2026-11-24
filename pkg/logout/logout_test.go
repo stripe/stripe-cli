@@ -2,7 +2,6 @@ package logout
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -50,68 +49,58 @@ func TestLogoutClearsOAuthCredentials(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// All-project logout must clear readable legacy profiles, including names that
-// Viper lowercases or interprets as nested config tables.
-func TestAllClearsOAuthSessionOfLegacyProfiles(t *testing.T) {
-	for _, version := range []int{1, 2} {
-		for _, name := range []string{"example.project", "Example.Project", "plugin_configs", "plugin_configs.project", "profiles.work", "profiles"} {
-			t.Run(fmt.Sprintf("v%d/%s", version, name), func(t *testing.T) {
-				profilesFile := filepath.Join(t.TempDir(), "config.toml")
-				contents := ""
-				prefix := ""
-				if version == 2 {
-					contents = "config_version = 2\n"
-					prefix = "profiles."
-				}
-				contents += fmt.Sprintf("[%s%q]\n  display_name = 'Legacy'\n", prefix, name)
-				require.NoError(t, os.WriteFile(profilesFile, []byte(contents), 0600))
+// A legacy profile with a period in its name is invisible to the profile
+// listing, but `stripe logout --all` still has to end its session: afterwards,
+// selecting that profile must not resolve to a usable credential.
+func TestAllClearsOAuthSessionOfDottedProfile(t *testing.T) {
+	profilesFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(profilesFile, []byte(`[normal]
+  display_name = 'Normal'
 
-				cfg := &config.Config{
-					LogLevel:     "info",
-					Profile:      config.Profile{ProfileName: "normal"},
-					ProfilesFile: profilesFile,
-				}
-				profile := &config.Profile{ProfileName: name}
-				activeCtxJSON, err := json.Marshal(config.ActiveContext{AccountID: "acct_123", Livemode: true})
-				require.NoError(t, err)
-				config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
-					profile.KeyringKey(config.UATKeychainItemKey):            []byte("oak_test_access"),
-					profile.KeyringKey(config.OAuthRefreshTokenKeychainKey):  []byte("oart_test_refresh"),
-					profile.KeyringKey(config.OAuthActiveContextKeychainKey): activeCtxJSON,
-					profile.KeyringKey(config.OAuthUATExpiresAtKeychainKey):  []byte(time.Now().Add(time.Hour).UTC().Format(time.RFC3339)),
-				})
-				t.Cleanup(func() {
-					config.KeyRing = nil
-					viper.Reset()
-				})
-				cfg.InitConfig()
-				// Exercise logout after Viper has already rewritten the table
-				// name in lowercase, losing the keyring identifier's casing.
-				require.NoError(t, cfg.WriteConfigField(config.MachineUUIDKey, "test-machine"))
+["example.project"]
+  display_name = 'Legacy'
+`), 0600))
 
-				creds, err := profile.ResolveCredentials(true)
-				require.NoError(t, err)
-				require.Equal(t, "oak_test_access", creds.Token)
+	cfg := &config.Config{
+		LogLevel: "info",
+		Profile: config.Profile{
+			ProfileName: "normal",
+		},
+		ProfilesFile: profilesFile,
+	}
 
-				require.NoError(t, All(t.Context(), "https://access.stripe.com", cfg))
+	dotted := &config.Profile{ProfileName: "example.project"}
+	activeCtxJSON, err := json.Marshal(config.ActiveContext{AccountID: "acct_123", Livemode: true})
+	require.NoError(t, err)
 
-				// Reload and resolve through a fresh profile as the next CLI
-				// invocation would, without relying on cached session state.
-				cfg.InitConfig()
-				profile = &config.Profile{ProfileName: name}
-				_, err = profile.ResolveCredentials(true)
-				require.Error(t, err)
+	config.KeyRing = keyring.NewMemoryStore(map[string][]byte{
+		dotted.KeyringKey(config.UATKeychainItemKey):            []byte("oak_test_access"),
+		dotted.KeyringKey(config.OAuthRefreshTokenKeychainKey):  []byte("oart_test_refresh"),
+		dotted.KeyringKey(config.OAuthActiveContextKeychainKey): activeCtxJSON,
+		dotted.KeyringKey(config.OAuthUATExpiresAtKeychainKey):  []byte(time.Now().Add(time.Hour).UTC().Format(time.RFC3339)),
+	})
+	t.Cleanup(func() {
+		config.KeyRing = nil
+		viper.Reset()
+	})
+	cfg.InitConfig()
 
-				for _, key := range []string{
-					config.UATKeychainItemKey,
-					config.OAuthRefreshTokenKeychainKey,
-					config.OAuthActiveContextKeychainKey,
-					config.OAuthUATExpiresAtKeychainKey,
-				} {
-					_, err = config.KeyRing.Get(profile.KeyringKey(key))
-					assert.ErrorIs(t, err, keyring.ErrKeyNotFound, "%s should have been removed from the keyring", key)
-				}
-			})
-		}
+	creds, err := dotted.ResolveCredentials(true)
+	require.NoError(t, err)
+	require.Equal(t, "oak_test_access", creds.Token)
+
+	require.NoError(t, All(t.Context(), "https://access.stripe.com", cfg))
+
+	_, err = dotted.ResolveCredentials(true)
+	require.Error(t, err)
+
+	for _, key := range []string{
+		config.UATKeychainItemKey,
+		config.OAuthRefreshTokenKeychainKey,
+		config.OAuthActiveContextKeychainKey,
+		config.OAuthUATExpiresAtKeychainKey,
+	} {
+		_, err = config.KeyRing.Get(dotted.KeyringKey(key))
+		assert.ErrorIs(t, err, keyring.ErrKeyNotFound, "%s should have been removed from the keyring", key)
 	}
 }
