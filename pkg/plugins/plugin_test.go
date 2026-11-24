@@ -64,7 +64,7 @@ func TestInstallCleanupErrorsAndObsoleteVersions(t *testing.T) {
 				require.NoError(t, afero.WriteFile(base, filepath.Join("/plugins/sample", version, "sample"), []byte("obsolete"), 0755))
 			}
 			cleanupErr := errors.New("cleanup failed")
-			var fs afero.Fs = base
+			fs := base
 			switch failure {
 			case "remove":
 				fs = &failRemoveAllFs{Fs: base, path: "/plugins/sample/0.9.0", err: cleanupErr}
