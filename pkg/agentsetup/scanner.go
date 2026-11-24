@@ -2,12 +2,8 @@ package agentsetup
 
 import (
 	"context"
-	"errors"
 	"os"
-	"os/exec"
 	"strings"
-
-	"github.com/stripe/stripe-cli/pkg/errorcategory"
 )
 
 // LookPathFunc matches exec.LookPath and exists to make detection testable.
@@ -44,35 +40,27 @@ type Scanner struct {
 
 // DefaultScanner returns a Scanner backed by the real OS.
 func DefaultScanner() Scanner {
-	return Scanner{
-		LookPath: exec.LookPath,
-		ReadFile: os.ReadFile,
-		HomeDir:  os.UserHomeDir,
-		WorkDir:  os.Getwd,
-		ReadDir:  os.ReadDir,
-		Stat:     os.Stat,
-	}
+	return Scanner{}.withDefaults()
 }
 
 func (s Scanner) withDefaults() Scanner {
-	defaults := DefaultScanner()
 	if s.LookPath == nil {
-		s.LookPath = defaults.LookPath
+		s.LookPath, _ = lazyExecutableResolver()
 	}
 	if s.ReadFile == nil {
-		s.ReadFile = defaults.ReadFile
+		s.ReadFile = os.ReadFile
 	}
 	if s.HomeDir == nil {
-		s.HomeDir = defaults.HomeDir
+		s.HomeDir = os.UserHomeDir
 	}
 	if s.WorkDir == nil {
-		s.WorkDir = defaults.WorkDir
+		s.WorkDir = os.Getwd
 	}
 	if s.ReadDir == nil {
-		s.ReadDir = defaults.ReadDir
+		s.ReadDir = os.ReadDir
 	}
 	if s.Stat == nil {
-		s.Stat = defaults.Stat
+		s.Stat = os.Stat
 	}
 	return s
 }
@@ -81,25 +69,7 @@ func (s Scanner) withDefaults() Scanner {
 // installs run behind a spinner, so streaming subprocess stdio to the terminal
 // would interleave with our animation.
 func RunCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	out, err := exec.CommandContext(ctx, name, args...).Output()
-	if err == nil {
-		return out, nil
-	}
-	// In cases where the process never started (eg. binary wasn't found), the fallback should be to treat
-	// output as the error message.
-	stderr := out
-
-	// If a process exits with a non-zero exit code, Output() returns a pointer to a struct that
-	// hosts the actual error. Unwrap this pointer in order to get the error message.
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		stderr = exitErr.Stderr
-	}
-	if msg := errorFromOutput(stderr); msg != "" {
-		return out, errorcategory.New(errorcategory.Internal, msg)
-	}
-
-	return out, err
+	return newExecutableResolver().run(ctx, name, args...)
 }
 
 func errorFromOutput(out []byte) string {

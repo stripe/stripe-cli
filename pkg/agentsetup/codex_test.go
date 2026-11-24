@@ -36,7 +36,7 @@ func TestScanCodex_PluginMissing(t *testing.T) {
 	require.Equal(t, StatusMissing, status.Status)
 	require.False(t, status.Plugin.Installed)
 	require.Equal(t, "stripe@openai-curated", status.Plugin.ID)
-	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"codex", "plugin", "add", "stripe@openai-curated"}}}, provider.Plan(status, false))
+	require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"/usr/local/bin/codex", "plugin", "add", "stripe@openai-curated"}}}, provider.Plan(status, false))
 }
 
 func TestScanCodex_PluginInstalled(t *testing.T) {
@@ -78,7 +78,7 @@ func TestScanCodex_APIPluginInstalled(t *testing.T) {
 	require.Equal(t, "stripe@openai-api-curated", status.Plugin.ID)
 	require.Equal(t, "1.0.0", status.Plugin.Version)
 	require.Equal(t, Plan{Action: ActionNone}, provider.Plan(status, false))
-	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"codex", "plugin", "add", "stripe@openai-api-curated"}}}, provider.Plan(status, true))
+	require.Equal(t, Plan{Action: ActionUpdate, Commands: [][]string{{"/usr/local/bin/codex", "plugin", "add", "stripe@openai-api-curated"}}}, provider.Plan(status, true))
 }
 
 func TestScanCodex_DoesNotFallBackAfterLookupError(t *testing.T) {
@@ -167,17 +167,13 @@ func TestCodexSetup_AvailableMarketplaces(t *testing.T) {
 			var queried, attempts []string
 			discoveries := 0
 			installed := ""
-			install := func(_ context.Context, name string, args ...string) ([]byte, error) {
-				require.Equal(t, "codex", name)
-				require.Equal(t, []string{"plugin", "add"}, args[:2])
-				attempts = append(attempts, args[2])
-				installed = args[2]
-				return nil, nil
-			}
 			provider := codexTestProviderWithCustomRun(func(ctx context.Context, name string, args ...string) ([]byte, error) {
-				require.Equal(t, "codex", name)
+				require.Equal(t, "/usr/local/bin/codex", name)
 				if args[1] == "add" {
-					return install(ctx, name, args...)
+					require.Equal(t, []string{"plugin", "add"}, args[:2])
+					attempts = append(attempts, args[2])
+					installed = args[2]
+					return nil, nil
 				}
 				require.NoError(t, ctx.Err())
 				if args[1] == "marketplace" {
@@ -201,7 +197,7 @@ func TestCodexSetup_AvailableMarketplaces(t *testing.T) {
 			pluginID := "stripe@" + tt.marketplace
 			require.Equal(t, pluginID, status.Plugin.ID)
 			plan := provider.Plan(status, false)
-			require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"codex", "plugin", "add", pluginID}}}, plan)
+			require.Equal(t, Plan{Action: ActionInstall, Commands: [][]string{{"/usr/local/bin/codex", "plugin", "add", pluginID}}}, plan)
 			require.NoError(t, provider.Apply(context.Background(), nil, plan))
 			require.Equal(t, []string{pluginID}, attempts)
 			require.Equal(t, 1, discoveries, "Plan and Apply must reuse the selection from Detect")

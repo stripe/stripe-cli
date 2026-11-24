@@ -56,7 +56,7 @@ func (p OpenclawProvider) Detect() Status {
 	ctx, cancel := context.WithTimeout(context.Background(), openclawListTimeout)
 	defer cancel()
 
-	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx)
+	plugin, ok, supportsPlugins := p.stripePluginStatus(ctx, status.ExecutablePath)
 	if !supportsPlugins {
 		status.Error = "upgrade OpenClaw to enable plugin support"
 		return status
@@ -85,12 +85,12 @@ func (p OpenclawProvider) Detect() Status {
 // stripePluginStatus runs `openclaw plugins list --json` and reports whether the
 // Stripe plugin is installed. When the command fails (e.g. an old Openclaw
 // version without plugin support), supportsPlugins is false.
-func (p OpenclawProvider) stripePluginStatus(ctx context.Context) (plugin openclawInstalledPlugin, installed bool, supportsPlugins bool) {
+func (p OpenclawProvider) stripePluginStatus(ctx context.Context, executablePath string) (plugin openclawInstalledPlugin, installed bool, supportsPlugins bool) {
 	runCommand := p.RunCommand
 	if runCommand == nil {
 		runCommand = RunCommand
 	}
-	out, err := runCommand(ctx, p.BinaryName, "plugins", "list", "--json")
+	out, err := runCommand(ctx, executablePath, "plugins", "list", "--json")
 	if err != nil {
 		return openclawInstalledPlugin{}, false, false
 	}
@@ -145,7 +145,7 @@ func (p OpenclawProvider) repoPath() (string, error) {
 func (p OpenclawProvider) Plan(status Status, force bool) Plan {
 	repoPath, _ := p.repoPath() // The error is already handled in Detect, so we can ignore it here.
 
-	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
+	installCommand := []string{status.ExecutablePath, "plugins", "install", "--force", "--accept-capabilities", repoPath}
 
 	makeTempDirectoryCommand := []string{"mkdir", "-p", repoPath}
 	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath}

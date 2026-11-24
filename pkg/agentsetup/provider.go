@@ -41,13 +41,14 @@ type ProviderConfig struct {
 
 // DefaultProviders returns production setup providers keyed by client id.
 func DefaultProviders() map[string]Provider {
-	scanner := DefaultScanner()
-	claude := NewClaudeProvider(scanner, RunCommand)
-	codex := NewCodexProvider(scanner, RunCommand)
+	lookPath, run := lazyExecutableResolver()
+	scanner := Scanner{LookPath: lookPath}.withDefaults()
+	claude := NewClaudeProvider(scanner, run)
+	codex := NewCodexProvider(scanner, run)
 	cursor := NewCursorProvider(scanner)
-	grok := NewGrokProvider(scanner, RunCommand)
+	grok := NewGrokProvider(scanner, run)
 	kiro := NewKiroProvider(scanner)
-	openclaw := NewOpenclawProvider(scanner, RunCommand)
+	openclaw := NewOpenclawProvider(scanner, run)
 	return map[string]Provider{
 		claude.ID():   claude,
 		codex.ID():    codex,

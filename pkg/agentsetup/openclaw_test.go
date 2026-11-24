@@ -64,7 +64,7 @@ func TestOpenclaw_PluginMissing(t *testing.T) {
 		Plan{Action: ActionInstall, Commands: [][]string{
 			{"mkdir", "-p", testOpenclawRepoPath},
 			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
-			{"openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
+			{"/usr/local/bin/openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
 			{"rm", "-rf", testOpenclawRepoPath},
 		}},
 		provider.Plan(status, false))
@@ -94,7 +94,7 @@ func TestOpenclaw_PluginInstalled(t *testing.T) {
 		Plan{Action: ActionUpdate, Commands: [][]string{
 			{"mkdir", "-p", testOpenclawRepoPath},
 			{"git", "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", testOpenclawRepoPath},
-			{"openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
+			{"/usr/local/bin/openclaw", "plugins", "install", "--force", "--accept-capabilities", testOpenclawRepoPath},
 			{"rm", "-rf", testOpenclawRepoPath},
 		}},
 		provider.Plan(status, true))

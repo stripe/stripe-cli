@@ -16,7 +16,7 @@ func detectAgentExecutable(providerConfig ProviderConfig, defaultPluginStatus st
 	}
 
 	path, err := scanner.LookPath(providerConfig.BinaryName)
-	if err != nil {
+	if err != nil || path == "" {
 		return status
 	}
 
@@ -31,7 +31,7 @@ func getPlanByStatus(status Status, force bool, installCommands [][]string, rein
 	switch {
 	case status.Status == StatusError:
 		return Plan{Action: ActionNone}
-	case !status.Detected:
+	case !status.Detected || status.ExecutablePath == "":
 		return Plan{Action: ActionNone}
 	case status.Plugin.Installed && force:
 		return Plan{Action: ActionUpdate, Commands: reinstallCommands}
