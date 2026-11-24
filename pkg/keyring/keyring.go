@@ -7,12 +7,14 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	zkr "github.com/zalando/go-keyring"
 
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/fsutil"
 )
 
 // ErrKeyNotFound is returned when a key is not present in the secure store.
@@ -179,6 +181,10 @@ type fileStore struct {
 }
 
 func (s *fileStore) load() (map[string]string, error) {
+	// Repair the mode of a credentials file that predates the CLI's writes
+	// (e.g. seeded by CI or restored from a backup with the umask's 0644), so
+	// read-only commands do not leave secrets group- or world-readable.
+	s.repairPermissions()
 	data, err := os.ReadFile(s.path)
 	if errors.Is(err, os.ErrNotExist) {
 		return make(map[string]string), nil
@@ -193,15 +199,66 @@ func (s *fileStore) load() (map[string]string, error) {
 	return m, nil
 }
 
+// repairPermissions tightens a pre-existing credentials file or directory to
+// owner-only access. Best effort: a file the user cannot chmod still has to be
+// readable, and save replaces the file with a 0600 one anyway.
+func (s *fileStore) repairPermissions() {
+	if runtime.GOOS == "windows" {
+		// POSIX mode bits do not describe Windows ACLs.
+		return
+	}
+	logger := log.WithFields(log.Fields{"prefix": "keyring", "path": s.path})
+	for _, path := range []string{filepath.Dir(s.path), s.path} {
+		// Lstat rather than Stat: Chmod follows symlinks, and a symlinked
+		// path must never adjust the target it points at.
+		info, err := os.Lstat(path)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0077 == 0 {
+			continue
+		}
+		mode := os.FileMode(0600)
+		if info.IsDir() {
+			mode = 0700
+		}
+		if err := os.Chmod(path, mode); err != nil {
+			logger.WithError(err).Debug("could not tighten credential storage permissions")
+		}
+	}
+}
+
 func (s *fileStore) save(m map[string]string) error {
-	if err := os.MkdirAll(filepath.Dir(s.path), 0700); err != nil {
+	dir := filepath.Dir(s.path)
+	if err := fsutil.RefuseWriteThroughSymlinkOS(s.path, filepath.Dir(dir), filepath.Base(s.path)); err != nil {
 		return err
 	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	// MkdirAll does not tighten a directory that already exists.
+	s.repairPermissions()
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.path, data, 0600)
+	// os.WriteFile applies its mode only on creation, so a pre-existing
+	// permissive file would keep its mode with the full secret inside. Write a
+	// 0600 temp file and rename it over the destination so the mode always
+	// holds, whatever existed there before.
+	tmp, err := os.CreateTemp(dir, ".credentials-*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0600); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), s.path)
 }
 
 func (s *fileStore) Get(key string) ([]byte, error) {
