@@ -23,6 +23,58 @@ jobs:
     secrets:
       STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
 
+  # The build jobs below are gated on the `release` environment, so once canary
+  # tests pass they sit waiting for a reviewer. This job shares their `needs`
+  # but has no environment, so it runs at the moment they start waiting.
+  notify-approval-needed:
+    needs: [canary-tests]
+    if: github.repository == 'stripe/stripe-cli'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Notify Slack
+        env:
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TAG: ${{ github.ref_name }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_STRIPE_CLI_PRS_WEBHOOK_URL }}
+        shell: bash
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "::warning::SLACK_STRIPE_CLI_PRS_WEBHOOK_URL is not set; skipping notification"
+            exit 0
+          fi
+
+          payload="$(
+            jq --null-input \
+              --arg actor "$ACTOR" \
+              --arg repository "$REPOSITORY" \
+              --arg run_url "$RUN_URL" \
+              --arg tag "$TAG" \
+              '
+                def slack_text:
+                  gsub("&"; "&amp;")
+                  | gsub("<"; "&lt;")
+                  | gsub(">"; "&gt;")
+                  | gsub("[\\r\\n]+"; " ");
+
+                {
+                  text: (
+                    ":hourglass_flowing_sand: Release *" + ($repository | slack_text) + "@" + ($tag | slack_text) + "* " +
+                    "is waiting for approval.\n" +
+                    "<" + $run_url + "|Review deployment> · Triggered by `" + ($actor | slack_text) + "`"
+                  )
+                }
+              '
+          )"
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"
+
   build-mac:
     needs: [canary-tests]
     environment: release
