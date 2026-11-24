@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"slices"
 
 	genqlient "github.com/Khan/genqlient/graphql"
 
@@ -13,9 +14,12 @@ import (
 
 var integHlthAlertStatuses = []string{"open", "resolved"}
 
+// integHlthAlertPredicates limits `stripe overview` to alerts for these
+// predicates during the initial rollout.
+var integHlthAlertPredicates = []string{"LEGACY_PAYMENT_METHODS"}
+
 type integHlthAlertsResponse struct {
-	Alerts   []integHlthAlert `json:"alerts"`
-	NextPage string           `json:"next_page,omitempty"`
+	Alerts []integHlthAlert `json:"alerts"`
 }
 
 type integHlthAlert struct {
@@ -43,17 +47,30 @@ type integHlthRecommendedAction struct {
 }
 
 func fetchIntegHlthAlerts(ctx context.Context, client genqlient.Client, limit int) (*integHlthAlertsResponse, error) {
-	resp, err := graphql.ListIntegHlthAlerts(ctx, client, integHlthAlertStatuses, limit, "", "", "")
-	if err != nil {
-		return nil, overviewGraphQLError(err, "integration health alerts")
-	}
+	alerts := make([]integHlthAlert, 0)
+	page := ""
+	for {
+		resp, err := graphql.ListIntegHlthAlerts(ctx, client, integHlthAlertStatuses, 0, page, "", "")
+		if err != nil {
+			return nil, overviewGraphQLError(err, "integration health alerts")
+		}
 
-	list := resp.V2ListIntegHlthAlerts
-	alerts := make([]integHlthAlert, 0, len(list.Alerts))
-	for _, a := range list.Alerts {
-		alerts = append(alerts, integHlthAlertFromGraphQL(a))
+		list := resp.V2ListIntegHlthAlerts
+		for _, a := range list.Alerts {
+			if !slices.Contains(integHlthAlertPredicates, a.Predicate_name) {
+				continue
+			}
+			alerts = append(alerts, integHlthAlertFromGraphQL(a))
+			if limit > 0 && len(alerts) == limit {
+				return &integHlthAlertsResponse{Alerts: alerts}, nil
+			}
+		}
+
+		if list.Next_page == "" || list.Next_page == page {
+			return &integHlthAlertsResponse{Alerts: alerts}, nil
+		}
+		page = list.Next_page
 	}
-	return &integHlthAlertsResponse{Alerts: alerts, NextPage: list.Next_page}, nil
 }
 
 func integHlthAlertFromGraphQL(a graphql.ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlthAlertsResponseAlertsV2IntegrationHealthAlertDetail) integHlthAlert {

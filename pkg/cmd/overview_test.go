@@ -142,6 +142,42 @@ func stubOverviewDefaultAPIVersion(t *testing.T, version string) {
 	t.Cleanup(func() { startOverviewDefaultAPIVersion = orig })
 }
 
+func TestOverviewCmd_RejectsNonPositiveLimit(t *testing.T) {
+	for _, limit := range []string{"0", "-1"} {
+		t.Run(limit, func(t *testing.T) {
+			oc := newOverviewCmd()
+			oc.cmd.SilenceUsage = true
+			oc.cmd.SetOut(&bytes.Buffer{})
+			oc.cmd.SetErr(&bytes.Buffer{})
+			oc.cmd.SetArgs([]string{"--live", "--limit", limit})
+
+			assert.EqualError(t, oc.cmd.Execute(), "--limit must be greater than 0")
+		})
+	}
+}
+
+func TestOverviewCmd_LimitsAlerts(t *testing.T) {
+	stubOverviewGateway(t, newIntegHlthPagedGateway(t, map[string]string{
+		"": integHlthAlertsPage("", integHlthAlertJSON("heins_1", "LEGACY_PAYMENT_METHODS"), integHlthAlertJSON("heins_2", "LEGACY_PAYMENT_METHODS")),
+	}, nil))
+	stubOverviewDefaultAPIVersion(t, "")
+
+	run := func(args ...string) []any {
+		oc := newOverviewCmd()
+		var out bytes.Buffer
+		oc.cmd.SetOut(&out)
+		oc.cmd.SetArgs(append([]string{"--live", "--format", "json"}, args...))
+		require.NoError(t, oc.cmd.Execute())
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+		return got["alerts"].([]any)
+	}
+
+	assert.Len(t, run(), 2, "no --limit returns every alert")
+	assert.Len(t, run("--limit", "1"), 1)
+}
+
 func TestRenderIntegHlthAlerts_PointsToDoctorWhenTopicSet(t *testing.T) {
 	server := newIntegHlthGateway(t, http.StatusOK, integHlthAlertsBody, nil)
 	resp, err := fetchIntegHlthAlerts(context.Background(), gatewayClient(server), 0)

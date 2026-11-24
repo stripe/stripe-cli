@@ -61,7 +61,7 @@ sandbox.`,
 	}
 
 	oc.cmd.Flags().StringVar(&oc.format, "format", "", "Output format: 'json' for the full alert details")
-	oc.cmd.Flags().IntVar(&oc.limit, "limit", 0, "Maximum number of alerts to return")
+	oc.cmd.Flags().IntVar(&oc.limit, "limit", 0, "Maximum number of alerts to return (default: all)")
 	oc.cmd.Flags().BoolVar(&oc.livemode, "live", false, "Show live mode alerts (default: your active context's mode). Requires that you're logged in to live mode — check with 'stripe whoami', switch with 'stripe switch'")
 	oc.cmd.Flags().StringVar(&oc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	oc.cmd.Flags().MarkHidden("api-base") //nolint:errcheck
@@ -73,8 +73,9 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 	if oc.format != "" && oc.format != "json" {
 		return errorcategory.UserInputErrorf("unsupported --format %q (supported: json)", oc.format)
 	}
-	if oc.limit < 0 {
-		return errorcategory.UserInputErrorf("--limit must be a positive number")
+	// Leaving --limit unset returns every alert; an explicit value must be at least 1.
+	if cmd.Flags().Changed("limit") && oc.limit <= 0 {
+		return errorcategory.UserInputErrorf("--limit must be greater than 0")
 	}
 
 	livemode := oc.livemode
