@@ -3,7 +3,9 @@ package agentsetup
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,13 +19,15 @@ const (
 	OpenclawPluginName  = "stripe"
 	OpenclawDisplayName = "OpenClaw"
 
-	openclawRepoDir     = ".openclaw/stripe"
-	openclawListTimeout = 5 * time.Second
+	openclawRepoPlaceholder = "<temporary-directory>/repo"
+	openclawListTimeout     = 5 * time.Second
 )
 
 // OpenclawProvider detects and installs the Stripe plugin for Openclaw.
 type OpenclawProvider struct {
 	ProviderConfig
+	mkdirTemp func(string, string) (string, error)
+	removeAll func(string) error
 }
 
 // NewOpenclawProvider returns a Openclaw setup provider.
@@ -132,46 +136,63 @@ func openclawPluginIsStripe(plugin openclawInstalledPlugin) bool {
 	return strings.EqualFold(plugin.Name, OpenclawPluginName) && strings.EqualFold(plugin.Format, "bundle")
 }
 
-func (p OpenclawProvider) repoPath() (string, error) {
-	home, err := p.Scanner.withDefaults().HomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, openclawRepoDir), nil
-}
-
-// Plan for Openclaw, installing and updating the plugin requires either cloning or pulling the repo beforehand,
-// however installing the plugin after uses the same command `openclaw plugins install`.
+// Plan describes cloning and installing the plugin without allocating a workspace.
 func (p OpenclawProvider) Plan(status Status, force bool) Plan {
-	repoPath, _ := p.repoPath() // The error is already handled in Detect, so we can ignore it here.
+	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", openclawRepoPlaceholder}
+	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", openclawRepoPlaceholder}
+	installOrReinstallcommands := [][]string{gitInstallCommand, installCommand}
 
-	installCommand := []string{p.BinaryName, "plugins", "install", "--force", "--accept-capabilities", repoPath}
-
-	makeTempDirectoryCommand := []string{"mkdir", "-p", repoPath}
-	gitInstallCommand := []string{gitBinaryName, "clone", "--branch", "plugins/agent-plugin", "--depth", "1", "https://github.com/stripe/ai.git", repoPath}
-	removeTempDirectoryCommand := []string{"rm", "-rf", repoPath}
-
-	installOrReinstallCommands := [][]string{makeTempDirectoryCommand, gitInstallCommand, installCommand, removeTempDirectoryCommand}
-
-	return getPlanByStatus(status, force, installOrReinstallCommands, installOrReinstallCommands)
+	return getPlanByStatus(status, force, installOrReinstallcommands, installOrReinstallcommands)
 }
 
-// Apply runs each command in the plan in order. The install step is already
-// the last entry in plan.Commands (see Plan), so there is nothing left to run
-// after this loop.
-func (p OpenclawProvider) Apply(ctx context.Context, _ io.Writer, plan Plan) error {
+// Apply clones and installs in an isolated workspace, then attempts cleanup
+// regardless of the installation result.
+func (p OpenclawProvider) Apply(ctx context.Context, out io.Writer, plan Plan) error {
 	if plan.Action == ActionNone {
 		return nil
 	}
 	if len(plan.Commands) == 0 {
 		return errorcategory.Errorf(errorcategory.Internal, "missing command for %s action", plan.Action)
 	}
-
+	if out == nil {
+		out = io.Discard
+	}
+	mkdirTemp := p.mkdirTemp
+	if mkdirTemp == nil {
+		mkdirTemp = os.MkdirTemp
+	}
+	home, err := p.Scanner.withDefaults().HomeDir()
+	if err != nil {
+		return errorcategory.Errorf(errorcategory.Internal, "resolving home directory for OpenClaw plugin workspace: %w", err)
+	}
+	workspace, err := mkdirTemp(filepath.Join(home, ".openclaw"), "stripe-*")
+	if err != nil {
+		return errorcategory.Errorf(errorcategory.Internal, "creating OpenClaw plugin workspace: %w", err)
+	}
+	repoPath := filepath.Join(workspace, "repo")
 	for _, command := range plan.Commands {
+		command = append([]string(nil), command...)
+		for i, arg := range command {
+			if arg == openclawRepoPlaceholder {
+				command[i] = repoPath
+			}
+		}
 		if _, err := p.RunCommand(ctx, command[0], command[1:]...); err != nil {
-			return err
+			p.cleanup(out, workspace)
+			return errorcategory.Errorf(errorcategory.Internal, "OpenClaw plugin %s step failed: %w", command[0], err)
 		}
 	}
 
+	p.cleanup(out, workspace)
 	return nil
+}
+
+func (p OpenclawProvider) cleanup(out io.Writer, workspace string) {
+	removeAll := p.removeAll
+	if removeAll == nil {
+		removeAll = os.RemoveAll
+	}
+	if err := removeAll(workspace); err != nil {
+		fmt.Fprintf(out, "Warning: OpenClaw plugin cleanup failed; remove %q manually: %v\n", workspace, err)
+	}
 }
