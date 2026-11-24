@@ -24,6 +24,10 @@ const TestMachineUUID = "machine-uuid-for-tests"
 type TestConfig struct {
 	config.Config
 	MachineUUID string
+	// ConfigFolder overrides the config folder. Tests that run against the real
+	// filesystem must set it to a user-owned directory to pass the plugin
+	// storage trust check; the default "/" only suits an in-memory filesystem.
+	ConfigFolder string
 }
 
 type FailingWriteConfig struct {
@@ -53,6 +57,10 @@ func (c *FailingWriteConfig) WriteConfigField(field string, value interface{}) e
 
 // GetConfigFolder returns the absolute path for the TestConfig
 func (c *TestConfig) GetConfigFolder(xdgPath string) string {
+	if c.ConfigFolder != "" {
+		return c.ConfigFolder
+	}
+
 	return "/"
 }
 

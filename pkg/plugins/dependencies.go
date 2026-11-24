@@ -119,10 +119,12 @@ func ensurePluginAtLeast(ctx context.Context, cfg config.IConfig, fs afero.Fs, p
 		return nil, "", nil
 	}
 
-	// Every error path inside the lookup already reports "", and unreadable is
-	// handled as absent: the ways that can be wrong all end in installing a
-	// release that was already there.
-	installedVersion, _ := (&Plugin{Shortname: pluginName}).lookUpInstalledVersion(cfg, fs)
+	// Ordinary lookup failures still count as absent. A storage trust failure
+	// must not turn into an implicit install into that same unsafe tree.
+	installedVersion, lookupErr := (&Plugin{Shortname: pluginName}).lookUpInstalledVersion(cfg, fs)
+	if IsUnsafePluginStorage(lookupErr) {
+		return nil, "", lookupErr
+	}
 	if pluginVersionSatisfiesMinimum(installedVersion, minimum) {
 		return nil, installedVersion, nil
 	}

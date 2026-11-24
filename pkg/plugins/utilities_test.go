@@ -39,6 +39,64 @@ func (c *CustomTestConfig) GetConfigFolder(xdgPath string) string {
 	return c.customConfigPath
 }
 
+func TestUnsafePluginMetadataDoesNotFallBack(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX ownership and mode checks")
+	}
+	for _, legacy := range []bool{false, true} {
+		t.Run(fmt.Sprintf("legacy=%v", legacy), func(t *testing.T) {
+			cfg := &CustomTestConfig{customConfigPath: "/config"}
+			fs := afero.NewMemMapFs()
+			plugin := Plugin{Shortname: "sample", Binary: "sample", Releases: []Release{{Version: "1.0.0", OS: runtime.GOOS, Arch: runtime.GOARCH}}}
+			require.NoError(t, writeLocalPluginMetadata(cfg, fs, plugin))
+			metadata, err := getLocalPluginMetadataPath(cfg, "sample")
+			require.NoError(t, err)
+			body, err := afero.ReadFile(fs, metadata)
+			require.NoError(t, err)
+			cache := getCachedPluginManifestPath(cfg)
+			require.NoError(t, afero.WriteFile(fs, cache, body, 0644))
+			unsafe := metadata
+			if legacy {
+				require.NoError(t, fs.Remove(metadata))
+				unsafe = cache
+			}
+			require.NoError(t, fs.Chmod(unsafe, 0666))
+			_, err = LookUpPlugin(context.Background(), cfg, fs, "sample")
+			require.True(t, IsUnsafePluginStorage(err), "%v", err)
+			_, err = resolveCachedPluginForInstall(cfg, fs, "sample", "1.0.0")
+			require.True(t, IsUnsafePluginStorage(err), "%v", err)
+			_, err = resolveCachedPluginForUpgrade(cfg, fs, "sample")
+			require.True(t, IsUnsafePluginStorage(err), "%v", err)
+			cfg.InstalledPlugins = []string{"sample"}
+			require.NoError(t, fs.MkdirAll("/config/plugins/sample/1.0.0", 0755))
+			err = BackfillMissingInstalledPluginMetadata(context.Background(), cfg, fs, "http://127.0.0.1:1", "http://127.0.0.1:1")
+			require.True(t, IsUnsafePluginStorage(err), "%v", err)
+			_, err = ResolvePluginForInstall(context.Background(), cfg, fs, "sample", "1.0.0", "http://127.0.0.1:1", "http://127.0.0.1:1")
+			require.True(t, IsUnsafePluginStorage(err), "%v", err)
+		})
+	}
+}
+
+func TestProtectedPluginCacheOffline(t *testing.T) {
+	cfg := &CustomTestConfig{customConfigPath: "/config"}
+	fs := afero.NewMemMapFs()
+	plugin := Plugin{Shortname: "sample", Binary: "sample", Releases: []Release{{Version: "1.0.0", OS: runtime.GOOS, Arch: runtime.GOARCH}}}
+	require.NoError(t, writeLocalPluginMetadata(cfg, fs, plugin))
+	metadata, err := getLocalPluginMetadataPath(cfg, "sample")
+	require.NoError(t, err)
+	body, err := afero.ReadFile(fs, metadata)
+	require.NoError(t, err)
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(cfg), body, 0644))
+	for _, legacy := range []bool{false, true} {
+		if legacy {
+			require.NoError(t, fs.Remove(metadata))
+		}
+		resolved, err := resolveCachedPluginForUpgrade(cfg, fs, "sample")
+		require.NoError(t, err)
+		require.Equal(t, "1.0.0", resolved.LookUpLatestVersion())
+	}
+}
+
 func TestListPluginsUsesAuthenticatedEndpoint(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
@@ -126,7 +184,7 @@ func TestLookUpPluginFallsBackToCachedManifest(t *testing.T) {
 
 	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
 	require.NoError(t, err)
-	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, 0644))
 
 	plugin, err := LookUpPlugin(context.Background(), config, fs, "appA")
 	require.NoError(t, err)
@@ -700,7 +758,7 @@ func TestResolvePluginForInstallPrefersFresherCachedManifestWhenEndpointFails(t 
     Version = "1.1.0"
     Sum = "def456"
 `, runtime.GOARCH, runtime.GOOS, runtime.GOARCH, runtime.GOOS))
-	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, 0644))
 
 	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
@@ -922,7 +980,7 @@ func TestResolvePluginForUpgradePrefersFresherCachedManifestWhenEndpointFails(t 
 
 	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
 	require.NoError(t, err)
-	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, 0644))
 
 	failingServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
@@ -1017,7 +1075,7 @@ func TestBackfillMissingInstalledPluginMetadataUsesCachedManifestBeforeNetwork(t
 
 	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
 	require.NoError(t, err)
-	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, os.ModePerm))
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), manifestContent, 0644))
 
 	var requestCount int
 	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -1056,7 +1114,7 @@ func TestBackfillMissingInstalledPluginMetadataSkipsStaleCachedManifest(t *testi
     Version = "9.9.9"
     Sum = "abc123"
 `, runtime.GOARCH, runtime.GOOS))
-	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), staleManifest, os.ModePerm))
+	require.NoError(t, afero.WriteFile(fs, getCachedPluginManifestPath(config), staleManifest, 0644))
 
 	manifestContent, err := os.ReadFile("./test_artifacts/plugins.toml")
 	require.NoError(t, err)

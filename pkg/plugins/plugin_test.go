@@ -38,6 +38,66 @@ func (fs *failRemoveAllFs) RemoveAll(name string) error {
 	return fs.Fs.RemoveAll(name)
 }
 
+type failPluginWalkFs struct {
+	afero.Fs
+	path string
+	err  error
+}
+
+func (fs *failPluginWalkFs) Open(name string) (afero.File, error) {
+	if filepath.Clean(name) == filepath.Clean(fs.path) {
+		return nil, fs.err
+	}
+	return fs.Fs.Open(name)
+}
+
+func TestInstallCleanupErrorsAndObsoleteVersions(t *testing.T) {
+	for _, failure := range []string{"remove", "walk", "none"} {
+		t.Run(failure, func(t *testing.T) {
+			base := afero.NewMemMapFs()
+			cfg := &TestConfig{}
+			payload := []byte("release binary")
+			sum := sha256.Sum256(payload)
+			plugin := Plugin{Shortname: "sample", Binary: "sample", Releases: []Release{{Version: "1.0.0", OS: runtime.GOOS, Arch: runtime.GOARCH, Sum: fmt.Sprintf("%x", sum)}}}
+			binary := plugin.Binary + GetBinaryExtension()
+			for _, version := range []string{"0.9.0", localDevelopmentVersion} {
+				require.NoError(t, base.MkdirAll(filepath.Join("/plugins/sample", version), 0755))
+				require.NoError(t, afero.WriteFile(base, filepath.Join("/plugins/sample", version, binary), []byte("obsolete"), 0755))
+			}
+			cleanupErr := errors.New("cleanup failed")
+			fs := base
+			switch failure {
+			case "remove":
+				fs = &failRemoveAllFs{Fs: base, path: "/plugins/sample/0.9.0", err: cleanupErr}
+			case "walk":
+				fs = &failPluginWalkFs{Fs: base, path: "/plugins/sample", err: cleanupErr}
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write(payload)
+			}))
+			defer server.Close()
+			resolved := &ResolvedPluginVersion{Plugin: &plugin, Version: "1.0.0", BinaryURL: server.URL}
+			err := resolved.Install(context.Background(), cfg, fs, server.URL, server.URL, HookBaseURLs{})
+			if failure != "none" {
+				require.ErrorIs(t, err, cleanupErr)
+			} else {
+				require.NoError(t, err)
+				for _, version := range []string{"0.9.0", localDevelopmentVersion} {
+					exists, err := afero.Exists(base, filepath.Join("/plugins/sample", version))
+					require.NoError(t, err)
+					require.False(t, exists)
+				}
+				version, err := plugin.lookUpInstalledVersion(cfg, base)
+				require.NoError(t, err)
+				require.Equal(t, "1.0.0", version)
+			}
+			body, err := afero.ReadFile(base, filepath.Join("/plugins/sample/1.0.0", binary))
+			require.NoError(t, err)
+			require.Equal(t, payload, body)
+		})
+	}
+}
+
 func TestLookUpLatestVersion(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}

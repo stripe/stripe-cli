@@ -51,7 +51,7 @@ var autoUpgradeResolveTimeout = 3 * time.Second
 // two plugins at the same instant.
 //
 // What does deserve locking is the install itself, which is a separate and older
-// problem: cleanUpPluginPath deletes every version directory but the one it just
+// problem: CleanupOtherVersions deletes every version directory but the one it just
 // wrote, so any two processes installing at once can pull a binary out from under a
 // third, whether or not an auto-upgrade check is what set them off.
 var autoUpgradeCheckInterval = 4 * time.Hour
@@ -105,6 +105,9 @@ func removeAutoUpgradeCheckStamp(cfg config.IConfig, fs afero.Fs, pluginName str
 		return err
 	}
 
+	if err := checkPluginStorage(cfg, fs, path); err != nil {
+		return err
+	}
 	if err := fs.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -125,6 +128,9 @@ func autoUpgradeCheckDue(cfg config.IConfig, fs afero.Fs, pluginName string) boo
 		return true
 	}
 
+	if err := checkPluginStorage(cfg, fs, path); err != nil {
+		return true
+	}
 	body, err := afero.ReadFile(fs, path)
 	if err != nil {
 		return true
@@ -157,10 +163,16 @@ func recordAutoUpgradeCheck(cfg config.IConfig, fs afero.Fs, pluginName string) 
 		return err
 	}
 
+	if err := checkPluginStorage(cfg, fs, path); err != nil {
+		return err
+	}
 	if err := fs.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
 
+	if err := checkPluginStorage(cfg, fs, path); err != nil {
+		return err
+	}
 	return afero.WriteFile(fs, path, []byte(autoUpgradeNow().UTC().Format(time.RFC3339)+"\n"), 0644)
 }
 

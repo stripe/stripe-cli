@@ -10,10 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -22,6 +24,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resources"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
+	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
@@ -43,6 +46,32 @@ func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, out
 	root.SetArgs([]string{})
 
 	return c, buf.String(), err
+}
+
+func TestUnsafePluginStoragePreservesBuiltins(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX ownership and mode checks")
+	}
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("STRIPE_PLUGINS_PATH", "")
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	cfg := &config.Config{}
+	viper.Set("installed_plugins", []string{"sample", "builtin"})
+	fs := afero.NewMemMapFs()
+	configDir := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	require.NoError(t, fs.MkdirAll(configDir, 0755))
+	require.NoError(t, fs.Chmod(configDir, 0777))
+	root := &cobra.Command{Use: "stripe", Annotations: map[string]string{}}
+	called := false
+	root.AddCommand(&cobra.Command{Use: "builtin", Run: func(cmd *cobra.Command, args []string) { called = true }})
+	installed := registerInstalledPlugins(root, cfg, fs)
+	require.True(t, installed["sample"])
+	_, err := executeCommand(root, "builtin")
+	require.NoError(t, err)
+	require.True(t, called)
+	_, err = executeCommand(root, "sample", "--some-plugin-flag")
+	require.True(t, plugins.IsUnsafePluginStorage(err), "%v", err)
 }
 
 func TestGetPathNoXDG(t *testing.T) {

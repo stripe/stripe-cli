@@ -447,6 +447,18 @@ func registerInstalledPlugins(root *cobra.Command, cfg *config.Config, fs afero.
 	for _, pluginName := range pluginNames {
 		plugin, err := plugins.LookUpPlugin(context.Background(), cfg, fs, pluginName)
 		if err != nil {
+			if plugins.IsUnsafePluginStorage(err) && plugins.ValidatePluginShortname(pluginName) == nil && strings.IndexFunc(pluginName, unicode.IsSpace) < 0 {
+				// Keep built-ins available, but do not route a known installed
+				// plugin through first-use installation after a trust failure.
+				if _, exists := cmdutil.FindSubCmd(root, pluginName); !exists {
+					storageErr := err
+					root.AddCommand(&cobra.Command{
+						Use: pluginName, DisableFlagParsing: true,
+						RunE: func(cmd *cobra.Command, args []string) error { return storageErr },
+					})
+				}
+				installedPluginSet[pluginName] = true
+			}
 			continue
 		}
 		installedPluginSet[pluginName] = true
