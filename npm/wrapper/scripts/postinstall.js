@@ -4,6 +4,7 @@ const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const resolvePlatform = require('../resolve-platform');
 
 const PKG       = require('../package.json');
 const PLATFORMS = require('../platforms.json');
@@ -19,10 +20,9 @@ if (!platform) {
 }
 
 // If a platform package was already installed, nothing to do.
-try {
-  require.resolve(`${platform.pkg}/package.json`);
+if (resolvePlatform(platform)) {
   process.exit(0);
-} catch {}
+}
 
 const archive      = platform.archiveTemplate.replace('${VERSION}', VERSION);
 const checksumFile = platform.checksums;

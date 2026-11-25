@@ -2,6 +2,8 @@
 'use strict';
 const { spawnSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+const resolvePlatform = require('../resolve-platform');
 
 const PLATFORMS = require('../platforms.json');
 
@@ -12,12 +14,11 @@ if (!platform) {
   process.exit(1);
 }
 
-let binPath;
-try {
-  const pkgDir = path.dirname(require.resolve(`${platform.pkg}/package.json`));
-  binPath = path.join(pkgDir, 'bin', platform.bin);
-} catch {
-  binPath = path.join(__dirname, '..', 'vendor', 'bin', platform.bin);
+const vendorPath = path.join(__dirname, '..', 'vendor', 'bin', platform.bin);
+const binPath = fs.existsSync(vendorPath) ? vendorPath : resolvePlatform(platform);
+if (!binPath) {
+  console.error('@stripe/cli: binary not found. Reinstall @stripe/cli to download it.');
+  process.exit(1);
 }
 
 // Detect invocation method using npm-injected env vars:
