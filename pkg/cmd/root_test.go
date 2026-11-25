@@ -92,11 +92,12 @@ func TestPluginUpgradeRouting(t *testing.T) {
 						}
 					}
 					output, err := executeCommand(root, append(append([]string{}, path...), test.args...)...)
-					if test.runError != nil {
+					switch {
+					case test.runError != nil:
 						require.ErrorIs(t, err, test.runError)
-					} else if test.wantError {
+					case test.wantError:
 						require.ErrorContains(t, err, "requires exactly 1 positional argument")
-					} else {
+					default:
 						require.NoError(t, err)
 					}
 					require.Equal(t, test.wantCalls, calls)
