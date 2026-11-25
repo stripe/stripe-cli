@@ -55,7 +55,7 @@ func fetchIntegHlthAlerts(ctx context.Context, client genqlient.Client, limit in
 	for {
 		resp, err := graphql.ListIntegHlthAlerts(ctx, client, integHlthAlertStatuses, 0, page, "", "")
 		if err != nil {
-			return nil, overviewGraphQLError(err, "integration health alerts")
+			return nil, overviewGraphQLError(err)
 		}
 
 		list := resp.V2ListIntegHlthAlerts

@@ -69,7 +69,7 @@ func TestOverviewCmd_PrintsDefaultAPIVersionWhenAlertsFail(t *testing.T) {
 	oc.cmd.SetArgs([]string{"--live"})
 	err := oc.cmd.Execute()
 
-	require.ErrorContains(t, err, "integration health alerts aren't available in test mode")
+	require.EqualError(t, err, overviewUnavailableMessage)
 	assert.Equal(t, "Your account's default API version is 2024-06-20.\n\n", out.String())
 }
 

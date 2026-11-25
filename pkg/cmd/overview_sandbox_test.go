@@ -187,7 +187,7 @@ func TestOverviewCmd_ForceLiveParentLookupFailure(t *testing.T) {
 
 	_, err := runOverview(t, "--force-live")
 
-	require.EqualError(t, err, "could not find the live account for your sandbox; try again")
+	require.EqualError(t, err, "We couldn't find the live account for your sandbox right now. Please try again later.")
 }
 
 func TestOverviewCmd_ForceLiveInLiveAccountIsANoOp(t *testing.T) {

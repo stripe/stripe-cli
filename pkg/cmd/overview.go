@@ -12,7 +12,6 @@ import (
 	genqlient "github.com/Khan/genqlient/graphql"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -23,11 +22,22 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-const v2TestmodeUnsupportedCode = "v2_api_not_supported_in_testmode"
-
 var (
 	newOverviewGraphQLClient   = graphql.NewClient
 	resolveOverviewCredentials = activeOverviewCredentials
+)
+
+// Error messages `stripe overview` shows. Errors the reader can't act on are
+// shown as overviewUnavailableMessage, with the cause logged at debug level.
+const (
+	// overviewUnsupportedFormatMessage takes the --format value.
+	overviewUnsupportedFormatMessage        = "unsupported --format %q (supported: json)"
+	overviewInvalidLimitMessage             = "--limit must be greater than 0"
+	overviewLiveFromSandboxMessage          = "You're in a sandbox. Run `stripe overview --force-live` to see insights for your live account."
+	overviewLiveAccountNotAuthorizedMessage = "Your live account isn't authorized. Run `stripe login` to authorize it, then run `stripe overview --force-live`."
+	overviewLiveAccountLookupFailedMessage  = "We couldn't find the live account for your sandbox right now. Please try again later."
+	overviewCredentialsRejectedMessage      = "Your credentials were rejected. Run `stripe login` to log in again."
+	overviewUnavailableMessage              = "We're having trouble loading your integration health insights right now. Please try again later."
 )
 
 // overviewJSON is the --format json output. It carries what the text output
@@ -131,11 +141,11 @@ Uses the mode of your active account context. If you're in a sandbox, run
 
 func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 	if oc.format != "" && oc.format != "json" {
-		return errorcategory.UserInputErrorf("unsupported --format %q (supported: json)", oc.format)
+		return errorcategory.UserInputErrorf(overviewUnsupportedFormatMessage, oc.format)
 	}
 	// Leaving --limit unset returns every alert; an explicit value must be at least 1.
 	if cmd.Flags().Changed("limit") && oc.limit <= 0 {
-		return errorcategory.UserInputErrorf("--limit must be greater than 0")
+		return errorcategory.New(errorcategory.UserInput, overviewInvalidLimitMessage)
 	}
 
 	profile := Config.GetProfile()
@@ -199,7 +209,7 @@ func (oc *overviewCmd) resolveOverviewTarget(ctx context.Context, profile *confi
 	if err != nil {
 		var mismatch *config.ActiveContextLivemodeMismatchError
 		if errors.As(err, &mismatch) && !mismatch.ActiveLivemode {
-			return overviewTarget{}, errorcategory.UserInputErrorf("You're in a sandbox. Run `stripe overview --force-live` to see insights for your live account.")
+			return overviewTarget{}, errorcategory.New(errorcategory.UserInput, overviewLiveFromSandboxMessage)
 		}
 		return overviewTarget{}, err
 	}
@@ -220,10 +230,10 @@ func (oc *overviewCmd) resolveOverviewTarget(ctx context.Context, profile *confi
 	}
 
 	if !ok {
-		return overviewTarget{}, errorcategory.Errorf(errorcategory.API, "could not find the live account for your sandbox; try again")
+		return overviewTarget{}, errorcategory.New(errorcategory.API, overviewLiveAccountLookupFailedMessage)
 	}
 	if parentID == "" {
-		return overviewTarget{}, errorcategory.UserInputErrorf("Your live account isn't authorized. Run `stripe login` to authorize it, then run `stripe overview --force-live`.")
+		return overviewTarget{}, errorcategory.New(errorcategory.UserInput, overviewLiveAccountNotAuthorizedMessage)
 	}
 	live := stripe.NewOAKCredentials(creds.Token, parentID, true)
 	return overviewTarget{creds: live, forcedLive: true}, nil
@@ -243,27 +253,16 @@ func nonEmpty(s string) *string {
 	return &s
 }
 
-const overviewUnavailableMessage = "We're having trouble loading your integration health insights right now. Please try again later."
-
 func overviewUnavailableError(err error) error {
 	log.Debugf("stripe overview: %v", err)
 	return errorcategory.New(errorcategory.API, overviewUnavailableMessage)
 }
 
-func overviewGraphQLError(err error, resource string) error {
+func overviewGraphQLError(err error) error {
 	var httpErr *genqlient.HTTPError
 	if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusUnauthorized {
 		log.Debugf("stripe overview: %v", err)
-		return errorcategory.Errorf(errorcategory.Auth, "Your credentials were rejected. Run `stripe login` to log in again.")
-	}
-
-	var gqlErrs gqlerror.List
-	if errors.As(err, &gqlErrs) {
-		for _, e := range gqlErrs {
-			if code, _ := e.Extensions["code"].(string); code == v2TestmodeUnsupportedCode {
-				return errorcategory.UserInputErrorf("%s aren't available in test mode", resource)
-			}
-		}
+		return errorcategory.New(errorcategory.Auth, overviewCredentialsRejectedMessage)
 	}
 
 	return overviewUnavailableError(err)

@@ -249,15 +249,12 @@ func TestFetchIntegHlthAlerts_NonOKStatusShowsFriendlyMessage(t *testing.T) {
 	}
 }
 
-func TestFetchIntegHlthAlerts_TestmodeUnsupportedSuggestsSwitch(t *testing.T) {
+func TestFetchIntegHlthAlerts_TestmodeUnsupportedShowsFriendlyMessage(t *testing.T) {
 	body := `{"data": null, "errors": [{"message": "This API is not included in the public preview of API v2 support in test mode.", "extensions": {"code": "v2_api_not_supported_in_testmode"}}]}`
 	server := newIntegHlthGateway(t, http.StatusOK, body, nil)
 
 	_, err := fetchIntegHlthAlerts(context.Background(), gatewayClient(server), 0)
-	require.Error(t, err)
-	category, ok := errorcategory.Get(err)
-	require.True(t, ok)
-	assert.Equal(t, errorcategory.UserInput, category)
+	require.EqualError(t, err, overviewUnavailableMessage)
 }
 
 func TestFetchIntegHlthAlerts_HidesGraphQLErrorMessage(t *testing.T) {
