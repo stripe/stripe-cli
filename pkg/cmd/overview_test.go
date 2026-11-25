@@ -158,7 +158,7 @@ func TestOverviewCmd_RejectsNonPositiveLimit(t *testing.T) {
 
 func TestOverviewCmd_LimitsAlerts(t *testing.T) {
 	stubOverviewGateway(t, newIntegHlthPagedGateway(t, map[string]string{
-		"": integHlthAlertsPage("", integHlthAlertJSON("heins_1", "LEGACY_PAYMENT_METHODS"), integHlthAlertJSON("heins_2", "LEGACY_PAYMENT_METHODS")),
+		"": integHlthAlertsPage("", integHlthDPMAlertJSON("heins_1"), integHlthDPMAlertJSON("heins_2")),
 	}, nil))
 	stubOverviewDefaultAPIVersion(t, "")
 
@@ -190,13 +190,25 @@ func TestRenderIntegHlthAlerts_PointsToStripeDocsForDocsStripeComDoctorDoc(t *te
 	assert.Equal(t, "We recommend this action to keep your integration healthy:\n1. Use dynamic payment methods. Run `stripe docs /payments/payment-methods/dynamic-payment-methods` and follow the guide to make this change.\n", buf.String())
 }
 
-func TestRenderIntegHlthAlerts_RendersNonDocsDoctorDocAsURL(t *testing.T) {
-	doc := "https://stripe.com/guides/dynamic-payment-methods"
-	topic := "dpm"
-	var buf bytes.Buffer
-	renderIntegHlthAlerts(&buf, []integHlthAlert{{HealthInsightID: "heins_123", PredicateName: "LEGACY_PAYMENT_METHODS", DoctorDoc: &doc, DoctorTopic: &topic}})
+func TestActionableIntegHlthAlerts_KeepsAlertsWithATitleAndStripeDocsFix(t *testing.T) {
+	docsPage := "https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods"
+	otherPage := "https://stripe.com/guides/dynamic-payment-methods"
+	summary := "Your integration pins payment_method_types"
+	withTitle := &integHlthAlertInsight{RecommendedAction: &integHlthRecommendedAction{Title: "Use dynamic payment methods"}}
+	alerts := []integHlthAlert{
+		{HealthInsightID: "heins_title", HealthInsight: withTitle, DoctorDoc: &docsPage},
+		{HealthInsightID: "heins_summary", HealthInsight: &integHlthAlertInsight{Summary: &summary}, DoctorDoc: &docsPage},
+		{HealthInsightID: "heins_no_title", PredicateName: "LEGACY_PAYMENT_METHODS", DoctorDoc: &docsPage},
+		{HealthInsightID: "heins_other_url", HealthInsight: withTitle, DoctorDoc: &otherPage},
+		{HealthInsightID: "heins_no_doc", HealthInsight: withTitle},
+	}
 
-	assert.Equal(t, "We recommend this action to keep your integration healthy:\n1. LEGACY_PAYMENT_METHODS. Follow the guide at https://stripe.com/guides/dynamic-payment-methods to make this change.\n", buf.String())
+	var ids []string
+	for _, a := range actionableIntegHlthAlerts(alerts) {
+		ids = append(ids, a.HealthInsightID)
+	}
+	assert.Equal(t, []string{"heins_title", "heins_summary"}, ids)
+	assert.NotNil(t, actionableIntegHlthAlerts(nil), "an empty list still encodes as [] in JSON")
 }
 
 func TestStripeDocsPath(t *testing.T) {
@@ -214,16 +226,34 @@ func TestStripeDocsPath(t *testing.T) {
 	}
 }
 
-func TestRenderIntegHlthAlerts_PointsToHealthWithoutDoctorDoc(t *testing.T) {
+func TestRenderIntegHlthAlerts_UsesActionTitleOrSummary(t *testing.T) {
 	title := "Add the Stripe-Version header to your requests"
+	summary := "Your requests don't set an API version."
+	doc := "https://docs.stripe.com/upgrades"
 	var buf bytes.Buffer
 	renderIntegHlthAlerts(&buf, []integHlthAlert{
-		{HealthInsightID: "heins_123", HealthInsight: &integHlthAlertInsight{RecommendedAction: &integHlthRecommendedAction{Title: title}}},
-		{HealthInsightID: "heins_456", PredicateName: "SOME_PREDICATE"},
+		{HealthInsightID: "heins_123", DoctorDoc: &doc, HealthInsight: &integHlthAlertInsight{RecommendedAction: &integHlthRecommendedAction{Title: title}, Summary: &summary}},
+		{HealthInsightID: "heins_456", DoctorDoc: &doc, HealthInsight: &integHlthAlertInsight{Summary: &summary}},
 	})
 
-	assert.Equal(t, "We recommend these 2 actions to keep your integration healthy:\n1. Add the Stripe-Version header to your requests. Run `stripe health heins_123` for more information.\n"+
-		"2. SOME_PREDICATE. Run `stripe health heins_456` for more information.\n", buf.String())
+	assert.Equal(t, "We recommend these 2 actions to keep your integration healthy:\n1. Add the Stripe-Version header to your requests. Run `stripe docs /upgrades` and follow the guide to make this change.\n"+
+		"2. Your requests don't set an API version. Run `stripe docs /upgrades` and follow the guide to make this change.\n", buf.String())
+}
+
+func TestOverviewCmd_ShowsEmptyStateWhenNoAlertHasAFix(t *testing.T) {
+	// The alert has no doctor topic, so there's no doc to point to.
+	stubOverviewGateway(t, newIntegHlthPagedGateway(t, map[string]string{
+		"": integHlthAlertsPage("", integHlthAlertJSON("heins_1", "LEGACY_PAYMENT_METHODS")),
+	}, nil))
+	stubOverviewDefaultAPIVersion(t, "")
+
+	oc := newOverviewCmd()
+	var out bytes.Buffer
+	oc.cmd.SetOut(&out)
+	oc.cmd.SetArgs([]string{"--live"})
+	require.NoError(t, oc.cmd.Execute())
+
+	assert.Equal(t, "There are no recommended actions for your integration right now.\n", out.String())
 }
 
 func TestRenderIntegHlthAlerts_Empty(t *testing.T) {

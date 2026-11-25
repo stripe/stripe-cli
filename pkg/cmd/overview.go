@@ -103,6 +103,7 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 	resp, err := fetchIntegHlthAlerts(cmd.Context(), client, oc.limit)
 	if err == nil {
 		addIntegHlthAlertDoctorDocs(cmd.Context(), client, resp.Alerts)
+		resp.Alerts = actionableIntegHlthAlerts(resp.Alerts)
 	}
 	version := <-versionCh
 
@@ -178,9 +179,9 @@ func renderIntegHlthAlerts(w io.Writer, alerts []integHlthAlert) {
 }
 
 // integHlthAlertActionTitle returns the alert's recommended action title,
-// falling back to its summary and then its predicate name.
+// falling back to its summary, or "" when it has neither.
 func integHlthAlertActionTitle(a integHlthAlert) string {
-	title := a.PredicateName
+	var title string
 	if insight := a.HealthInsight; insight != nil {
 		switch {
 		case insight.RecommendedAction != nil && insight.RecommendedAction.Title != "":
@@ -192,21 +193,41 @@ func integHlthAlertActionTitle(a integHlthAlert) string {
 	return strings.TrimRight(strings.TrimSpace(title), ".")
 }
 
-// integHlthAlertNextStep tells the reader how to act on an alert: follow its
-// doctor doc when it has one (as a `stripe docs` command for docs.stripe.com
-// pages), otherwise look up the alert itself with `stripe health`.
+// actionableIntegHlthAlerts keeps the alerts that `stripe overview` can
+// describe and point to a fix for: those with a recommended action title or
+// summary, and a doctor doc on docs.stripe.com, which `stripe docs` opens.
+// Other alerts are left out.
+func actionableIntegHlthAlerts(alerts []integHlthAlert) []integHlthAlert {
+	actionable := make([]integHlthAlert, 0, len(alerts))
+	for _, a := range alerts {
+		if integHlthAlertActionTitle(a) == "" {
+			continue
+		}
+		if _, ok := integHlthAlertDocsPath(a); !ok {
+			continue
+		}
+		actionable = append(actionable, a)
+	}
+	return actionable
+}
+
+// integHlthAlertDocsPath returns the `stripe docs` path for an alert's doctor
+// doc, if it has one on docs.stripe.com.
+func integHlthAlertDocsPath(a integHlthAlert) (string, bool) {
+	if a.DoctorDoc == nil {
+		return "", false
+	}
+	return stripeDocsPath(*a.DoctorDoc)
+}
+
+// integHlthAlertNextStep tells the reader how to act on an actionable alert.
 func integHlthAlertNextStep(a integHlthAlert) string {
 	// TODO: point to `stripe doctor <topic>` once the command exists.
 	// if a.DoctorTopic != nil && *a.DoctorTopic != "" {
 	// 	return "Run " + ansi.Bold("`stripe doctor "+*a.DoctorTopic+"`") + " and follow its steps to make this change."
 	// }
-	if a.DoctorDoc != nil && *a.DoctorDoc != "" {
-		if path, ok := stripeDocsPath(*a.DoctorDoc); ok {
-			return "Run " + ansi.Bold("`stripe docs "+path+"`") + " and follow the guide to make this change."
-		}
-		return "Follow the guide at " + ansi.Bold(*a.DoctorDoc) + " to make this change."
-	}
-	return "Run " + ansi.Bold("`stripe health "+a.HealthInsightID+"`") + " for more information."
+	path, _ := integHlthAlertDocsPath(a)
+	return "Run " + ansi.Bold("`stripe docs "+path+"`") + " and follow the guide to make this change."
 }
 
 // stripeDocsPath returns the path of a docs.stripe.com URL, which `stripe

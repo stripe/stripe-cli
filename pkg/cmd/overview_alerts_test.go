@@ -110,6 +110,11 @@ func integHlthAlertJSON(id, predicateName string) string {
 	return `{"health_insight_id": "` + id + `", "predicate_name": "` + predicateName + `", "status": "open"}`
 }
 
+func integHlthDPMAlertJSON(id string) string {
+	return `{"health_insight_id": "` + id + `", "predicate_name": "LEGACY_PAYMENT_METHODS", "status": "open", "doctor_topic": "dpm", ` +
+		`"health_insight": {"recommended_action": {"title": "Use dynamic payment methods.", "description": "Remove payment_method_types."}}}`
+}
+
 func gatewayClient(server *httptest.Server) genqlient.Client {
 	return genqlient.NewClient(server.URL, server.Client())
 }
