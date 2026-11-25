@@ -45,6 +45,9 @@ type Options struct {
 	Profile *config.Profile
 	// Livemode selects live or test mode credentials.
 	Livemode bool
+	// Credentials overrides which account and mode requests are sent for.
+	// For example the live account that owns the active sandbox.
+	Credentials *stripe.Credentials
 	// APIBaseURL is the Stripe API base URL used to look up the workspace for
 	// OAuth credentials. Defaults to stripe.DefaultAPIBaseURL.
 	APIBaseURL string
@@ -85,11 +88,17 @@ func NewClient(ctx context.Context, opts Options) (genqlient.Client, error) {
 		opts.Transport = http.DefaultTransport
 	}
 
-	creds, err := opts.Profile.ResolveCredentials(opts.Livemode)
-	if err != nil {
-		return nil, err
+	var creds stripe.Credentials
+	if opts.Credentials != nil {
+		creds = *opts.Credentials
+	} else {
+		var err error
+		creds, err = opts.Profile.ResolveCredentials(opts.Livemode)
+		if err != nil {
+			return nil, err
+		}
 	}
-	creds, err = withWorkspaceContext(ctx, opts, creds)
+	creds, err := withWorkspaceContext(ctx, opts, creds)
 	if err != nil {
 		return nil, err
 	}

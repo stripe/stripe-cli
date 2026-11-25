@@ -256,7 +256,6 @@ func TestFetchIntegHlthAlerts_TestmodeUnsupportedSuggestsSwitch(t *testing.T) {
 	category, ok := errorcategory.Get(err)
 	require.True(t, ok)
 	assert.Equal(t, errorcategory.UserInput, category)
-	assert.Contains(t, err.Error(), "stripe switch --live")
 }
 
 func TestFetchIntegHlthAlerts_SurfacesGraphQLErrorMessage(t *testing.T) {

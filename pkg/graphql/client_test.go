@@ -81,6 +81,25 @@ func TestNewClientUsesStripeVersionOverride(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestNewClientUsesExplicitCredentials(t *testing.T) {
+	ts := newGatewayServer(t, func(r *http.Request) {
+		assert.Equal(t, "Bearer sk_live_explicit", r.Header.Get("Authorization"))
+	})
+
+	creds := stripe.NewAPIKeyCredentials("sk_live_explicit")
+	client, err := NewClient(context.Background(), Options{
+		// The profile's own key must not be used when Credentials is set.
+		Profile:     &config.Profile{APIKey: testAPIKey},
+		Credentials: &creds,
+		Host:        strings.TrimPrefix(ts.URL, "https://"),
+		Transport:   ts.Client().Transport,
+	})
+	require.NoError(t, err)
+
+	_, err = ListIntegHlthAlerts(context.Background(), client, []string{"open"}, 0, "", "", "")
+	require.NoError(t, err)
+}
+
 func TestNewClientRequiresProfile(t *testing.T) {
 	_, err := NewClient(context.Background(), Options{})
 	require.Error(t, err)

@@ -68,7 +68,7 @@ func TestOverviewCmd_PrintsDefaultAPIVersionWhenAlertsFail(t *testing.T) {
 	oc.cmd.SetArgs([]string{"--live"})
 	err := oc.cmd.Execute()
 
-	require.ErrorContains(t, err, "stripe switch --live")
+	require.ErrorContains(t, err, "integration health alerts aren't available in test mode")
 	assert.Equal(t, "Your account's default API version is 2024-06-20.\n\n", out.String())
 }
 
@@ -131,15 +131,27 @@ func stubOverviewGateway(t *testing.T, server *httptest.Server) {
 	t.Cleanup(func() { newOverviewGraphQLClient = orig })
 }
 
+// stubOverviewDefaultAPIVersion also stubs the active account as a live OAuth
+// account; sandbox tests override that with stubOverviewCredentials.
 func stubOverviewDefaultAPIVersion(t *testing.T, version string) {
 	t.Helper()
 	orig := startOverviewDefaultAPIVersion
-	startOverviewDefaultAPIVersion = func(context.Context, *config.Profile, string, bool) <-chan string {
+	startOverviewDefaultAPIVersion = func(context.Context, *config.Profile, string, stripe.Credentials) <-chan string {
 		ch := make(chan string, 1)
 		ch <- version
 		return ch
 	}
 	t.Cleanup(func() { startOverviewDefaultAPIVersion = orig })
+	stubOverviewCredentials(t, stripe.NewOAKCredentials("oak_123", "acct_live", true))
+}
+
+func stubOverviewCredentials(t *testing.T, creds stripe.Credentials) {
+	t.Helper()
+	orig := resolveOverviewCredentials
+	resolveOverviewCredentials = func(*config.Profile, bool) (stripe.Credentials, error) {
+		return creds, nil
+	}
+	t.Cleanup(func() { resolveOverviewCredentials = orig })
 }
 
 func TestOverviewCmd_RejectsNonPositiveLimit(t *testing.T) {

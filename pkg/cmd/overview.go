@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
 	"github.com/stripe/stripe-cli/pkg/graphql"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -22,7 +24,10 @@ import (
 
 const v2TestmodeUnsupportedCode = "v2_api_not_supported_in_testmode"
 
-var newOverviewGraphQLClient = graphql.NewClient
+var (
+	newOverviewGraphQLClient   = graphql.NewClient
+	resolveOverviewCredentials = activeOverviewCredentials
+)
 
 // overviewJSON is the --format json output: the account's default API version
 // alongside the integration health alerts.
@@ -36,6 +41,7 @@ type overviewCmd struct {
 	format     string
 	limit      int
 	livemode   bool
+	forceLive  bool
 	apiBaseURL string
 }
 
@@ -50,19 +56,18 @@ func newOverviewCmd() *overviewCmd {
 		Long: `Show integration health alerts Stripe has detected for your account,
 along with why each matters and what to do about it.
 
-Uses the mode of your active account context. Alerts are only available in
-live mode and sandboxes, so if your active context is test mode, run
-'stripe switch --live' to select live mode or 'stripe switch' to select a
-sandbox.`,
+Uses the mode of your active account context. If you're in a sandbox, run
+'stripe overview --force-live' to see insights for your live account.`,
 		Example: `stripe overview
-  stripe overview --live
+  stripe overview --force-live
   stripe overview --format json`,
 		RunE: oc.runOverviewCmd,
 	}
 
 	oc.cmd.Flags().StringVar(&oc.format, "format", "", "Output format: 'json' for the full alert details")
 	oc.cmd.Flags().IntVar(&oc.limit, "limit", 0, "Maximum number of alerts to return (default: all)")
-	oc.cmd.Flags().BoolVar(&oc.livemode, "live", false, "Show live mode alerts (default: your active context's mode). Requires that you're logged in to live mode — check with 'stripe whoami', switch with 'stripe switch'")
+	oc.cmd.Flags().BoolVar(&oc.livemode, "live", false, "Show live mode alerts (default: your active context's mode)")
+	oc.cmd.Flags().BoolVar(&oc.forceLive, "force-live", false, "In a sandbox, show insights for the live account that owns it")
 	oc.cmd.Flags().StringVar(&oc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	oc.cmd.Flags().MarkHidden("api-base") //nolint:errcheck
 
@@ -78,21 +83,18 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 		return errorcategory.UserInputErrorf("--limit must be greater than 0")
 	}
 
-	livemode := oc.livemode
-	if !livemode {
-		// Follow the active context's mode rather than forcing test mode.
-		creds, err := Config.GetProfile().ResolveCredentialsForAnyMode(false)
-		if err != nil {
-			return err
-		}
-		livemode = creds.Livemode()
+	profile := Config.GetProfile()
+	target, err := oc.resolveOverviewTarget(cmd.Context(), profile)
+	if err != nil {
+		return err
 	}
 
-	versionCh := startOverviewDefaultAPIVersion(cmd.Context(), Config.GetProfile(), oc.apiBaseURL, livemode)
+	versionCh := startOverviewDefaultAPIVersion(cmd.Context(), profile, oc.apiBaseURL, target.creds)
 
 	client, err := newOverviewGraphQLClient(cmd.Context(), graphql.Options{
-		Profile:       Config.GetProfile(),
-		Livemode:      livemode,
+		Profile:       profile,
+		Livemode:      target.creds.Livemode(),
+		Credentials:   &target.creds,
 		APIBaseURL:    oc.apiBaseURL,
 		StripeVersion: requests.StripePreviewVersionHeaderValue,
 	})
@@ -117,12 +119,66 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 		return enc.Encode(overviewJSON{DefaultAPIVersion: version, integHlthAlertsResponse: resp})
 	}
 
+	renderForcedLiveHeader(out, target)
 	renderDefaultAPIVersion(out, version)
 	if err != nil {
+		renderSandboxFooter(out, target.footer)
 		return err
 	}
 	renderIntegHlthAlerts(out, resp.Alerts)
+	renderSandboxFooter(out, target.footer)
 	return nil
+}
+
+// overviewTarget is the account `stripe overview` reads insights for.
+type overviewTarget struct {
+	creds      stripe.Credentials
+	footer     sandboxFooter
+	forcedLive bool
+}
+
+// resolveOverviewTarget picks the credentials to read insights with: the
+// active account's, or with --force-live in a sandbox, its live account's.
+func (oc *overviewCmd) resolveOverviewTarget(ctx context.Context, profile *config.Profile) (overviewTarget, error) {
+	creds, err := resolveOverviewCredentials(profile, oc.livemode && !oc.forceLive)
+	if err != nil {
+		var mismatch *config.ActiveContextLivemodeMismatchError
+		if errors.As(err, &mismatch) && !mismatch.ActiveLivemode {
+			return overviewTarget{}, errorcategory.UserInputErrorf("You're in a sandbox. Run `stripe overview --force-live` to see insights for your live account.")
+		}
+		return overviewTarget{}, err
+	}
+
+	// Only OAuth sandbox contexts have a live account to point to.
+	if creds.OAKContext == "" || creds.Livemode() {
+		return overviewTarget{creds: creds}, nil
+	}
+
+	parentID, ok := lookupOverviewSandboxParent(ctx, oc.apiBaseURL, profile, creds)
+	if !oc.forceLive {
+		if ok && parentID == "" {
+			return overviewTarget{creds: creds, footer: sandboxFooterLogin}, nil
+		}
+		// If the lookup failed, still point to --force-live, which reports
+		// whether the live account needs authorizing.
+		return overviewTarget{creds: creds, footer: sandboxFooterForceLive}, nil
+	}
+
+	if !ok {
+		return overviewTarget{}, errorcategory.Errorf(errorcategory.API, "could not find the live account for your sandbox; try again")
+	}
+	if parentID == "" {
+		return overviewTarget{}, errorcategory.UserInputErrorf("Your live account isn't authorized. Run `stripe login` to authorize it, then run `stripe overview --force-live`.")
+	}
+	live := stripe.NewOAKCredentials(creds.Token, parentID, true)
+	return overviewTarget{creds: live, forcedLive: true}, nil
+}
+
+func activeOverviewCredentials(profile *config.Profile, live bool) (stripe.Credentials, error) {
+	if live {
+		return profile.ResolveCredentials(true)
+	}
+	return profile.ResolveCredentialsForAnyMode(false)
 }
 
 func nonEmpty(s string) *string {
@@ -145,7 +201,7 @@ func overviewGraphQLError(err error, resource string) error {
 	if errors.As(err, &gqlErrs) {
 		for _, e := range gqlErrs {
 			if code, _ := e.Extensions["code"].(string); code == v2TestmodeUnsupportedCode {
-				return errorcategory.UserInputErrorf("%s aren't available in test mode; run `stripe switch --live` to select live mode, or `stripe switch` to select a sandbox", resource)
+				return errorcategory.UserInputErrorf("%s aren't available in test mode", resource)
 			}
 		}
 		return errorcategory.Errorf(errorcategory.API, "failed to retrieve %s: %s", resource, gqlErrorMessages(gqlErrs))

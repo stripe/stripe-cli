@@ -21,18 +21,10 @@ var startOverviewDefaultAPIVersion = startDefaultAPIVersionLookup
 
 var getAccountFacts = requests.GetAccountFacts
 
-func startDefaultAPIVersionLookup(ctx context.Context, profile *config.Profile, apiBaseURL string, livemode bool) <-chan string {
+func startDefaultAPIVersionLookup(ctx context.Context, profile *config.Profile, apiBaseURL string, creds stripe.Credentials) <-chan string {
 	ch := make(chan string, 1)
-
-	creds, err := profile.ResolveCredentials(livemode)
-	if err != nil {
-		log.Debugf("Skipping default API version: %v", err)
-		ch <- ""
-		return ch
-	}
-
 	go func() {
-		ch <- defaultAPIVersion(ctx, apiBaseURL, profile, creds, livemode)
+		ch <- defaultAPIVersion(ctx, apiBaseURL, profile, creds, creds.Livemode())
 	}()
 	return ch
 }
