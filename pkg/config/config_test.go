@@ -566,6 +566,188 @@ func TestRemoveAuthFieldsWithDottedName(t *testing.T) {
 	require.Equal(t, "sk_test_sibling", v.GetString("example.test_mode_api_key"))
 }
 
+// storedCredentialKeys lists every keyring entry a profile's credentials can
+// occupy: its OAuth session and its live mode API key.
+func storedCredentialKeys(profileName string) []string {
+	p := &Profile{ProfileName: profileName}
+
+	return []string{
+		p.KeyringKey(UATKeychainItemKey),
+		p.KeyringKey(OAuthRefreshTokenKeychainKey),
+		p.KeyringKey(OAuthActiveContextKeychainKey),
+		p.KeyringKey(OAuthUATExpiresAtKeychainKey),
+		p.GetConfigField(LiveModeAPIKeyName),
+	}
+}
+
+func seedStoredCredentials(t *testing.T, profileNames ...string) {
+	t.Helper()
+
+	for _, profileName := range profileNames {
+		for _, key := range storedCredentialKeys(profileName) {
+			require.NoError(t, KeyRing.Set(key, []byte("oak_test_"+profileName), ""))
+		}
+	}
+}
+
+func requireNoStoredCredentials(t *testing.T, profileNames ...string) {
+	t.Helper()
+
+	for _, profileName := range profileNames {
+		for _, key := range storedCredentialKeys(profileName) {
+			_, err := KeyRing.Get(key)
+			require.ErrorIs(t, err, keyring.ErrKeyNotFound, "%s should have been removed from the keyring", key)
+		}
+	}
+}
+
+// `stripe logout --all` promises to clear every project, so it has to reach the
+// profiles the enumeration behind `stripe config --list` cannot see. Each case
+// is run from an unrelated profile, so that nothing is cleared merely by being
+// the current one.
+func TestRemoveAllAuthFieldsClearsProfilesHiddenFromEnumeration(t *testing.T) {
+	tests := []struct {
+		name        string
+		contents    string
+		profileName string
+	}{
+		{
+			name: "period in the name",
+			contents: `["example.project"]
+  display_name = 'Legacy'
+  test_mode_api_key = 'sk_test_hidden'
+`,
+			profileName: "example.project",
+		},
+		{
+			name: "several periods in the name",
+			contents: `["example.project.staging"]
+  display_name = 'Legacy'
+  test_mode_api_key = 'sk_test_hidden'
+`,
+			profileName: "example.project.staging",
+		},
+		{
+			name: "period in the name, sharing a first segment with another profile",
+			contents: `[example]
+  display_name = 'Sibling'
+
+["example.project"]
+  display_name = 'Legacy'
+  test_mode_api_key = 'sk_test_hidden'
+`,
+			profileName: "example.project",
+		},
+		{
+			name: "period in the name, in the v2 layout",
+			contents: `config_version = 2
+
+[profiles."example.project"]
+  display_name = 'Legacy'
+  test_mode_api_key = 'sk_test_hidden'
+`,
+			profileName: "example.project",
+		},
+		{
+			name: "no display_name",
+			contents: `[partial]
+  test_mode_api_key = 'sk_test_hidden'
+`,
+			profileName: "partial",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, profilesFile := setupProfileConfig(t, tt.contents)
+			c.Profile.ProfileName = "normal"
+			seedStoredCredentials(t, tt.profileName)
+
+			require.NoError(t, c.RemoveAllAuthFields())
+
+			requireNoStoredCredentials(t, tt.profileName)
+
+			written, err := os.ReadFile(profilesFile)
+			require.NoError(t, err)
+			require.NotContains(t, string(written), "sk_test_hidden")
+
+			hidden := &Profile{ProfileName: tt.profileName}
+			require.Empty(t, hidden.ReadProfileString(DisplayNameName))
+		})
+	}
+}
+
+// The wider enumeration walks into every table, so it must leave alone the ones
+// that are not credentials: machine-wide settings, and a profile's own settings.
+func TestRemoveAllAuthFieldsPreservesNonAuthSettings(t *testing.T) {
+	c, _ := setupProfileConfig(t, `installed_plugins = ['apps']
+
+[plugin_configs.apps]
+  account_id = 'not a profile field'
+  updates = 'off'
+
+[default]
+  color = 'on'
+  display_name = 'Default'
+
+[default.docs_prefs]
+  format = 'markdown'
+
+["example.project"]
+  color = 'off'
+  display_name = 'Legacy'
+`)
+	c.Profile.ProfileName = "default"
+
+	require.NoError(t, c.RemoveAllAuthFields())
+
+	require.False(t, viper.IsSet("default.display_name"))
+	require.False(t, viper.IsSet("example.project.display_name"))
+
+	require.Equal(t, "on", viper.GetString("default.color"))
+	require.Equal(t, "markdown", viper.GetString("default.docs_prefs.format"))
+	require.Equal(t, "off", viper.GetString("example.project.color"))
+	require.Equal(t, []string{"apps"}, viper.GetStringSlice("installed_plugins"))
+	require.Equal(t, "off", viper.GetString("plugin_configs.apps.updates"))
+	require.Equal(t, "not a profile field", viper.GetString("plugin_configs.apps.account_id"))
+}
+
+// The current profile's keyring entries are keyed by the name the user passed,
+// which need not have a table in the config file for the enumeration to find.
+func TestRemoveAllAuthFieldsClearsCurrentProfileWithoutConfigEntry(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	c.Profile.ProfileName = "work"
+	seedStoredCredentials(t, "work", "default")
+
+	require.NoError(t, c.RemoveAllAuthFields())
+
+	requireNoStoredCredentials(t, "work", "default")
+}
+
+// `stripe config --remove-profile` reports that it cleared the profile's stored
+// credentials. Once the table is gone nothing can enumerate the profile again,
+// so an OAuth session left behind here would outlive `stripe logout --all` too.
+func TestRemoveProfileClearsOAuthSession(t *testing.T) {
+	for _, profileName := range []string{"work", "example.project"} {
+		t.Run(profileName, func(t *testing.T) {
+			c, _ := setupProfileConfig(t, `["`+profileName+`"]
+  display_name = 'To Remove'
+`)
+			seedStoredCredentials(t, profileName, "personal")
+
+			require.NoError(t, c.RemoveProfile(profileName))
+
+			requireNoStoredCredentials(t, profileName)
+
+			personal := &Profile{ProfileName: "personal"}
+			_, err := KeyRing.Get(personal.KeyringKey(UATKeychainItemKey))
+			require.NoError(t, err, "another profile's session should be left alone")
+		})
+	}
+}
+
 // TestRemoveAuthFieldsClearsOAuthSessionWithoutConfigEntry guards against a
 // regression where OAuth session keyring keys were only cleared when the
 // profile had a matching entry in the config file. A profile can have OAuth
