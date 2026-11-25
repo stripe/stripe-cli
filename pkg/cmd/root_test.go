@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -46,6 +48,85 @@ func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, out
 	root.SetArgs([]string{})
 
 	return c, buf.String(), err
+}
+
+func TestPluginUpgradeRouting(t *testing.T) {
+	for _, path := range [][]string{{"plugin", "upgrade"}, {"upgrade", "plugin"}} {
+		t.Run(strings.Join(path, " "), func(t *testing.T) {
+			for _, test := range []struct {
+				name      string
+				args      []string
+				wantCalls int
+				wantError bool
+				runError  error
+				wantHelp  bool
+			}{
+				{name: "target", args: []string{"apps"}, wantCalls: 1},
+				{name: "execution error", args: []string{"apps"}, wantCalls: 1, wantError: true, runError: errors.New("upgrade failed")},
+				{name: "missing target", wantError: true},
+				{name: "extra target", args: []string{"apps", "other"}, wantError: true},
+				{name: "help", args: []string{"--help"}, wantHelp: true},
+				{name: "flags", args: []string{"apps", "--api-base", "http://localhost:12111", "--dashboard-base", "http://localhost:12112"}, wantCalls: 1},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					root := &cobra.Command{Use: "stripe"}
+					root.AddCommand(newPluginCmd().cmd, newUpgradeCmd())
+					calls := 0
+					// Stub both handlers so a routing regression cannot download plugins.
+					for _, spelling := range [][]string{{"plugin", "upgrade"}, {"upgrade", "plugin"}} {
+						command, _, err := root.Find(spelling)
+						require.NoError(t, err)
+						command.RunE = func(cmd *cobra.Command, args []string) error {
+							calls++
+							require.Equal(t, strings.Join(append([]string{"stripe"}, path...), " "), cmd.CommandPath())
+							require.Equal(t, []string{"apps"}, args)
+							if test.name == "flags" {
+								apiBase, err := cmd.Flags().GetString("api-base")
+								require.NoError(t, err)
+								require.Equal(t, "http://localhost:12111", apiBase)
+								dashboardBase, err := cmd.Flags().GetString("dashboard-base")
+								require.NoError(t, err)
+								require.Equal(t, "http://localhost:12112", dashboardBase)
+							}
+							return test.runError
+						}
+					}
+					output, err := executeCommand(root, append(append([]string{}, path...), test.args...)...)
+					switch {
+					case test.runError != nil:
+						require.ErrorIs(t, err, test.runError)
+					case test.wantError:
+						require.ErrorContains(t, err, "requires exactly 1 positional argument")
+					default:
+						require.NoError(t, err)
+					}
+					require.Equal(t, test.wantCalls, calls)
+					if test.wantHelp {
+						require.Contains(t, output, strings.Join(append([]string{"stripe"}, path...), " ")+" <plugin>")
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestUpgradeGroupHelp(t *testing.T) {
+	group, _, err := rootCmd.Find([]string{"upgrade"})
+	require.NoError(t, err)
+	require.Equal(t, "upgrade", group.Name())
+	require.True(t, group.Hidden)
+	root := &cobra.Command{Use: "stripe"}
+	root.AddCommand(newUpgradeCmd())
+	command, _, err := root.Find([]string{"upgrade", "plugin"})
+	require.NoError(t, err)
+	command.RunE = func(*cobra.Command, []string) error {
+		t.Fatal("bare upgrade executed a plugin upgrade")
+		return nil
+	}
+	output, err := executeCommand(root, "upgrade")
+	require.NoError(t, err)
+	require.Contains(t, output, "stripe upgrade [command]")
+	require.Contains(t, output, "plugin")
 }
 
 func TestUnsafePluginStoragePreservesBuiltins(t *testing.T) {

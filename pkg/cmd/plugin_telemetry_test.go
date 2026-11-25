@@ -39,6 +39,7 @@ func TestPluginInvocationTelemetryTarget(t *testing.T) {
 	tests := []struct {
 		name          string
 		args          []string
+		rootArgs      bool
 		wantPlugin    string
 		errorContains string
 		wantInvoked   bool
@@ -47,6 +48,13 @@ func TestPluginInvocationTelemetryTarget(t *testing.T) {
 		{name: "install exact version", args: []string{"install", "apps@2.0.0"}, wantPlugin: "apps", wantInvoked: true},
 		{name: "install version never becomes identity", args: []string{"install", "apps@sk_test_private"}, wantPlugin: "apps", wantInvoked: true},
 		{name: "upgrade", args: []string{"upgrade", "apps"}, wantPlugin: "apps", wantInvoked: true},
+		{name: "upgrade alias", args: []string{"upgrade", "plugin", "apps"}, rootArgs: true, wantPlugin: "apps", wantInvoked: true},
+		{name: "upgrade alias invalid target", args: []string{"upgrade", "plugin", "../private"}, rootArgs: true, errorContains: "invalid plugin name", wantInvoked: true},
+		{name: "upgrade alias without target", args: []string{"upgrade", "plugin"}, rootArgs: true, errorContains: "requires exactly 1 positional argument"},
+		{name: "upgrade alias extra target", args: []string{"upgrade", "plugin", "apps", "private"}, rootArgs: true, errorContains: "requires exactly 1 positional argument"},
+		{name: "unrelated plugin command", args: []string{"other", "plugin", "apps"}, rootArgs: true, wantInvoked: true},
+		{name: "nested upgrade alias", args: []string{"other", "upgrade", "plugin", "apps"}, rootArgs: true, wantInvoked: true},
+		{name: "nested canonical upgrade", args: []string{"other", "plugin", "upgrade", "apps"}, rootArgs: true, wantInvoked: true},
 		{name: "uninstall", args: []string{"uninstall", "apps"}, wantPlugin: "apps", wantInvoked: true},
 		{name: "uninstall all", args: []string{"uninstall", "--all"}, wantInvoked: true},
 		{name: "install invalid target", args: []string{"install", "../private@2.0.0"}, errorContains: "invalid plugin name", wantInvoked: true},
@@ -78,8 +86,17 @@ func TestPluginInvocationTelemetryTarget(t *testing.T) {
 					return rootCmd.PersistentPreRunE(cmd, args)
 				},
 			}
-			management := newPluginCmd()
-			root.AddCommand(management.cmd)
+			root.AddCommand(newPluginCmd().cmd, newUpgradeCmd())
+			other := &cobra.Command{Use: "other"}
+			other.AddCommand(newPluginCmd().cmd, newUpgradeCmd())
+			otherPlugin, _, findErr := other.Find([]string{"plugin"})
+			require.NoError(t, findErr)
+			otherPlugin.RunE = func(*cobra.Command, []string) error { return nil }
+			root.AddCommand(other)
+			args := test.args
+			if !test.rootArgs {
+				args = append([]string{"plugin"}, args...)
+			}
 			client := &pluginInvocationTelemetryClient{
 				started: make(chan struct{}),
 				resume:  make(chan struct{}),
@@ -88,7 +105,7 @@ func TestPluginInvocationTelemetryTarget(t *testing.T) {
 			metadata := stripe.NewEventMetadata()
 			ctx := stripe.WithEventMetadata(stripe.WithTelemetryClient(t.Context(), client), metadata)
 			if test.wantInvoked && test.errorContains == "" {
-				command, _, err := root.Find(append([]string{"plugin"}, test.args...))
+				command, _, err := root.Find(args)
 				require.NoError(t, err)
 				command.RunE = func(*cobra.Command, []string) error {
 					<-client.started
@@ -97,7 +114,7 @@ func TestPluginInvocationTelemetryTarget(t *testing.T) {
 					return nil
 				}
 			}
-			root.SetArgs(append([]string{"plugin"}, test.args...))
+			root.SetArgs(args)
 			err := root.ExecuteContext(ctx)
 			if test.errorContains == "" {
 				require.NoError(t, err)

@@ -404,6 +404,7 @@ func init() {
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newSandboxCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
+	rootCmd.AddCommand(newUpgradeCmd())
 	resources.AddAllResourcesCmds(rootCmd, &Config)
 	if terminalCmd, ok := cmdutil.FindSubCmd(rootCmd, "terminal"); ok {
 		terminalCmd.AddCommand(newTerminalQuickstartCmd())
