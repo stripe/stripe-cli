@@ -135,6 +135,63 @@ func TestWithWorkspaceContext(t *testing.T) {
 	})
 }
 
+func TestWithWorkspaceContext_Sandbox(t *testing.T) {
+	stubWorkspaceContextUnused := func(t *testing.T) {
+		t.Helper()
+		orig := getWorkspaceContext
+		getWorkspaceContext = func(context.Context, string, *config.Profile, stripe.Credentials, bool) (requests.WorkspaceContext, error) {
+			t.Error("workspace_context only supports live mode and should not be called for a sandbox")
+			return requests.WorkspaceContext{}, nil
+		}
+		t.Cleanup(func() { getWorkspaceContext = orig })
+	}
+	stubStatuses := func(t *testing.T, statuses []requests.ContextStatus, err error) *[]requests.ContextStatusQuery {
+		t.Helper()
+		var got []requests.ContextStatusQuery
+		orig := getContextStatuses
+		getContextStatuses = func(_ context.Context, _ string, _ *config.Profile, _ stripe.Credentials, queries []requests.ContextStatusQuery) ([]requests.ContextStatus, error) {
+			got = queries
+			return statuses, err
+		}
+		t.Cleanup(func() { getContextStatuses = orig })
+		return &got
+	}
+	opts := Options{Profile: &config.Profile{}, APIBaseURL: stripe.DefaultAPIBaseURL}
+	sandbox := stripe.NewOAKCredentials("oak_test_123", "acct_sandbox", false)
+
+	t.Run("replaces the sandbox account with its workspace", func(t *testing.T) {
+		stubWorkspaceContextUnused(t)
+		queries := stubStatuses(t, []requests.ContextStatus{
+			{AccountID: "acct_sandbox", Livemode: false, Valid: true, WorkspaceID: "wksp_test_456"},
+		}, nil)
+
+		creds, err := withWorkspaceContext(context.Background(), opts, sandbox)
+		require.NoError(t, err)
+		assert.Equal(t, []requests.ContextStatusQuery{{AccountID: "acct_sandbox", Livemode: false}}, *queries)
+		assert.Equal(t, "wksp_test_456", creds.OAKContext)
+		require.NotNil(t, creds.OAKLivemode)
+		assert.False(t, *creds.OAKLivemode)
+	})
+
+	t.Run("rejects a sandbox outside the grant", func(t *testing.T) {
+		stubWorkspaceContextUnused(t)
+		stubStatuses(t, []requests.ContextStatus{
+			{AccountID: "acct_sandbox", Livemode: false, Valid: false},
+		}, nil)
+
+		_, err := withWorkspaceContext(context.Background(), opts, sandbox)
+		require.ErrorContains(t, err, "no workspace found for acct_sandbox")
+	})
+
+	t.Run("returns lookup errors", func(t *testing.T) {
+		stubWorkspaceContextUnused(t)
+		stubStatuses(t, nil, errors.New("boom"))
+
+		_, err := withWorkspaceContext(context.Background(), opts, sandbox)
+		require.ErrorContains(t, err, "could not resolve the workspace for acct_sandbox: boom")
+	})
+}
+
 func TestHostForAccessBaseURL(t *testing.T) {
 	assert.Equal(t, QAHost, HostForAccessBaseURL(login.QAAccessBaseURL))
 	assert.Equal(t, DefaultHost, HostForAccessBaseURL(login.DefaultAccessBaseURL))
