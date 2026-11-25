@@ -22,12 +22,15 @@ type ContextStatusQuery struct {
 }
 
 // ContextStatus is the per-context result from POST /v1/stripecli/context_statuses.
-// ParentAccountID is only populated for sandbox (non-live) contexts whose
-// parent account is both known and within the caller's permission grant.
+// WorkspaceID is the context's workspace (wksp_test_... for a sandbox) and is
+// only populated for valid contexts. ParentAccountID is only populated for
+// sandbox (non-live) contexts whose parent account is both known and within
+// the caller's permission grant.
 type ContextStatus struct {
 	AccountID       string `json:"account_id"`
 	Livemode        bool   `json:"livemode"`
 	Valid           bool   `json:"valid"`
+	WorkspaceID     string `json:"workspace_id,omitempty"`
 	ParentAccountID string `json:"parent_account_id,omitempty"`
 }
 

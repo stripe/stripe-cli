@@ -36,7 +36,7 @@ func TestGetContextStatuses(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"contexts": [
 			{"account_id": "acct_111", "livemode": true, "valid": true},
-			{"account_id": "acct_222", "livemode": false, "valid": true, "parent_account_id": "acct_111"}
+			{"account_id": "acct_222", "livemode": false, "valid": true, "workspace_id": "wksp_test_222", "parent_account_id": "acct_111"}
 		]}`)) //nolint:errcheck
 	}))
 	defer ts.Close()
@@ -49,7 +49,7 @@ func TestGetContextStatuses(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []ContextStatus{
 		{AccountID: "acct_111", Livemode: true, Valid: true},
-		{AccountID: "acct_222", Livemode: false, Valid: true, ParentAccountID: "acct_111"},
+		{AccountID: "acct_222", Livemode: false, Valid: true, WorkspaceID: "wksp_test_222", ParentAccountID: "acct_111"},
 	}, statuses)
 }
 

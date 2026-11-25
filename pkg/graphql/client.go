@@ -32,8 +32,12 @@ const (
 	defaultTimeout = 30 * time.Second
 )
 
-// getWorkspaceContext is a variable so tests can stub the workspace lookup.
-var getWorkspaceContext = requests.GetWorkspaceContext
+// getWorkspaceContext and getContextStatuses are variables so tests can stub
+// the workspace lookups.
+var (
+	getWorkspaceContext = requests.GetWorkspaceContext
+	getContextStatuses  = requests.GetContextStatuses
+)
 
 // Options configures NewClient.
 type Options struct {
@@ -111,16 +115,50 @@ func withWorkspaceContext(ctx context.Context, opts Options, creds stripe.Creden
 		return creds, nil
 	}
 
-	wc, err := getWorkspaceContext(ctx, opts.APIBaseURL, opts.Profile, creds, opts.Livemode)
+	var workspaceID string
+	var err error
+	if creds.Livemode() {
+		workspaceID, err = liveWorkspaceID(ctx, opts, creds)
+	} else {
+		workspaceID, err = sandboxWorkspaceID(ctx, opts, creds)
+	}
 	if err != nil {
 		return stripe.Credentials{}, fmt.Errorf("could not resolve the workspace for %s: %w", creds.OAKContext, err)
 	}
-	if wc.WorkspaceID == "" {
+	if workspaceID == "" {
 		return stripe.Credentials{}, errorcategory.Errorf(errorcategory.API, "no workspace found for %s", creds.OAKContext)
 	}
 
-	creds.OAKContext = wc.WorkspaceID
+	creds.OAKContext = workspaceID
 	return creds, nil
+}
+
+// liveWorkspaceID looks up a live account's workspace. The workspace_context
+// endpoint only supports live mode.
+func liveWorkspaceID(ctx context.Context, opts Options, creds stripe.Credentials) (string, error) {
+	wc, err := getWorkspaceContext(ctx, opts.APIBaseURL, opts.Profile, creds, true)
+	if err != nil {
+		return "", err
+	}
+	return wc.WorkspaceID, nil
+}
+
+// sandboxWorkspaceID looks up a sandbox's own test mode workspace
+// (wksp_test_...) through context_statuses, which only returns it when the
+// sandbox is within the CLI's permission grant.
+func sandboxWorkspaceID(ctx context.Context, opts Options, creds stripe.Credentials) (string, error) {
+	statuses, err := getContextStatuses(ctx, opts.APIBaseURL, opts.Profile, creds, []requests.ContextStatusQuery{
+		{AccountID: creds.OAKContext, Livemode: false},
+	})
+	if err != nil {
+		return "", err
+	}
+	for _, s := range statuses {
+		if s.AccountID == creds.OAKContext && !s.Livemode && s.Valid {
+			return s.WorkspaceID, nil
+		}
+	}
+	return "", nil
 }
 
 // authTransport adds the CLI's auth and Stripe-Version headers to each request.
