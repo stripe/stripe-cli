@@ -1,11 +1,16 @@
 package login
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestOauthContinuationDeadline(t *testing.T) {
@@ -45,6 +50,42 @@ func TestSaveAndLoadPendingDeviceAuth(t *testing.T) {
 	clearPendingDeviceAuth()
 	_, err = loadPendingDeviceAuth()
 	require.Error(t, err)
+}
+
+func TestSavePendingReauthAccounts_RepairsPreexistingFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not meaningful on Windows")
+	}
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	// A file seeded before the CLI runs keeps the umask's 0644 under a bare
+	// os.WriteFile; the save must leave it owner-only.
+	path := pendingReauthAccountsPath()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0755))
+	require.NoError(t, os.WriteFile(path, []byte("[]"), 0644))
+
+	require.NoError(t, savePendingReauthAccounts([]config.AuthorizedAccount{}))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+}
+
+func TestSavePendingDeviceAuth_RepairsPreexistingFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not meaningful on Windows")
+	}
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	path := pendingDeviceAuthPath()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0755))
+	require.NoError(t, os.WriteFile(path, []byte("{}"), 0644))
+
+	require.NoError(t, savePendingDeviceAuth(&oauthContinuation{DeviceCode: "code", AccessBaseURL: QAAccessBaseURL, IssuedAt: time.Now(), ExpiresIn: 300}))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
 }
 
 func TestSavePendingDeviceAuth_OverwritesPrevious(t *testing.T) {

@@ -148,6 +148,78 @@ func TestFileStorePermissions(t *testing.T) {
 	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
 }
 
+func TestFileStoreRepairsPreexistingFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not meaningful on Windows")
+	}
+	// A credentials file seeded before the CLI ever ran (CI seed, restored
+	// backup) arrives with the umask's 0644; a write must not keep that mode.
+	store := newTestFileStore(t)
+	require.NoError(t, os.WriteFile(store.path, []byte("{}"), 0644))
+
+	require.NoError(t, store.Set("k", []byte("sk_live_secret"), ""))
+
+	info, err := os.Stat(store.path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+
+	data, err := store.Get("k")
+	require.NoError(t, err)
+	assert.Equal(t, []byte("sk_live_secret"), data)
+}
+
+func TestFileStoreRepairsPreexistingDirPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not meaningful on Windows")
+	}
+	dir := filepath.Join(t.TempDir(), "stripe")
+	require.NoError(t, os.MkdirAll(dir, 0755))
+	store := &fileStore{path: filepath.Join(dir, "credentials.json")}
+
+	require.NoError(t, store.Set("k", []byte("v"), ""))
+
+	info, err := os.Stat(dir)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0700), info.Mode().Perm())
+}
+
+func TestFileStoreRepairsPermissionsOnRead(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not meaningful on Windows")
+	}
+	store := newTestFileStore(t)
+	require.NoError(t, os.WriteFile(store.path, []byte(`{"k": "v"}`), 0600))
+	require.NoError(t, os.Chmod(store.path, 0644))
+
+	_, err := store.Get("k")
+	require.NoError(t, err)
+
+	info, err := os.Stat(store.path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+}
+
+func TestFileStoreRefusesWriteThroughSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation requires elevated privileges on Windows")
+	}
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target.json")
+	require.NoError(t, os.WriteFile(target, []byte("{}"), 0600))
+	link := filepath.Join(dir, "credentials.json")
+	require.NoError(t, os.Symlink(target, link))
+	store := &fileStore{path: link}
+
+	err := store.Set("k", []byte("v"), "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "symlink")
+
+	// The symlink target's mode must be untouched as well.
+	info, err := os.Stat(target)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+}
+
 // failStore is a SecureStore whose every operation returns a fixed error.
 type failStore struct{ err error }
 

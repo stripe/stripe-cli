@@ -55,16 +55,23 @@ func pendingDeviceAuthPath() string {
 // a browser_url/verification_code for a device code no longer on disk. That's a narrow,
 // single-user-CLI race that isn't worth solving with cross-process locking.
 func savePendingDeviceAuth(cont *oauthContinuation) error {
-	path := pendingDeviceAuthPath()
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0700); err != nil {
-		return err
-	}
 	data, err := json.Marshal(cont)
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, ".oauth_pending-*.tmp")
+	return writePendingFile0600(pendingDeviceAuthPath(), data)
+}
+
+// writePendingFile0600 writes data to path via a 0600 temp file + rename. The
+// rename is also what makes the mode stick: os.WriteFile keeps a pre-existing
+// file's permissive mode, so a seeded 0644 file would stay readable by other
+// local accounts.
+func writePendingFile0600(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(path)+"-*.tmp")
 	if err != nil {
 		return err
 	}
@@ -109,15 +116,11 @@ func pendingReauthAccountsPath() string {
 // so a later, separate `stripe login --complete-reauth` invocation can poll
 // for a change from it.
 func savePendingReauthAccounts(accounts []config.AuthorizedAccount) error {
-	path := pendingReauthAccountsPath()
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		return err
-	}
 	data, err := json.Marshal(accounts)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0600)
+	return writePendingFile0600(pendingReauthAccountsPath(), data)
 }
 
 // loadPendingReauthAccounts reads the snapshot saved by
