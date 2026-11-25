@@ -236,15 +236,17 @@ func TestFetchIntegHlthAlerts_Unauthorized(t *testing.T) {
 	assert.Contains(t, err.Error(), "stripe login")
 }
 
-func TestFetchIntegHlthAlerts_NonOKStatus(t *testing.T) {
-	server := newIntegHlthGateway(t, http.StatusInternalServerError, `{"errors": [{"message": "gateway unavailable"}]}`, nil)
+func TestFetchIntegHlthAlerts_NonOKStatusShowsFriendlyMessage(t *testing.T) {
+	for _, status := range []int{http.StatusForbidden, http.StatusInternalServerError} {
+		server := newIntegHlthGateway(t, status, `{"errors": [{"message": "gateway unavailable"}]}`, nil)
 
-	_, err := fetchIntegHlthAlerts(context.Background(), gatewayClient(server), 0)
-	require.Error(t, err)
-	category, ok := errorcategory.Get(err)
-	require.True(t, ok)
-	assert.Equal(t, errorcategory.API, category)
-	assert.Equal(t, "failed to retrieve integration health alerts (status 500): gateway unavailable", err.Error())
+		_, err := fetchIntegHlthAlerts(context.Background(), gatewayClient(server), 0)
+		require.Error(t, err)
+		category, ok := errorcategory.Get(err)
+		require.True(t, ok)
+		assert.Equal(t, errorcategory.API, category)
+		assert.Equal(t, overviewUnavailableMessage, err.Error(), "status %d", status)
+	}
 }
 
 func TestFetchIntegHlthAlerts_TestmodeUnsupportedSuggestsSwitch(t *testing.T) {
@@ -258,13 +260,13 @@ func TestFetchIntegHlthAlerts_TestmodeUnsupportedSuggestsSwitch(t *testing.T) {
 	assert.Equal(t, errorcategory.UserInput, category)
 }
 
-func TestFetchIntegHlthAlerts_SurfacesGraphQLErrorMessage(t *testing.T) {
+func TestFetchIntegHlthAlerts_HidesGraphQLErrorMessage(t *testing.T) {
 	body := `{"data": null, "errors": [{"message": "You do not have access."}]}`
 	server := newIntegHlthGateway(t, http.StatusOK, body, nil)
 
 	_, err := fetchIntegHlthAlerts(context.Background(), gatewayClient(server), 0)
 	require.Error(t, err)
-	assert.Equal(t, "failed to retrieve integration health alerts: You do not have access.", err.Error())
+	assert.Equal(t, overviewUnavailableMessage, err.Error())
 }
 
 func TestAddIntegHlthAlertDoctorDocs_LooksUpEachTopicOnce(t *testing.T) {

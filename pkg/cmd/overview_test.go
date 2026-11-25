@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -266,6 +267,23 @@ func TestOverviewCmd_ShowsEmptyStateWhenNoAlertHasAFix(t *testing.T) {
 	require.NoError(t, oc.cmd.Execute())
 
 	assert.Equal(t, "There are no recommended actions for your integration right now.\n", out.String())
+}
+
+func TestOverviewCmd_ClientSetupErrorShowsFriendlyMessage(t *testing.T) {
+	stubOverviewDefaultAPIVersion(t, "")
+	orig := newOverviewGraphQLClient
+	newOverviewGraphQLClient = func(context.Context, graphql.Options) (genqlient.Client, error) {
+		return nil, errors.New(`could not resolve the workspace for acct_123: Request failed, status=400, body={"error": {}}`)
+	}
+	t.Cleanup(func() { newOverviewGraphQLClient = orig })
+
+	oc := newOverviewCmd()
+	oc.cmd.SilenceUsage = true
+	oc.cmd.SetOut(&bytes.Buffer{})
+	oc.cmd.SetErr(&bytes.Buffer{})
+	oc.cmd.SetArgs([]string{})
+
+	assert.EqualError(t, oc.cmd.Execute(), overviewUnavailableMessage)
 }
 
 func TestRenderIntegHlthAlerts_Empty(t *testing.T) {

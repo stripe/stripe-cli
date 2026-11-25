@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	genqlient "github.com/Khan/genqlient/graphql"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
@@ -99,7 +100,7 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 		StripeVersion: requests.StripePreviewVersionHeaderValue,
 	})
 	if err != nil {
-		return err
+		return overviewUnavailableError(err)
 	}
 
 	resp, err := fetchIntegHlthAlerts(cmd.Context(), client, oc.limit)
@@ -188,13 +189,18 @@ func nonEmpty(s string) *string {
 	return &s
 }
 
+const overviewUnavailableMessage = "We're having trouble loading your integration health insights right now. Please try again later."
+
+func overviewUnavailableError(err error) error {
+	log.Debugf("stripe overview: %v", err)
+	return errorcategory.New(errorcategory.API, overviewUnavailableMessage)
+}
+
 func overviewGraphQLError(err error, resource string) error {
 	var httpErr *genqlient.HTTPError
-	if errors.As(err, &httpErr) {
-		if httpErr.StatusCode == http.StatusUnauthorized {
-			return errorcategory.Errorf(errorcategory.Auth, "credentials rejected (status 401); run `stripe login`")
-		}
-		return errorcategory.Errorf(errorcategory.API, "failed to retrieve %s (status %d): %s", resource, httpErr.StatusCode, gqlErrorMessages(httpErr.Response.Errors))
+	if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusUnauthorized {
+		log.Debugf("stripe overview: %v", err)
+		return errorcategory.Errorf(errorcategory.Auth, "Your credentials were rejected. Run `stripe login` to log in again.")
 	}
 
 	var gqlErrs gqlerror.List
@@ -204,18 +210,9 @@ func overviewGraphQLError(err error, resource string) error {
 				return errorcategory.UserInputErrorf("%s aren't available in test mode", resource)
 			}
 		}
-		return errorcategory.Errorf(errorcategory.API, "failed to retrieve %s: %s", resource, gqlErrorMessages(gqlErrs))
 	}
 
-	return err
-}
-
-func gqlErrorMessages(errs gqlerror.List) string {
-	messages := make([]string, 0, len(errs))
-	for _, e := range errs {
-		messages = append(messages, strings.TrimSpace(e.Message))
-	}
-	return strings.Join(messages, "; ")
+	return overviewUnavailableError(err)
 }
 
 func renderIntegHlthAlerts(w io.Writer, alerts []integHlthAlert) {
