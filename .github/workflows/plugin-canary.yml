@@ -16,6 +16,8 @@ permissions:
 
 env:
   RECENT_VERSIONS_TO_TEST: 10
+  # Never test projects plugin versions older than this.
+  MIN_VERSION_TO_TEST: 0.52.1
 
 jobs:
   plugin-canary:
@@ -79,7 +81,19 @@ jobs:
             -H "Stripe-Version: 2019-03-14" \
             --data-urlencode "os=${GOOS}" \
             --data-urlencode "arch=${GOARCH}" \
-            | python -c $'import json\nimport os\nimport sys\n\nplugin_list = json.load(sys.stdin)\nversions = {\n    release[\"version\"]\n    for plugin in plugin_list.get(\"plugins\", [])\n    if plugin.get(\"shortname\") == \"projects\"\n    for release in plugin.get(\"releases\", [])\n    if release.get(\"version\")\n}\n\nif not versions:\n    raise SystemExit(\"No versions found for the projects plugin\")\n\ndef version_key(version):\n    key = []\n    for part in version.split(\".\"):\n        if part.isdigit():\n            key.append((0, int(part)))\n        else:\n            key.append((1, part))\n    return key\n\nrecent_versions = sorted(versions, key=version_key)[-int(os.environ[\"RECENT_VERSIONS_TO_TEST\"]):]\nfor version in recent_versions:\n    print(version)\n')
+            | jq -r --arg min "${MIN_VERSION_TO_TEST}" --argjson n "${RECENT_VERSIONS_TO_TEST}" '
+                def key: split(".") | map(tonumber? // .);
+                [.plugins[] | select(.shortname == "projects") | .releases[].version // empty]
+                | unique
+                | map(select(key >= ($min | key)))
+                | sort_by(key)
+                | .[-$n:][]
+              ')
+
+          if [ -z "$VERSIONS" ]; then
+            echo "No projects plugin versions found at or above ${MIN_VERSION_TO_TEST}" >&2
+            exit 1
+          fi
 
           echo "Testing versions:"
           echo "$VERSIONS"
