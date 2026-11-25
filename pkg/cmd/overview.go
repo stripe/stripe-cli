@@ -101,6 +101,9 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	resp, err := fetchIntegHlthAlerts(cmd.Context(), client, oc.limit)
+	if err == nil {
+		addIntegHlthAlertDoctorDocs(cmd.Context(), client, resp.Alerts)
+	}
 	version := <-versionCh
 
 	out := cmd.OutOrStdout()
@@ -170,8 +173,7 @@ func renderIntegHlthAlerts(w io.Writer, alerts []integHlthAlert) {
 	}
 	fmt.Fprintln(w, ansi.Bold(header))
 	for i, a := range alerts {
-		fmt.Fprintf(w, "%d. %s. Run %s for more information.\n",
-			i+1, integHlthAlertActionTitle(a), ansi.Bold("`"+integHlthAlertNextCommand(a)+"`"))
+		fmt.Fprintf(w, "%d. %s. %s\n", i+1, integHlthAlertActionTitle(a), integHlthAlertNextStep(a))
 	}
 }
 
@@ -190,12 +192,33 @@ func integHlthAlertActionTitle(a integHlthAlert) string {
 	return strings.TrimRight(strings.TrimSpace(title), ".")
 }
 
-// integHlthAlertNextCommand returns the command that gives more detail on an
-// alert: `stripe doctor` when the alert maps to a doctor topic, otherwise
-// `stripe health` for the alert itself.
-func integHlthAlertNextCommand(a integHlthAlert) string {
-	if a.DoctorTopic != nil && *a.DoctorTopic != "" {
-		return "stripe doctor " + *a.DoctorTopic
+// integHlthAlertNextStep tells the reader how to act on an alert: follow its
+// doctor doc when it has one (as a `stripe docs` command for docs.stripe.com
+// pages), otherwise look up the alert itself with `stripe health`.
+func integHlthAlertNextStep(a integHlthAlert) string {
+	// TODO: point to `stripe doctor <topic>` once the command exists.
+	// if a.DoctorTopic != nil && *a.DoctorTopic != "" {
+	// 	return "Run " + ansi.Bold("`stripe doctor "+*a.DoctorTopic+"`") + " and follow its steps to make this change."
+	// }
+	if a.DoctorDoc != nil && *a.DoctorDoc != "" {
+		if path, ok := stripeDocsPath(*a.DoctorDoc); ok {
+			return "Run " + ansi.Bold("`stripe docs "+path+"`") + " and follow the guide to make this change."
+		}
+		return "Follow the guide at " + ansi.Bold(*a.DoctorDoc) + " to make this change."
 	}
-	return "stripe health " + a.HealthInsightID
+	return "Run " + ansi.Bold("`stripe health "+a.HealthInsightID+"`") + " for more information."
+}
+
+// stripeDocsPath returns the path of a docs.stripe.com URL, which `stripe
+// docs` accepts directly.
+func stripeDocsPath(rawURL string) (string, bool) {
+	const docsOrigin = "https://docs.stripe.com"
+	if rawURL != docsOrigin && !strings.HasPrefix(rawURL, docsOrigin+"/") {
+		return "", false
+	}
+	path := strings.TrimPrefix(rawURL, docsOrigin)
+	if path == "" {
+		path = "/"
+	}
+	return path, true
 }

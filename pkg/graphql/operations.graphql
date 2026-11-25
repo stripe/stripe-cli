@@ -38,3 +38,12 @@ query ListIntegHlthAlerts(
     next_page
   }
 }
+
+query RetrieveDoctorRule($topic: String!) {
+  v2RetrieveDoctorRule(topic: $topic) {
+    doctor_rule {
+      docs
+      topic
+    }
+  }
+}

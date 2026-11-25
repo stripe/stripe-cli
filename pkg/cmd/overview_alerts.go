@@ -1,13 +1,15 @@
 package cmd
 
 // overview_alerts.go fetches integration health alerts for `stripe overview`
-// through the GraphQL gateway's ListIntegHlthAlerts query.
+// through the GraphQL gateway's ListIntegHlthAlerts query, and each alert's
+// doctor doc through RetrieveDoctorRule.
 
 import (
 	"context"
 	"slices"
 
 	genqlient "github.com/Khan/genqlient/graphql"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/graphql"
 )
@@ -31,6 +33,7 @@ type integHlthAlert struct {
 	LastUpdated           string                 `json:"last_updated"`
 	HealthInsight         *integHlthAlertInsight `json:"health_insight,omitempty"`
 	Status                string                 `json:"status"`
+	DoctorDoc             *string                `json:"doctor_doc,omitempty"`
 	DoctorTopic           *string                `json:"doctor_topic,omitempty"`
 }
 
@@ -98,4 +101,35 @@ func integHlthAlertFromGraphQL(a graphql.ListIntegHlthAlertsV2ListIntegHlthAlert
 		alert.HealthInsight = &insight
 	}
 	return alert
+}
+
+// addIntegHlthAlertDoctorDocs sets each alert's DoctorDoc to the first doc of
+// the doctor rule for its doctor topic, looking up each topic once.
+func addIntegHlthAlertDoctorDocs(ctx context.Context, client genqlient.Client, alerts []integHlthAlert) {
+	docs := make(map[string]*string)
+	for i, a := range alerts {
+		if a.DoctorTopic == nil {
+			continue
+		}
+		topic := *a.DoctorTopic
+		doc, ok := docs[topic]
+		if !ok {
+			doc = fetchDoctorRuleDoc(ctx, client, topic)
+			docs[topic] = doc
+		}
+		alerts[i].DoctorDoc = doc
+	}
+}
+
+func fetchDoctorRuleDoc(ctx context.Context, client genqlient.Client, topic string) *string {
+	resp, err := graphql.RetrieveDoctorRule(ctx, client, topic)
+	if err != nil {
+		log.Debugf("Skipping doctor doc for topic %q: %v", topic, err)
+		return nil
+	}
+	ruleDocs := resp.V2RetrieveDoctorRule.Doctor_rule.Docs
+	if len(ruleDocs) == 0 {
+		return nil
+	}
+	return nonEmpty(ruleDocs[0])
 }

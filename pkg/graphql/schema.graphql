@@ -4,6 +4,7 @@
 
 type Query {
   v2ListIntegHlthAlerts(context: StripeContextInput, last_updated_after: String, last_updated_before: String, limit: Int, page: String, statuses: [V2IntegrationHealthOpenEnumAlertStatus!]!): V2IntegrationHealthListIntegHlthAlertsResponse
+  v2RetrieveDoctorRule(context: StripeContextInput, topic: String!): V2IntegrationHealthRetrieveDoctorRuleResponse
 }
 
 input StripeContextInput {
@@ -48,4 +49,16 @@ type V2IntegrationHealthAlertHealthInsight {
 type V2IntegrationHealthRecommendedAction {
   description: String!
   title: String!
+}
+
+type V2IntegrationHealthRetrieveDoctorRuleResponse {
+  doctor_rule: V2IntegrationHealthDoctorRule!
+}
+
+type V2IntegrationHealthDoctorRule {
+  action: String!
+  docs: [String!]!
+  message: String!
+  severity: String!
+  topic: String!
 }

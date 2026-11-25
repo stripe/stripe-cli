@@ -40,17 +40,35 @@ const integHlthAlertsBody = `{
   }
 }`
 
+// doctorRuleBody is the gateway's RetrieveDoctorRule response for the dpm
+// topic used by the alert fixtures.
+const doctorRuleBody = `{"data": {"v2RetrieveDoctorRule": {"doctor_rule": {"topic": "dpm", "docs": ["https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods"]}}}}`
+
 type integHlthGraphQLRequest struct {
 	OperationName string         `json:"operationName"`
 	Variables     map[string]any `json:"variables"`
 }
 
+// serveDoctorRule answers RetrieveDoctorRule requests with doctorRuleBody, so
+// the alert gateways below only record and serve alert requests.
+func serveDoctorRule(w http.ResponseWriter, req integHlthGraphQLRequest) bool {
+	if req.OperationName != "RetrieveDoctorRule" {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write([]byte(doctorRuleBody))
+	return true
+}
+
 func newIntegHlthGateway(t *testing.T, statusCode int, body string, recs *[]integHlthGraphQLRequest) *httptest.Server {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req integHlthGraphQLRequest
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		if serveDoctorRule(w, req) {
+			return
+		}
 		if recs != nil {
-			var req integHlthGraphQLRequest
-			assert.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 			*recs = append(*recs, req)
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -68,6 +86,9 @@ func newIntegHlthPagedGateway(t *testing.T, pages map[string]string, recs *[]int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req integHlthGraphQLRequest
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		if serveDoctorRule(w, req) {
+			return
+		}
 		if recs != nil {
 			*recs = append(*recs, req)
 		}
@@ -109,6 +130,7 @@ func TestFetchIntegHlthAlerts_QueriesAllStatusesAndConvertsAlerts(t *testing.T) 
 	assert.Equal(t, "hi_123", alert.HealthInsightID)
 	assert.Equal(t, "LEGACY_PAYMENT_METHODS", alert.PredicateName)
 	assert.Equal(t, "open", alert.Status)
+	assert.Nil(t, alert.DoctorDoc, "doctor docs come from RetrieveDoctorRule, not the alert")
 	require.NotNil(t, alert.DoctorTopic)
 	assert.Equal(t, "dpm", *alert.DoctorTopic)
 	require.NotNil(t, alert.HealthInsight)
@@ -239,4 +261,60 @@ func TestFetchIntegHlthAlerts_SurfacesGraphQLErrorMessage(t *testing.T) {
 	_, err := fetchIntegHlthAlerts(context.Background(), gatewayClient(server), 0)
 	require.Error(t, err)
 	assert.Equal(t, "failed to retrieve integration health alerts: You do not have access.", err.Error())
+}
+
+func TestAddIntegHlthAlertDoctorDocs_LooksUpEachTopicOnce(t *testing.T) {
+	var topics []any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req integHlthGraphQLRequest
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, "RetrieveDoctorRule", req.OperationName)
+		topics = append(topics, req.Variables["topic"])
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(doctorRuleBody))
+	}))
+	t.Cleanup(server.Close)
+
+	dpm := "dpm"
+	alerts := []integHlthAlert{
+		{HealthInsightID: "heins_1", DoctorTopic: &dpm},
+		{HealthInsightID: "heins_2", DoctorTopic: &dpm},
+		{HealthInsightID: "heins_3"},
+	}
+	addIntegHlthAlertDoctorDocs(context.Background(), gatewayClient(server), alerts)
+
+	assert.Equal(t, []any{"dpm"}, topics)
+	for _, a := range alerts[:2] {
+		require.NotNil(t, a.DoctorDoc)
+		assert.Equal(t, "https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods", *a.DoctorDoc)
+	}
+	assert.Nil(t, alerts[2].DoctorDoc, "alerts without a doctor topic get no doc")
+}
+
+func TestAddIntegHlthAlertDoctorDocs_SkipsFailedLookups(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errors": [{"message": "Doctor rule not found for topic: dpm"}]}`))
+	}))
+	t.Cleanup(server.Close)
+
+	dpm := "dpm"
+	alerts := []integHlthAlert{{HealthInsightID: "heins_1", DoctorTopic: &dpm}}
+	addIntegHlthAlertDoctorDocs(context.Background(), gatewayClient(server), alerts)
+
+	assert.Nil(t, alerts[0].DoctorDoc)
+}
+
+func TestAddIntegHlthAlertDoctorDocs_SkipsRulesWithoutDocs(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data": {"v2RetrieveDoctorRule": {"doctor_rule": {"topic": "dpm", "docs": []}}}}`))
+	}))
+	t.Cleanup(server.Close)
+
+	dpm := "dpm"
+	alerts := []integHlthAlert{{HealthInsightID: "heins_1", DoctorTopic: &dpm}}
+	addIntegHlthAlertDoctorDocs(context.Background(), gatewayClient(server), alerts)
+
+	assert.Nil(t, alerts[0].DoctorDoc)
 }

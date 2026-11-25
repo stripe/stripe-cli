@@ -136,6 +136,42 @@ func (v *ListIntegHlthAlertsV2ListIntegHlthAlertsV2IntegrationHealthListIntegHlt
 	return v.Title
 }
 
+// RetrieveDoctorRuleResponse is returned by RetrieveDoctorRule on success.
+type RetrieveDoctorRuleResponse struct {
+	V2RetrieveDoctorRule RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponse `json:"v2RetrieveDoctorRule"`
+}
+
+// GetV2RetrieveDoctorRule returns RetrieveDoctorRuleResponse.V2RetrieveDoctorRule, and is useful for accessing the field via an interface.
+func (v *RetrieveDoctorRuleResponse) GetV2RetrieveDoctorRule() RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponse {
+	return v.V2RetrieveDoctorRule
+}
+
+// RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponse includes the requested fields of the GraphQL type V2IntegrationHealthRetrieveDoctorRuleResponse.
+type RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponse struct {
+	Doctor_rule RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule `json:"doctor_rule"`
+}
+
+// GetDoctor_rule returns RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponse.Doctor_rule, and is useful for accessing the field via an interface.
+func (v *RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponse) GetDoctor_rule() RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule {
+	return v.Doctor_rule
+}
+
+// RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule includes the requested fields of the GraphQL type V2IntegrationHealthDoctorRule.
+type RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule struct {
+	Docs  []string `json:"docs"`
+	Topic string   `json:"topic"`
+}
+
+// GetDocs returns RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule.Docs, and is useful for accessing the field via an interface.
+func (v *RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule) GetDocs() []string {
+	return v.Docs
+}
+
+// GetTopic returns RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule.Topic, and is useful for accessing the field via an interface.
+func (v *RetrieveDoctorRuleV2RetrieveDoctorRuleV2IntegrationHealthRetrieveDoctorRuleResponseDoctor_ruleV2IntegrationHealthDoctorRule) GetTopic() string {
+	return v.Topic
+}
+
 // __ListIntegHlthAlertsInput is used internally by genqlient
 type __ListIntegHlthAlertsInput struct {
 	Statuses          []string `json:"statuses"`
@@ -159,6 +195,14 @@ func (v *__ListIntegHlthAlertsInput) GetLastUpdatedAfter() string { return v.Las
 
 // GetLastUpdatedBefore returns __ListIntegHlthAlertsInput.LastUpdatedBefore, and is useful for accessing the field via an interface.
 func (v *__ListIntegHlthAlertsInput) GetLastUpdatedBefore() string { return v.LastUpdatedBefore }
+
+// __RetrieveDoctorRuleInput is used internally by genqlient
+type __RetrieveDoctorRuleInput struct {
+	Topic string `json:"topic"`
+}
+
+// GetTopic returns __RetrieveDoctorRuleInput.Topic, and is useful for accessing the field via an interface.
+func (v *__RetrieveDoctorRuleInput) GetTopic() string { return v.Topic }
 
 // The query executed by ListIntegHlthAlerts.
 const ListIntegHlthAlerts_Operation = `
@@ -210,6 +254,43 @@ func ListIntegHlthAlerts(
 	}
 
 	data_ = &ListIntegHlthAlertsResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by RetrieveDoctorRule.
+const RetrieveDoctorRule_Operation = `
+query RetrieveDoctorRule ($topic: String!) {
+	v2RetrieveDoctorRule(topic: $topic) {
+		doctor_rule {
+			docs
+			topic
+		}
+	}
+}
+`
+
+func RetrieveDoctorRule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	topic string,
+) (data_ *RetrieveDoctorRuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "RetrieveDoctorRule",
+		Query:  RetrieveDoctorRule_Operation,
+		Variables: &__RetrieveDoctorRuleInput{
+			Topic: topic,
+		},
+	}
+
+	data_ = &RetrieveDoctorRuleResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

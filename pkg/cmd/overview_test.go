@@ -38,7 +38,7 @@ func TestOverviewCmd_LiveUsesLiveModeAndPreviewVersion(t *testing.T) {
 
 	assert.True(t, gotOpts.Livemode)
 	assert.Equal(t, requests.StripePreviewVersionHeaderValue, gotOpts.StripeVersion)
-	assert.Contains(t, out.String(), "Run `stripe doctor dpm` for more information.")
+	assert.Contains(t, out.String(), "Run `stripe docs /payments/payment-methods/dynamic-payment-methods` and follow the guide to make this change.")
 	assert.NotContains(t, out.String(), "default API version")
 }
 
@@ -53,7 +53,7 @@ func TestOverviewCmd_PrintsDefaultAPIVersion(t *testing.T) {
 	require.NoError(t, oc.cmd.Execute())
 
 	assert.Equal(t, "Your account's default API version is 2024-06-20.\n\n"+
-		"We recommend this action to keep your integration healthy:\n1. Use dynamic payment methods. Run `stripe doctor dpm` for more information.\n", out.String())
+		"We recommend this action to keep your integration healthy:\n1. Use dynamic payment methods. Run `stripe docs /payments/payment-methods/dynamic-payment-methods` and follow the guide to make this change.\n", out.String())
 }
 
 func TestOverviewCmd_PrintsDefaultAPIVersionWhenAlertsFail(t *testing.T) {
@@ -178,18 +178,43 @@ func TestOverviewCmd_LimitsAlerts(t *testing.T) {
 	assert.Len(t, run("--limit", "1"), 1)
 }
 
-func TestRenderIntegHlthAlerts_PointsToDoctorWhenTopicSet(t *testing.T) {
+func TestRenderIntegHlthAlerts_PointsToStripeDocsForDocsStripeComDoctorDoc(t *testing.T) {
 	server := newIntegHlthGateway(t, http.StatusOK, integHlthAlertsBody, nil)
 	resp, err := fetchIntegHlthAlerts(context.Background(), gatewayClient(server), 0)
 	require.NoError(t, err)
+	addIntegHlthAlertDoctorDocs(context.Background(), gatewayClient(server), resp.Alerts)
 
 	var buf bytes.Buffer
 	renderIntegHlthAlerts(&buf, resp.Alerts)
 
-	assert.Equal(t, "We recommend this action to keep your integration healthy:\n1. Use dynamic payment methods. Run `stripe doctor dpm` for more information.\n", buf.String())
+	assert.Equal(t, "We recommend this action to keep your integration healthy:\n1. Use dynamic payment methods. Run `stripe docs /payments/payment-methods/dynamic-payment-methods` and follow the guide to make this change.\n", buf.String())
 }
 
-func TestRenderIntegHlthAlerts_PointsToHealthWithoutDoctorTopic(t *testing.T) {
+func TestRenderIntegHlthAlerts_RendersNonDocsDoctorDocAsURL(t *testing.T) {
+	doc := "https://stripe.com/guides/dynamic-payment-methods"
+	topic := "dpm"
+	var buf bytes.Buffer
+	renderIntegHlthAlerts(&buf, []integHlthAlert{{HealthInsightID: "heins_123", PredicateName: "LEGACY_PAYMENT_METHODS", DoctorDoc: &doc, DoctorTopic: &topic}})
+
+	assert.Equal(t, "We recommend this action to keep your integration healthy:\n1. LEGACY_PAYMENT_METHODS. Follow the guide at https://stripe.com/guides/dynamic-payment-methods to make this change.\n", buf.String())
+}
+
+func TestStripeDocsPath(t *testing.T) {
+	for rawURL, want := range map[string]string{
+		"https://docs.stripe.com":           "/",
+		"https://docs.stripe.com/":          "/",
+		"https://docs.stripe.com/payments":  "/payments",
+		"https://docs.stripe.com.evil.test": "",
+		"http://docs.stripe.com/payments":   "",
+		"https://stripe.com/docs/payments":  "",
+	} {
+		path, ok := stripeDocsPath(rawURL)
+		assert.Equal(t, want != "", ok, rawURL)
+		assert.Equal(t, want, path, rawURL)
+	}
+}
+
+func TestRenderIntegHlthAlerts_PointsToHealthWithoutDoctorDoc(t *testing.T) {
 	title := "Add the Stripe-Version header to your requests"
 	var buf bytes.Buffer
 	renderIntegHlthAlerts(&buf, []integHlthAlert{
