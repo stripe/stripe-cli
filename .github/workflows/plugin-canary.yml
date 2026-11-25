@@ -79,6 +79,7 @@ jobs:
           VERSIONS=$(curl -fsSL -G "https://api.stripe.com/v1/stripecli/list-plugins" \
             -H "Authorization: Bearer ${STRIPE_API_KEY}" \
             -H "Stripe-Version: 2019-03-14" \
+            -H "User-Agent: Stripe/v1 stripe-cli/1.51.1" \
             --data-urlencode "os=${GOOS}" \
             --data-urlencode "arch=${GOARCH}" \
             | jq -r --arg min "${MIN_VERSION_TO_TEST}" --argjson n "${RECENT_VERSIONS_TO_TEST}" '
