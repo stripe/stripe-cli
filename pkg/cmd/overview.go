@@ -30,11 +30,65 @@ var (
 	resolveOverviewCredentials = activeOverviewCredentials
 )
 
-// overviewJSON is the --format json output: the account's default API version
-// alongside the integration health alerts.
+// overviewJSON is the --format json output. It carries what the text output
+// shows, in a stable shape for scripts and agents.
 type overviewJSON struct {
-	DefaultAPIVersion string `json:"default_api_version,omitempty"`
-	*integHlthAlertsResponse
+	Account            overviewJSONAccount  `json:"account"`
+	DefaultAPIVersion  string               `json:"default_api_version,omitempty"`
+	RecommendedActions []overviewJSONAction `json:"recommended_actions"`
+	Notice             *overviewJSONNotice  `json:"notice,omitempty"`
+}
+
+type overviewJSONAccount struct {
+	ID string `json:"id,omitempty"`
+	// Mode is "live", "sandbox", or for API keys, "test".
+	Mode string `json:"mode"`
+}
+
+type overviewJSONAction struct {
+	Title string            `json:"title"`
+	Guide overviewJSONGuide `json:"guide"`
+}
+
+type overviewJSONGuide struct {
+	Command string `json:"command"`
+}
+
+type overviewJSONNotice struct {
+	Message   string             `json:"message"`
+	NextSteps []overviewJSONStep `json:"next_steps"`
+}
+
+type overviewJSONStep struct {
+	Command string `json:"command"`
+	Purpose string `json:"purpose"`
+}
+
+func newOverviewJSON(target overviewTarget, version string, alerts []integHlthAlert) overviewJSON {
+	out := overviewJSON{
+		Account:            overviewJSONAccount{ID: target.creds.OAKContext, Mode: overviewAccountMode(target.creds)},
+		DefaultAPIVersion:  version,
+		RecommendedActions: make([]overviewJSONAction, 0, len(alerts)),
+		Notice:             sandboxNotice(target.footer),
+	}
+	for _, a := range alerts {
+		out.RecommendedActions = append(out.RecommendedActions, overviewJSONAction{
+			Title: integHlthAlertActionTitle(a),
+			Guide: overviewJSONGuide{Command: integHlthAlertDocsCommand(a)},
+		})
+	}
+	return out
+}
+
+func overviewAccountMode(creds stripe.Credentials) string {
+	switch {
+	case creds.Livemode():
+		return "live"
+	case creds.OAKContext != "":
+		return "sandbox"
+	default:
+		return "test"
+	}
 }
 
 type overviewCmd struct {
@@ -65,7 +119,7 @@ Uses the mode of your active account context. If you're in a sandbox, run
 		RunE: oc.runOverviewCmd,
 	}
 
-	oc.cmd.Flags().StringVar(&oc.format, "format", "", "Output format: 'json' for the full alert details")
+	oc.cmd.Flags().StringVar(&oc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripts and agents)")
 	oc.cmd.Flags().IntVar(&oc.limit, "limit", 0, "Maximum number of alerts to return (default: all)")
 	oc.cmd.Flags().BoolVar(&oc.livemode, "live", false, "Show live mode alerts (default: your active context's mode)")
 	oc.cmd.Flags().BoolVar(&oc.forceLive, "force-live", false, "In a sandbox, show insights for the live account that owns it")
@@ -117,7 +171,7 @@ func (oc *overviewCmd) runOverviewCmd(cmd *cobra.Command, args []string) error {
 		}
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
-		return enc.Encode(overviewJSON{DefaultAPIVersion: version, integHlthAlertsResponse: resp})
+		return enc.Encode(newOverviewJSON(target, version, resp.Alerts))
 	}
 
 	renderForcedLiveHeader(out, target)
@@ -279,8 +333,12 @@ func integHlthAlertNextStep(a integHlthAlert) string {
 	// if a.DoctorTopic != nil && *a.DoctorTopic != "" {
 	// 	return "Run " + ansi.Bold("`stripe doctor "+*a.DoctorTopic+"`") + " and follow its steps to make this change."
 	// }
+	return "Run " + ansi.Bold("`"+integHlthAlertDocsCommand(a)+"`") + " and follow the guide to make this change."
+}
+
+func integHlthAlertDocsCommand(a integHlthAlert) string {
 	path, _ := integHlthAlertDocsPath(a)
-	return "Run " + ansi.Bold("`stripe docs "+path+"`") + " and follow the guide to make this change."
+	return "stripe docs " + path
 }
 
 // stripeDocsPath returns the path of a docs.stripe.com URL, which `stripe

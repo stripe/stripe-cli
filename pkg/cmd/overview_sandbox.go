@@ -56,18 +56,39 @@ func renderForcedLiveHeader(w io.Writer, target overviewTarget) {
 	fmt.Fprintf(w, "Showing insights for your live account (%s).\n\n", target.creds.OAKContext)
 }
 
+const (
+	sandboxNoticeMessage = "You're currently in a sandbox, so these insights are only applicable to your sandbox."
+	loginCommand         = "stripe login"
+	forceLiveCommand     = "stripe overview --force-live"
+)
+
 func renderSandboxFooter(w io.Writer, footer sandboxFooter) {
-	forceLive := ansi.Bold("`stripe overview --force-live`")
+	forceLive := ansi.Bold("`" + forceLiveCommand + "`")
 	switch footer {
 	case sandboxFooterForceLive:
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, "You're currently in a sandbox, so these insights are only applicable to your sandbox.")
+		fmt.Fprintln(w, sandboxNoticeMessage)
 		fmt.Fprintf(w, "Run %s to see insights for your live account.\n", forceLive)
 	case sandboxFooterLogin:
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, "You're currently in a sandbox, so these insights are only applicable to your sandbox.")
-		fmt.Fprintf(w, "Run %s to authorize your live account.\n", ansi.Bold("`stripe login`"))
-		fmt.Fprintf(w, "Then run %s to see insights for your live account.\n", forceLive)
+		fmt.Fprintln(w, sandboxNoticeMessage)
+		fmt.Fprintf(w, "Run %s to authorize your live account.\n", ansi.Bold("`"+loginCommand+"`"))
+		fmt.Fprintf(w, "Then run %s to see recommended actions for your live account.\n", forceLive)
 	case noSandboxFooter:
 	}
+}
+
+// sandboxNotice is the JSON form of the sandbox footer: the same message and
+// the commands to run, in order. It's nil outside a sandbox.
+func sandboxNotice(footer sandboxFooter) *overviewJSONNotice {
+	forceLive := overviewJSONStep{Command: forceLiveCommand, Purpose: "Show recommended actions for the live account that owns this sandbox."}
+	switch footer {
+	case sandboxFooterForceLive:
+		return &overviewJSONNotice{Message: sandboxNoticeMessage, NextSteps: []overviewJSONStep{forceLive}}
+	case sandboxFooterLogin:
+		login := overviewJSONStep{Command: loginCommand, Purpose: "Authorize the live account that owns this sandbox."}
+		return &overviewJSONNotice{Message: sandboxNoticeMessage, NextSteps: []overviewJSONStep{login, forceLive}}
+	case noSandboxFooter:
+	}
+	return nil
 }

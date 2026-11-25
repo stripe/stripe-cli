@@ -83,10 +83,13 @@ func TestOverviewCmd_JSONIncludesDefaultAPIVersion(t *testing.T) {
 	oc.cmd.SetArgs([]string{"--live", "--format", "json"})
 	require.NoError(t, oc.cmd.Execute())
 
-	var got map[string]any
-	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
-	assert.Equal(t, "2024-06-20", got["default_api_version"])
-	assert.Len(t, got["alerts"], 1)
+	assert.JSONEq(t, `{
+		"account": {"id": "acct_live", "mode": "live"},
+		"default_api_version": "2024-06-20",
+		"recommended_actions": [
+			{"title": "Use dynamic payment methods", "guide": {"command": "stripe docs /payments/payment-methods/dynamic-payment-methods"}}
+		]
+	}`, out.String())
 }
 
 func TestDefaultAPIVersion_SkipsAPIKeys(t *testing.T) {
@@ -184,7 +187,7 @@ func TestOverviewCmd_LimitsAlerts(t *testing.T) {
 
 		var got map[string]any
 		require.NoError(t, json.Unmarshal(out.Bytes(), &got))
-		return got["alerts"].([]any)
+		return got["recommended_actions"].([]any)
 	}
 
 	assert.Len(t, run(), 2, "no --limit returns every alert")

@@ -22,7 +22,7 @@ const (
 		"Run `stripe overview --force-live` to see insights for your live account.\n"
 	sandboxLoginFooter = "\nYou're currently in a sandbox, so these insights are only applicable to your sandbox.\n" +
 		"Run `stripe login` to authorize your live account.\n" +
-		"Then run `stripe overview --force-live` to see insights for your live account.\n"
+		"Then run `stripe overview --force-live` to see recommended actions for your live account.\n"
 	overviewDPMAction = "We recommend this action to keep your integration healthy:\n" +
 		"1. Use dynamic payment methods. Run `stripe docs /payments/payment-methods/dynamic-payment-methods` and follow the guide to make this change.\n"
 )
@@ -251,4 +251,71 @@ func TestSandboxParentAccount(t *testing.T) {
 		_, ok := sandboxParentAccount(context.Background(), url, nil, sandboxCreds)
 		assert.False(t, ok)
 	})
+}
+
+func TestOverviewCmd_JSONInSandbox(t *testing.T) {
+	dpmAction := `{"title": "Use dynamic payment methods", "guide": {"command": "stripe docs /payments/payment-methods/dynamic-payment-methods"}}`
+
+	t.Run("live account authorized", func(t *testing.T) {
+		stubOverviewGateway(t, newIntegHlthGateway(t, http.StatusOK, integHlthAlertsBody, nil))
+		stubOverviewDefaultAPIVersion(t, "2024-06-20")
+		stubOverviewCredentials(t, sandboxCreds)
+		stubOverviewSandboxParent(t, "acct_live", true)
+
+		out, err := runOverview(t, "--format", "json")
+		require.NoError(t, err)
+		assert.JSONEq(t, `{
+			"account": {"id": "acct_sandbox", "mode": "sandbox"},
+			"default_api_version": "2024-06-20",
+			"recommended_actions": [`+dpmAction+`],
+			"notice": {
+				"message": "You're currently in a sandbox, so these insights are only applicable to your sandbox.",
+				"next_steps": [
+					{"command": "stripe overview --force-live", "purpose": "Show recommended actions for the live account that owns this sandbox."}
+				]
+			}
+		}`, out)
+	})
+
+	t.Run("live account not authorized", func(t *testing.T) {
+		stubOverviewGateway(t, newIntegHlthGateway(t, http.StatusOK, `{"data": {"v2ListIntegHlthAlerts": {"alerts": []}}}`, nil))
+		stubOverviewDefaultAPIVersion(t, "")
+		stubOverviewCredentials(t, sandboxCreds)
+		stubOverviewSandboxParent(t, "", true)
+
+		out, err := runOverview(t, "--format", "json")
+		require.NoError(t, err)
+		assert.JSONEq(t, `{
+			"account": {"id": "acct_sandbox", "mode": "sandbox"},
+			"recommended_actions": [],
+			"notice": {
+				"message": "You're currently in a sandbox, so these insights are only applicable to your sandbox.",
+				"next_steps": [
+					{"command": "stripe login", "purpose": "Authorize the live account that owns this sandbox."},
+					{"command": "stripe overview --force-live", "purpose": "Show recommended actions for the live account that owns this sandbox."}
+				]
+			}
+		}`, out)
+	})
+
+	t.Run("force live", func(t *testing.T) {
+		stubOverviewGateway(t, newIntegHlthGateway(t, http.StatusOK, integHlthAlertsBody, nil))
+		stubOverviewDefaultAPIVersion(t, "")
+		stubOverviewCredentials(t, sandboxCreds)
+		stubOverviewSandboxParent(t, "acct_live", true)
+
+		out, err := runOverview(t, "--force-live", "--format", "json")
+		require.NoError(t, err)
+		assert.JSONEq(t, `{
+			"account": {"id": "acct_live", "mode": "live"},
+			"recommended_actions": [`+dpmAction+`]
+		}`, out)
+	})
+}
+
+func TestOverviewAccountMode(t *testing.T) {
+	assert.Equal(t, "live", overviewAccountMode(stripe.NewOAKCredentials("oak_123", "acct_live", true)))
+	assert.Equal(t, "sandbox", overviewAccountMode(stripe.NewOAKCredentials("oak_123", "acct_sandbox", false)))
+	assert.Equal(t, "live", overviewAccountMode(stripe.NewAPIKeyCredentials("sk_live_123")))
+	assert.Equal(t, "test", overviewAccountMode(stripe.NewAPIKeyCredentials("sk_test_123")))
 }
