@@ -33,6 +33,7 @@
   "files": [
     "bin/shim.js",
     "scripts/postinstall.js",
-    "platforms.json"
+    "platforms.json",
+    "resolve-platform.js"
   ]
 }

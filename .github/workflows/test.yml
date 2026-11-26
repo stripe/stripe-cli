@@ -6,6 +6,23 @@ name: Test
 permissions:
   contents: read
 jobs:
+  npm:
+    strategy:
+      matrix:
+        node-version: [18, 24]
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      with:
+        persist-credentials: false
+    - name: Install Node.js
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: Test npm wrapper
+      run: node --test npm/tests/platform-resolution.test.js
   test:
     strategy:
       matrix:

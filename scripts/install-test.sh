@@ -64,8 +64,25 @@ run_install() {
     ;;
 
     npm-no-optional)
-        npm install -g @stripe/cli --no-optional
-        stripe --version
+        (
+            install_dir=$(mktemp -d) || exit 1
+            trap 'rm -rf "$install_dir"' EXIT
+            npm install --prefix "$install_dir" @stripe/cli --omit=optional || exit 1
+            node - "$install_dir" <<'NODE' || exit 1
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const wrapper = path.join(process.argv[2], 'node_modules', '@stripe', 'cli');
+const platforms = require(path.join(wrapper, 'platforms.json'));
+for (const platform of Object.values(platforms)) {
+    assert(!fs.existsSync(path.join(wrapper, 'node_modules', platform.pkg)));
+    assert(!fs.existsSync(path.join(path.dirname(wrapper), path.basename(platform.pkg))));
+}
+const platform = platforms[`${process.platform}-${process.arch}`];
+assert(fs.statSync(path.join(wrapper, 'vendor', 'bin', platform.bin)).isFile());
+NODE
+            node "$install_dir/node_modules/@stripe/cli/bin/shim.js" --version
+        )
     ;;
 
     npx)
