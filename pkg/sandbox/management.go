@@ -12,6 +12,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/errorcategory"
@@ -74,14 +75,26 @@ type ManagedSandbox struct {
 // ManagementClient discovers sandboxes authorized by the active live OAuth
 // account.
 type ManagementClient struct {
-	APIBaseURL string
-	Profile    *config.Profile
+	APIBaseURL  string
+	Profile     *config.Profile
+	ShowHeaders bool
 }
 
 // NewManagementClient creates a sandbox management client using the supplied
 // Stripe API base URL and CLI profile.
 func NewManagementClient(apiBaseURL string, profile *config.Profile) *ManagementClient {
 	return &ManagementClient{APIBaseURL: apiBaseURL, Profile: profile}
+}
+
+func logManagementRequest(operation, stage string, err error) {
+	fields := log.Fields{"operation": operation, "stage": stage, "outcome": "success"}
+	if err != nil {
+		fields["outcome"] = "failure"
+		if status, ok := requestStatusCode(err); ok {
+			fields["status"] = status
+		}
+	}
+	log.WithFields(fields).Debug("Sandbox management request completed")
 }
 
 // Create creates a sandbox beneath the active live OAuth account.
@@ -111,7 +124,8 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 		return CreatedSandbox{}, err
 	}
 
-	playgroundContext, err := requests.GetPlaygroundContext(ctx, c.APIBaseURL, c.Profile, creds, true)
+	playgroundContext, err := requests.GetPlaygroundContext(ctx, c.APIBaseURL, c.Profile, creds, true, c.ShowHeaders)
+	logManagementRequest("sandbox_create", "playground_context", err)
 	if err != nil {
 		return CreatedSandbox{}, safeDependencyError("could not resolve the active playground", err)
 	}
@@ -130,7 +144,8 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 		if err != nil {
 			return CreatedSandbox{}, err
 		}
-		workspaceContext, workspaceErr := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true)
+		workspaceContext, workspaceErr := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true, c.ShowHeaders)
+		logManagementRequest("sandbox_create", "workspace_context", workspaceErr)
 		if workspaceErr != nil {
 			return CreatedSandbox{}, safeDependencyError("could not resolve the active live workspace", workspaceErr)
 		}
@@ -152,6 +167,7 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 		SuppressOutput: true,
 		APIBaseURL:     c.APIBaseURL,
 		Livemode:       true,
+		ShowHeaders:    c.ShowHeaders,
 	}
 	response, err := base.MakeRequest(
 		ctx,
@@ -166,6 +182,7 @@ func (c *ManagementClient) Create(ctx context.Context, options CreateOptions) (C
 			return nil
 		},
 	)
+	logManagementRequest("sandbox_create", "create", err)
 	if err != nil {
 		return CreatedSandbox{}, safeCreateError(err)
 	}
@@ -188,7 +205,8 @@ func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox
 		return nil, err
 	}
 
-	workspaceContext, err := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true)
+	workspaceContext, err := requests.GetWorkspaceContext(ctx, c.APIBaseURL, c.Profile, creds, true, c.ShowHeaders)
+	logManagementRequest("sandbox_list", "workspace_context", err)
 	if err != nil {
 		return nil, safeDependencyError("could not resolve the active live workspace", err)
 	}
@@ -202,6 +220,7 @@ func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox
 		SuppressOutput: true,
 		APIBaseURL:     c.APIBaseURL,
 		Livemode:       true,
+		ShowHeaders:    c.ShowHeaders,
 	}
 	response, err := base.MakeRequest(
 		ctx,
@@ -218,6 +237,7 @@ func (c *ManagementClient) ListAccessible(ctx context.Context) ([]ManagedSandbox
 		true,
 		nil,
 	)
+	logManagementRequest("sandbox_list", "list", err)
 	if err != nil {
 		return nil, safeDependencyError("could not list accessible sandboxes", err)
 	}
@@ -272,6 +292,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 		SuppressOutput: true,
 		APIBaseURL:     c.APIBaseURL,
 		Livemode:       true,
+		ShowHeaders:    c.ShowHeaders,
 	}
 	response, err := base.MakeRequest(
 		ctx,
@@ -290,6 +311,7 @@ func (c *ManagementClient) Delete(ctx context.Context, accountID string) (Delete
 			return nil
 		},
 	)
+	logManagementRequest("sandbox_delete", "delete", err)
 	if err != nil {
 		return DeletedSandbox{}, safeDeleteError(err)
 	}
