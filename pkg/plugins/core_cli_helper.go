@@ -378,7 +378,7 @@ func (s *CoreCLIHelperServer) SendCommandOutput(ctx context.Context, req *proto.
 	if err != nil {
 		return nil, err
 	}
-	return &proto.SendCommandOutputResponse{}, nil
+	return &proto.SendCommandOutputResponse{SupportsTransientSpinners: true}, nil
 }
 
 func (s *CoreCLIHelperServer) Prompt(ctx context.Context, req *proto.PromptRequest) (*proto.PromptResponse, error) {

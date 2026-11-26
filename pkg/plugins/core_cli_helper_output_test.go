@@ -57,6 +57,7 @@ func TestCoreCLIHelperServerForwardsOutputRPCs(t *testing.T) {
 	outputResp, err := server.SendCommandOutput(ctx, outputReq)
 	require.NoError(t, err)
 	require.NotNil(t, outputResp)
+	require.True(t, outputResp.GetSupportsTransientSpinners())
 
 	promptResp, err := server.Prompt(ctx, &proto.PromptRequest{Message: "Proceed", DefaultValue: "y"})
 	require.NoError(t, err)
