@@ -49,6 +49,26 @@ func TestGlobalEnable(t *testing.T) {
 	assert.Equal(t, "Automatic updates are enabled for all plugins\n\nDisable them with 'stripe plugin auto-update --disable'\nFollow each plugin's default with 'stripe plugin auto-update --unset'\n", output.String())
 }
 
+// A plugin's own choice answers before the global one, so changing the global
+// setting has to say which plugins it does not reach.
+func TestGlobalEnableListsPluginOverrides(t *testing.T) {
+	cfg, cleanup := setupAutoUpdateTest(t)
+	defer cleanup()
+
+	require.NoError(t, cfg.WriteConfigField("installed_plugins", []string{"apps", "projects", "tools"}))
+	require.NoError(t, cfg.WriteConfigField(config.PluginConfigKey("apps", config.PluginConfigUpdatesField), config.PluginConfigOff))
+	require.NoError(t, cfg.WriteConfigField(config.PluginConfigKey("tools", config.PluginConfigUpdatesField), config.PluginConfigOn))
+
+	ac := NewAutoUpdateCmd(cfg)
+	ac.enable = true
+	var output bytes.Buffer
+	ac.Cmd.SetOut(&output)
+
+	err := ac.run(ac.Cmd, []string{})
+	require.NoError(t, err)
+	assert.Equal(t, "Automatic updates are enabled for all plugins\n\nDisable them with 'stripe plugin auto-update --disable'\nFollow each plugin's default with 'stripe plugin auto-update --unset'\n\nNote: these plugins keep their own settings and are unaffected:\n  apps: disabled ('stripe plugin auto-update apps --unset' to clear)\n  tools: enabled ('stripe plugin auto-update tools --unset' to clear)\n", output.String())
+}
+
 // -- global --disable -------------------------------------------------------
 
 func TestGlobalDisable(t *testing.T) {
@@ -86,7 +106,7 @@ func TestGlobalUnset(t *testing.T) {
 	assert.False(t, viper.IsSet(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
 	// Only the global choice is cleared; a per-plugin choice still answers for its plugin.
 	assert.Equal(t, "off", viper.GetString(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
-	assert.Equal(t, "Automatic updates now follow each plugin's default\n\nEnable them with 'stripe plugin auto-update --enable'\nDisable them with 'stripe plugin auto-update --disable'\n", output.String())
+	assert.Equal(t, "Automatic updates now follow each plugin's default\n\nEnable them with 'stripe plugin auto-update --enable'\nDisable them with 'stripe plugin auto-update --disable'\n\nNote: this plugin keeps its own setting and is unaffected:\n  apps: disabled ('stripe plugin auto-update apps --unset' to clear)\n", output.String())
 }
 
 // -- no flags → help --------------------------------------------------------

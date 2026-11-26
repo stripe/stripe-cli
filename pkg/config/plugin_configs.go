@@ -67,6 +67,14 @@ func pluginUpdatesEnabled(v *viper.Viper, pluginName string, defaultEnabled bool
 	return defaultEnabled
 }
 
+// PluginUpdatesChoice reports the explicit automatic-updates choice recorded for
+// scope, if any. Unlike PluginUpdatesEnabled it consults only the one scope, so a
+// caller can tell a plugin's own choice apart from the global one it would
+// otherwise fall back to.
+func PluginUpdatesChoice(scope string) (enabled, isSet bool) {
+	return pluginConfigToggle(viper.GetViper(), scope, PluginConfigUpdatesField)
+}
+
 // pluginConfigToggle reads one on/off plugin config field. isSet distinguishes a
 // field the user turned off from one they never touched, which is what lets a
 // per-plugin setting take precedence over the global one.
