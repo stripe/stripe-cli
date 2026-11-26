@@ -3,7 +3,7 @@
 package requests
 
 // StripeVersionHeaderValue is the api version header value
-const StripeVersionHeaderValue = "2026-10-28.endive"
+const StripeVersionHeaderValue = "2026-11-18.endive"
 
 // StripePreviewVersionHeaderValue is the api version header value for preview features
-const StripePreviewVersionHeaderValue = "2026-10-28.preview"
+const StripePreviewVersionHeaderValue = "2026-11-18.preview"
